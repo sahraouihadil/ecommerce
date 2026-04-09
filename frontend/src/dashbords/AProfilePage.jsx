@@ -1,5 +1,5 @@
-import Header from "./ui/Header";
-import Sidebar from "./ui/Sidebar";
+import Header from "./admin/ui/Header";
+import Sidebar from "./admin/ui/Sidebar";
 import { useState } from "react";
 
 export default function AProfilePage(){

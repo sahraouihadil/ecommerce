@@ -99,8 +99,8 @@ def admin_required(payload: dict =Depends(verify_token)) -> dict:
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
   return payload
 
-def developer_required(payload: dict =Depends(verify_token)) -> dict:
-  if payload.get("role") != "developer":
+def accountant_required(payload: dict =Depends(verify_token)) -> dict:
+  if payload.get("role") != "accountant":
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
   return payload
 

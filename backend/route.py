@@ -3,7 +3,7 @@ from database import get_db, db_dependency
 from models import Users
 from user_crud import create_user, get_user_by_username,update_role_name
 from schema import CreateUserRequest,UserRoleUpdate
-from security.settings import validate_password,custmer_required,admin_required,developer_required,marketing_manager_required,stock_manager_required,deliveryman_required,create_access_token,authenticate_user,verify_token
+from security.settings import validate_password,custmer_required,admin_required,accountant_required,marketing_manager_required,stock_manager_required,deliveryman_required,create_access_token,authenticate_user,verify_token
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
@@ -54,8 +54,8 @@ async def get_admin(payload: dict = Depends(admin_required)):
  except Exception as e:
   raise HTTPException(status_code=500,detail=str(e))
 
-@user_router.get("/developer-dash")
-async def get_developer(payload: dict = Depends(developer_required)):
+@user_router.get("/accountant-dash")
+async def get_accountant(payload: dict = Depends(accountant_required)):
  try:
   return {"sub": payload.get("sub")}
  except HTTPException as e:

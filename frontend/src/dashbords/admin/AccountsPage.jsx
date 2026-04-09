@@ -67,7 +67,7 @@ export default function AccountsPage() {
 
                {/* Search */}
                <div className="bg-white p-3 py-2 rounded-xl shadow flex items-center gap-2 w-full sm:w-80">
-              <i class="fa-solid fa-magnifying-glass" style="color: rgb(0, 0, 0);"></i>
+              <i className="fa-solid fa-magnifying-glass text-black"></i>
                   <input type="text" placeholder="Search users by name or email..." className="outline-none w-full text-sm"/>
                </div>
 

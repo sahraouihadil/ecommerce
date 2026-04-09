@@ -17,7 +17,7 @@ import { FurniturePage } from './pages/FurniturePage'
 import { JournalPage } from './pages/JournalPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { AdminDashboard } from './dashbords/admin/AdminDashbord'
-import { DeveloperDashboard } from './dashbords/DeveloperDashbord'
+import { AccountantDashboard } from './dashbords/AccountantDashbord'
 import { MarketingMngrDashboard } from './dashbords/MarketingMngrDashbord'
 import { StockMngrDashboard } from './dashbords/StockMngrDashbord'
 import { DeliverymanDashboard } from './dashbords/DeliverymanDashbord'
@@ -27,7 +27,7 @@ import EngagementPage from './dashbords/admin/EngagementsPage'
 import ComplaintsPage from './dashbords/admin/ComplaintsPage'
 import ReportPage from './dashbords/admin/ReportPage'
 import ValidationPage from './dashbords/admin/ValidationPage'
-import AProfilePage from './dashbords/admin/AProfilePage'
+import AProfilePage from './dashbords/AProfilePage'
 
 function App() {
   return (
@@ -64,7 +64,7 @@ function App() {
         <Route path='/admin-dash/validation' element={<ValidationPage/>}></Route>
         <Route path='/admin-dash/profile' element={<AProfilePage/>}></Route>
 
-        <Route path='/developer-dash' element={<DeveloperDashboard/>}/>
+        <Route path='/accountant-dash' element={<AccountantDashboard/>}/>
         <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard/>}/>
         <Route path='/stock-manager-dash' element={<StockMngrDashboard/>}/>
         <Route path='/deliveryman-dash' element={<DeliverymanDashboard/>}/>

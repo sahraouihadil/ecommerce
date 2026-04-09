@@ -1,7 +1,7 @@
 import { useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 
-export function DeveloperDashboard(){
+export function AccountantDashboard(){
    const navigate = useNavigate();
 
 useEffect(() => {
@@ -14,7 +14,7 @@ useEffect(() => {
       return;
     }
     try{
-      const response =await fetch('http://localhost:8000/developer-dash',{
+      const response =await fetch('http://localhost:8000/accountant-dash',{
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`
@@ -35,7 +35,7 @@ useEffect(() => {
   return(
          <>
      <h1 class="text-3xl font-bold underline">
-    Developer Dashbord
+    Accountant Dashbord
   </h1>
     </>
   )

@@ -10,11 +10,11 @@ function ProductList() {
   }, []);
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div>
       <h1>ARoom Luxury Furniture</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+      <div>
         {products.map((p) => (
-          <div key={p.id} style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
+          <div key={p.id}>
             <h3>{p.name}</h3>
             <p>{p.description}</p>
             <p><strong>${p.price}</strong></p>

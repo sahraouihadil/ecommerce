@@ -6,6 +6,8 @@ export default function ComplaintsPage(){
      {/* sidebar (Mobile)*/}
    const [openBar,setOpenBar] = useState(window.innerWidth>=600);
 const [selected,setSelected] = useState(null);
+const [showList, setShowList] = useState(false);
+
 const complaints = [
     {
       id: "C-001",
@@ -46,14 +48,39 @@ const complaints = [
           <Header concept="Complaints" setOpenBar={setOpenBar} openBar={openBar}/>
 
 
-      <div className="flex gap-7">
+
+      <div className="flex flex-col lg:flex-row gap-7">
                {/* Left - Index */}
-        <div className="space-y-4 w-full max-w-md">
+               
+        {/* Mobile Button */}
+            <div className="lg:hidden">
+              <button onClick={() => setShowList(true)} className="w-full bg-black text-white py-3 rounded-xl flex justify-between items-center px-4">
+                <span>Complaints</span>
+                <span className="bg-white text-black px-2 py-1 rounded-full text-xs">
+                  {complaints.length}
+                </span>
+              </button>
+            </div>
+
+            <div className={`${showList ? "block" : "hidden"} lg:hidden space-y-4 `}>
+              {complaints.map((cs)=>(
+                <div key={cs.id} onClick={() => {
+                  setSelected(cs); setShowList(false);
+                }} className="p-4 rounded-xl shadow cursor-pointer bg-white">
+                  <p className="font-semibold">{cs.title}</p>
+                  <p className="text-sm text-gray-500">{cs.user}</p>
+                </div>
+              ))}
+            </div>
+
+        
+        <div className={`space-y-4 w-full max-w-md hidden ${!showList ? "block" : "hidden"} lg:block`}>
           <div className="flex justify-between items-center">
              <h2 className="text-lg font-semibold">Inbox</h2>
              <span className="text-xs bg-gray-200 px-2 py-1 rounded-full">
               {complaints.length} Total
              </span>
+
           </div>
          
           {complaints.map((c)=>(
@@ -81,7 +108,7 @@ const complaints = [
         </div>
 
         {/* Right - Details */}
-        <div className="lg:col-span-2 flex-1 items-center justify-center bg-white rounded-xl shadow p-4 sm:p-6 min-h-[400px]">
+        <div className={`flex-1 bg-white rounded-xl shadow p-4 sm:p-6 min-h-[400px] ${!showList ? "block" : "hidden"} lg:block `}>
           {selected ? (
             <div className="w-full space-y-6">
             <h2 className="text-xl font-bold">{selected.title}</h2>
@@ -134,7 +161,15 @@ const complaints = [
                   Dismiss
                 </button>
                </div>
+
+               <div className="lg:hidden mb-4">
+                <button onClick={() => setShowList(true)} className="text-sm text-gray-500"> 
+                  ← Back
+                </button>
                </div>
+               </div>
+
+               
            
           ):(
             <div className="text-center text-gray-400 py-20 w-full">
