@@ -1,6 +1,28 @@
 import Header from "./ui/Header";
 import Sidebar from "./ui/Sidebar";
 import { useState } from "react";
+import {
+  Chart as ChartJS,
+  BarElement,
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+import {Bar,Line} from "react-chartjs-2";
+
+ChartJS.register(
+  BarElement,
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend,
+);
 
 export default function ReportPage(){
      {/* sidebar (Mobile)*/}
@@ -22,18 +44,26 @@ export default function ReportPage(){
           {/* Revenue Overview */}
           <div className="bg-white rounded-2xl shadow p-6">
             <h2 className="font-semibold mb-4">Revenue Overview</h2>
-            {/* Fake Chart Bars */}
-            <div className="flex items-end gap-4 h-48">
-              {[4000,3000,2000,2800,1900,2400,3500].map((v,i)=>(
-                <div key={i} className="flex-1 flex flex-col items-center">
-                  <div className="w-full bg-indigo-500 rounded-t-lg" style={{height:`${v / 50}px`}}/>
-
-                <span className="text-xs mt-2 text-gray-500">
-                  {["Sat","Sun","Mon","Tue","Wed","Thu","Fri"][i]}
-                </span>
-                </div>
-              ))}
-            </div>
+            {/* Chart Bars */}
+           <div className="h-64">
+            <Bar 
+            data={{
+              labels : ["Sat" , "Sun" , "Mon","Tue","Wed","Thu","Fri"],
+              datasets:[
+                {
+                  label:"Revenue",
+                  data:[4000,3000,2000,2800,1900,2400,3500],
+                  backgroundColor: "#6366f1",
+                  borderRadius:8,
+                }
+              ]
+            }}
+            options={{
+              responsive:true,
+              plugins:{legend:{display: false}},
+            }}
+            />
+           </div>
           </div>
 
           {/* AR Model Activity */}
@@ -41,10 +71,28 @@ export default function ReportPage(){
             <h2 className="font-semibold mb-4">AR Model Activity</h2>
 
             {/* Fike Line Chart */}
-            <div className="relative h-48 flex items-end">
-              <svg className="w-full h-full">
-               <polyline fill="none" stroke="#10b981" strockWidth="3" points="0,150 60,170 120,40 180,120 240,100 300,130 360,110">
-                </polyline></svg>
+            <div className="h-64">
+              <Line
+              data={{
+                labels: ["Sat" , "Sun" , "Mon","Tue","Wed","Thu","Fri"],
+                datasets:[
+                  {
+                    label: "AR Activity",
+                    data: [150,170,40,120,100,130,110],
+                    borderColor:"#10b981",
+                    backgroundColor: "rgba(16,185,129,0.2)",
+                    tension:0.4,
+                    fill: true,
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                plugins:{
+                  legend:{display:false},
+                }
+              }}
+              />
             </div>
           </div>
 

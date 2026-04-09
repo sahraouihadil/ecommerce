@@ -94,12 +94,6 @@ async def user(user:user_dependency,db:db_dependency):
       raise HTTPException(status_code=401,detail='Authentication Failed')
   return {"User": user}
 
-@app.get("/profile",status_code=status.HTTP_200_OK)
-async def user(user:user_dependency,db:db_dependency):
-  if user is None:
-      raise HTTPException(status_code=401,detail='Authentication Failed')
-  return {"User": user}
-
 @app.get("/profile")
 async def user(user:user_dependency, db:db_dependency):
     if user is None:

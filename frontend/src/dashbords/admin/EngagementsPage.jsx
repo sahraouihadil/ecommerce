@@ -2,6 +2,31 @@ import Header from "./ui/Header";
 import Sidebar from "./ui/Sidebar";
 import { useState } from "react";
 
+import {
+  Chart as ChartJS,
+  LineElement,
+  BarElement,
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+import { Line, Doughnut, Bar } from "react-chartjs-2";
+
+ChartJS.register(
+  LineElement,
+  BarElement,
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend
+);
+
 export default function EngagementPage(){
      {/* sidebar (Mobile)*/}
      const [openBar,setOpenBar] = useState(window.innerWidth>=600);
@@ -20,20 +45,56 @@ export default function EngagementPage(){
           {/* Website Traffic */}
           <div className="bg-white rounded-2xl shadow p-6">
             <h2 className="font-semibold mb-4">Website Traffic (Visitor Sessions)</h2>
-            {/* Fake Line Chart */}
-            <div className="relative h-56">
-              <svg className="w-full h-full">
-               <polyline fill="none" stroke="#10b981" strokeWidth="3" points="0,160 60,180 120,40,180,120 240,100 300,130 360,110">
-               </polyline>
-              </svg>
-              {/* Labels */}
-              <div className="flex justify-between text-xs text-gray-500 mt-2">
-                {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d)=>(
-                  <span key={d}>{d}</span>
-                ))}
-              </div>
+
+            {/* Line Chart */}
+           <div className="h-56">
+            <Line
+            data={{
+              labels : ["Sat" , "Sun" , "Mon","Tue","Wed","Thu","Fri"],
+              datasets: [
+                {
+                  label: "Visitors",
+                  data: [160,180,40,120,100,130,110],
+                  borderColor:"#10b981",
+                  backgroundColor: "rgba(16,185,129,0.2)",
+                  tension:0.4,
+                  fill: true,
+                }
+              ]
+            }} 
+            options={{
+              responsive: true,
+              plugins: {legend: {display:false}},
+            }}
+            />
+           </div>
+          </div>
+
+          {/* Top Page */}
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h2 className="font-semibold mb-4">Top Pages</h2>
+
+            <div className="space-y-3">
+              {[
+                   { name: "Home Page", value: 80 },
+                   { name: "Product Page", value: 65 },
+                   { name: "AR View", value: 50 },
+                   { name: "Checkout", value: 30 },
+              ].map((item,i)=> (
+                <div key={i}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{item.name}</span>
+                    <span>{item.value}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 h-2 rounded-full">
+                    <div className="bg-black h-2 rounded-full"  style={{ width: `${item.value}%` }}/>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+
+
           {/* Engagement Overview */}
           <div className="bg-white rounded-2xl shadow p-6">
             <h2 className="font-semibold mb-4">Engagement Overview</h2>

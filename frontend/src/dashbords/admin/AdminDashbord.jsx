@@ -1,15 +1,55 @@
 import { useEffect} from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink  } from "react-router-dom";
 import { Card,CardContent,Button,StatCard } from "./ui/dashbordComp";
 import Header from "./ui/Header";
 import Sidebar from "./ui/Sidebar";
 import { useState } from "react";
 import { FaUserCheck,FaBox} from "react-icons/fa";
+import { Chart as ChartJS,LineElement,CategoryScale,LinearScale,PointElement,Tooltip,Legend} from "chart.js";
+import {Line} from "react-chartjs-2";
+
+ChartJS.register(
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend
+);
 
 export function AdminDashboard(){
    const navigate = useNavigate();
-   {/* sidebar (Mobile)*/}
+   // sidebar (Mobile)
    const [openBar,setOpenBar] = useState(window.innerWidth>=600);
+
+   const data = {
+  labels: ["Jan", "Feb", "Mar", "Apr"],
+  datasets: [
+    {
+      label: "Users",
+      data: [400, 800, 1200, 900],
+      borderColor: "black",
+      backgroundColor: "rgba(0,0,0,0.1)",
+      tension: 0.4,
+    },
+        {
+      label: "Orders",
+      data: [200, 600, 900, 700],
+      borderColor: "green",
+      backgroundColor: "rgba(0,255,0,0.1)",
+      tension: 0.4,
+    },
+  ],
+};
+
+const options = {
+  responsive: true,
+  plugins: {
+    legend: {
+      position: "top",
+    },
+  },
+};
 
 useEffect(() => {
    const verifyToken = async () =>{
@@ -64,8 +104,12 @@ useEffect(() => {
          <Card className="lg:col-span-2 shadow rounded-2xl">
            <CardContent className="p-6">
               <h2 className="font-semibold mb-4">Platform Growth</h2>
-              <div className="h-64 flex items-center justify-center text-gray-400">Chart here (Recharts)
-              </div>
+
+      <div className="w-full h-[300px]">
+        <Line data={data} options={options} />
+        </div>
+
+
            </CardContent>
          </Card>
 
@@ -117,7 +161,10 @@ useEffect(() => {
 
               
             </ul>
-            <Button className="w-full mt-4">View Audit Log</Button>
+            <NavLink to="/admin-dash/audit-log">
+                  <Button className="w-full mt-4">View Audit Log</Button>
+            </NavLink>
+        
           </CardContent>
         </Card>
 
