@@ -35,7 +35,7 @@ export function Search(){
             </div>
           ))
         ) : (
-          <p>No products found.</p>
+          keyword && results.length === 0 ? <p>No products found.</p> : null
         )}
       </div>
     </div>

@@ -7,8 +7,8 @@ export function HomePage(){
    const [loading,setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('http://127.0.0.1:8000/').then(response =>{
-      setProducts(response.data.products || []);
+    axios.get('http://127.0.0.1:8000/api/products').then(response =>{
+      setProducts(response.data || []);
       setLoading(false);
     })
     .catch(error => {
