@@ -45,7 +45,7 @@ async def home_page(db: db_dependency):
 
 @app.get("/search")
 async def search_products(keyword: str, db: db_dependency):
-    products = db.query(models.Product).all()
+    products = db.query(models.Products).all()
     results = [
         p for p in products
         if keyword.lower() in p.name.lower() or keyword.lower() in p.description.lower()
@@ -65,7 +65,7 @@ async def user(user: user_dependency, db: db_dependency):
 
 @app.get("/api/products")
 def get_products(db: Session = Depends(database.get_db)):
-    return db.query(models.Product).all()
+    return db.query(models.Products).all()
 
 
 @app.get("/api/users")
