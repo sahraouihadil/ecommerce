@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "name": "Modern Sofa",
+    "price": 899,
+    "category": "furniture",
+    "description": "Elegant 3-seater sofa with premium upholstery, perfect for modern living rooms.",
+    "model_url": "/models/sofa.glb"
+  },
+  {
+    "id": 2,
+    "name": "Table Lamp",
+    "price": 120,
+    "category": "lighting",
+    "description": "Minimalist LED table lamp with adjustable brightness, ideal for bedside or desk.",
+    "model_url": "/models/lamp.glb"
+  },
+  {
+    "id": 3,
+    "name": "Armchair",
+    "price": 450,
+    "category": "furniture",
+    "description": "Comfortable accent armchair with soft cushioning and wooden legs.",
+    "model_url": "/models/armchair.glb"
+  },
+  {
+    "id": 4,
+    "name": "Coffee Table",
+    "price": 350,
+    "category": "furniture",
+    "description": "Sleek wooden coffee table with a minimalist Scandinavian design.",
+    "model_url": "/models/table.glb"
+  },
+  {
+    "id": 5,
+    "name": "Floor Lamp",
+    "price": 180,
+    "category": "lighting",
+    "description": "Tall arc floor lamp with warm ambient lighting for any room.",
+    "model_url": "/models/floor-lamp.glb"
+  }
+]

@@ -26,3 +26,8 @@ starlette
 typing_extensions
 uvicorn
 watchfiles
+python-jose[cryptography]
+python-multipart
+groq
+httpx
+python-multipart
