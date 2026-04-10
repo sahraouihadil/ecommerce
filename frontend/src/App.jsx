@@ -28,7 +28,7 @@ import ComplaintsPage from './dashbords/admin/ComplaintsPage'
 import ReportPage from './dashbords/admin/ReportPage'
 import ValidationPage from './dashbords/admin/ValidationPage'
 import AProfilePage from './dashbords/AProfilePage'
-import AuditLogPage from './dashbords/admin/AuditLogPage'
+//import AuditLogPage from './dashbords/admin/AuditLogPage'
 
 function App() {
   return (
@@ -57,7 +57,7 @@ function App() {
         {/* Dashbords routes */}
         {/* Admin */}
         <Route path='/admin-dash' element={<AdminDashboard/>}/>
-         <Route path='/admin-dash/audit-log' element={<AuditLogPage/>}/>
+        {/* <Route path='/admin-dash/audit-log' element={<AuditLogPage/>}/> */} 
         <Route path='/admin-dash/accounts' element={<AccountsPage/>}></Route>
         <Route path='/admin-dash/complaints' element={<ComplaintsPage/>}></Route>
         <Route path='/admin-dash/configration' element={<ConfigrationPage/>}></Route>
