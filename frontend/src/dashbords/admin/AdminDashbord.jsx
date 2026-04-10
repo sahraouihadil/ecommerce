@@ -7,6 +7,7 @@ import { useState } from "react";
 import { FaUserCheck,FaBox} from "react-icons/fa";
 import { Chart as ChartJS,LineElement,CategoryScale,LinearScale,PointElement,Tooltip,Legend} from "chart.js";
 import {Line} from "react-chartjs-2";
+import api from "../../services/api"
 
 ChartJS.register(
   LineElement,
@@ -21,6 +22,31 @@ export function AdminDashboard(){
    const navigate = useNavigate();
    // sidebar (Mobile)
    const [openBar,setOpenBar] = useState(window.innerWidth>=600);
+  //get ORDERITEMS from backend
+/*   const [orderItems,setOrderItems] = useState([]);
+   useEffect(()=>{
+       api.get("/api/order-items").then((res)=>{
+        setOrderItems(res.data);
+       }).catch((err)=>{
+        console.log("Error:",err)
+       });
+   },[]);
+ 
+   const totalRev= orderItems.map((orderItem)=> orderItem.quantity*orderItem.price);*/
+
+   //get users from backend
+   const [users,setUsers]= useState([]);
+
+   useEffect(()=>{
+    api.get("/api/users").then((res)=>{
+      setUsers(res.data);
+    }).catch((err)=>{
+      console.log("Error:",err)
+      
+    });
+   },[]);
+
+   const activeUsers= users.filter(u=> u.active === true).length;
 
    const data = {
   labels: ["Jan", "Feb", "Mar", "Apr"],
@@ -92,8 +118,8 @@ useEffect(() => {
     <Header concept="Dashboard" setOpenBar={setOpenBar} openBar={openBar}/>
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Revenue" value="123.93DA" icon="+12.5%"></StatCard>
-        <StatCard title="Active Users" value="24,543" icon="+18.2%"></StatCard>
+        <StatCard title="Total Revenue" value="999" icon="+12.5%"></StatCard>
+        <StatCard title="Active Users" value={activeUsers} icon="+18.2%"></StatCard>
         <StatCard title="AR Sessions" value="5,324" icon="-2.4%"></StatCard>
         <StatCard title="Bot Interactions" value="14,234" icon="+5.7%"></StatCard>
           </div>
@@ -114,7 +140,7 @@ useEffect(() => {
          </Card>
 
         {/*Activity*/}
-        <Card className="shadow rounded-2xl">
+      {/* <Card className="shadow rounded-2xl">
           <CardContent className="p-6">
             <h2 className="font-semibold mb-4">Recent Activity</h2>
             <ul className="space-y-4">
@@ -166,7 +192,7 @@ useEffect(() => {
             </NavLink>
         
           </CardContent>
-        </Card>
+        </Card>*/}
 
         </div>
 
