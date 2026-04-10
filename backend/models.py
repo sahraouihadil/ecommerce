@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float,String,Enum as SQLAlchemyEnum
+from sqlalchemy import Column, Integer, String, Float,String,Boolean,Enum as SQLAlchemyEnum
 from database import Base
 from enums import UserRole
 
@@ -12,8 +12,9 @@ class Users(Base):
    password = Column(String)
    phoneNum = Column(String)
    role = Column(SQLAlchemyEnum(UserRole), default=UserRole.custmer)
+   active = Column(Boolean,default=True)
 
-class Product(Base):
+class Products(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)

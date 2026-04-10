@@ -66,3 +66,8 @@ async def user(user: user_dependency, db: db_dependency):
 @app.get("/api/products")
 def get_products(db: Session = Depends(database.get_db)):
     return db.query(models.Product).all()
+
+
+@app.get("/api/users")
+def get_users(db: Session = Depends(database.get_db)):
+    return db.query(models.User).all()
