@@ -34,6 +34,7 @@ function ProductViewer({ modelSrc, iosSrc, productName, price, variants }) {
         ios-src={iosSrc || undefined}
         ar
         ar-modes="webxr scene-viewer quick-look"
+        ar-scale="fixed"
         camera-controls
         auto-rotate
         shadow-intensity="1"
