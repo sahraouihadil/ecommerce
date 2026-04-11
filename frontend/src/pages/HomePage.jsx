@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from '../component/Search';
 import products from '../data/products';
+import './Home.css';
 
 const categoryIcons = {
   seating: '🛋️',
