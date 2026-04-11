@@ -1,6 +1,7 @@
 
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './App.css'
+import ChatWidget from './component/ChatWidget/ChatWidget'
 import { HomePage } from './pages/HomePage'
 import { ProductPage } from './pages/ProductPage'
 import { CheckoutPage } from './pages/CheckoutPage'
@@ -76,6 +77,7 @@ function App() {
         <Route path='/deliveryman-dash' element={<DeliverymanDashboard/>}/>
 
       </Routes>
+    <ChatWidget />
     </BrowserRouter>
   )
 }
