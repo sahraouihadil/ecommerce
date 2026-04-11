@@ -1,10 +1,13 @@
-from fastapi import FastAPI ,status,HTTPException,Depends
-from pydantic import BaseModel
-from typing import List,Annotated
+from fastapi import FastAPI, status, HTTPException, Depends
+from sqlalchemy.orm import Session
+from typing import Annotated
+from fastapi.middleware.cors import CORSMiddleware
+
 import models
-from database import engine,SessionLocal,db_dependency
-from sqlalchemy.orm import Session 
+import database
+from database import engine, SessionLocal, db_dependency
 from enums import UserRole
+
 from route import user_router,register_user
 from fastapi.middleware.cors import CORSMiddleware
 from user_crud import get_current_user,create_user_by_admin
@@ -14,43 +17,41 @@ from email_utils import send_email
 from security.settings import validate_password,hash_password
 import random
 import models, database
+from user_crud import get_current_user
+from routers import chat
 
-app = FastAPI()
 
+# Create FastAPI app
+app = FastAPI(title="ARoomX API")
+
+# CORS middleware
 origins = [
-   "http://localhost:5173",
-   "https://aroom.com"
+    "http://localhost:5173",
+    "https://aroom.com"
 ]
-# CROS midlleware for developement
+
 app.add_middleware(
-  CORSMiddleware,
-  allow_origins=origins,
-  allow_credentials=True,
-  allow_methods=["*"],
-  allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-# This line creates the tables in PostgreSQL automatically
+
+# Create database tables
 models.Base.metadata.create_all(bind=database.engine)
 
-# Include routes
+# Include routers
 app.include_router(user_router)
+app.include_router(chat.router, prefix="/api")
 
-user_dependency = Annotated[dict, Depends(get_current_user)]   
+user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
-@app.get("/",status_code=status.HTTP_200_OK)
+@app.get("/", status_code=status.HTTP_200_OK)
 async def home_page(db: db_dependency):
-  return {"Hello everyone!!"}
+    return {"message": "ARoom API is running"}
 
-@app.get("/api/products")
-def get_products(db: Session = Depends(database.get_db)):
-    products = db.query(models.Products).all()
-    return products
-
-@app.get("/api/users")
-def get_users(db: Session = Depends(database.get_db)):
-    users = db.query(models.Users).all()
-    return users
 
 @app.post("/api/users")
 def create_user(user:CreateUser,db: Session = Depends(database.get_db)):
@@ -101,31 +102,30 @@ def set_password(data: SetPassword,db: Session = Depends(database.get_db)):
         return {"error": str(e)}
 
 @app.get("/search")
-async def search_products(keyword: str,db: Session = Depends(database.get_db)):
-    
- products = db.query(models.Products).all()
+async def search_products(keyword: str, db: db_dependency):
+    products = db.query(models.Products).all()
+    results = [
+        p for p in products
+        if keyword.lower() in p.name.lower() or keyword.lower() in p.description.lower()
+    ]
+    return results
 
- results = [
-  p for p in products
-  if keyword.lower() in p.name.lower() or keyword.lower() in p.description.lower()
-   ]
- return results
-
-@app.get("/profile/history",status_code=status.HTTP_200_OK)
-async def user(user:user_dependency,db:db_dependency):
-  if user is None:
-      raise HTTPException(status_code=401,detail='Authentication Failed')
-  return {"User": user}
 
 @app.get("/profile")
-async def user(user:user_dependency, db:db_dependency):
+async def user(user: user_dependency, db: db_dependency):
     if user is None:
-        raise HTTPException(status_code=401, detail='Authentication Failed')
-    
+        raise HTTPException(status_code=401, detail="Authentication Failed")
     return {
         "message": "User authenticated successfully",
         "user": user
     }
-    
 
 
+@app.get("/api/products")
+def get_products(db: Session = Depends(database.get_db)):
+    return db.query(models.Products).all()
+
+
+@app.get("/api/users")
+def get_users(db: Session = Depends(database.get_db)):
+    return db.query(models.User).all()
