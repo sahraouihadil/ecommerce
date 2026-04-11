@@ -5,36 +5,35 @@ import models
 # 1. Furniture Data to "Plant" in the Database
 FURNITURE_DATA = [
     {
-        "name": "Velvet Cloud Sofa",
-        "description": "A deep-seated, ultra-soft sofa in midnight blue velvet.",
-        "price": 1200.00,
-        "image_url": "https://example.com/sofa.jpg"
+        "name": "The Cloud Lounger",
+        "description": "A sofa so soft you'll forget gravity exists. Inspired by cumulus clouds, designed for endless naps.",
+        "price": 1299.00,
+        "image_url": "https://via.placeholder.com/150"
     },
     {
-        "name": "Marble Coffee Table",
-        "description": "Minimalist circular table with a solid Italian marble top.",
-        "price": 450.00,
-        "image_url": "https://example.com/table.jpg"
+        "name": "Jellyfish Glow Lamp",
+        "description": "Bioluminescent-inspired table lamp that pulses with soft color. Like having a tiny ocean on your desk.",
+        "price": 189.00,
+        "image_url": "https://via.placeholder.com/150"
     },
     {
-        "name": "Eames Lounge Chair Replica",
-        "description": "Classic mid-century design with walnut veneer and black leather.",
-        "price": 850.00,
-        "image_url": "https://example.com/chair.jpg"
+        "name": "The Hug Chair",
+        "description": "An armchair that wraps around you like a warm embrace. Curved cocoon design with memory foam core.",
+        "price": 749.00,
+        "image_url": "https://via.placeholder.com/150"
     },
     {
-        "name": "Industrial Bookshelf",
-        "description": "Oak wood shelves with a matte black steel frame.",
-        "price": 300.00,
-        "image_url": "https://example.com/shelf.jpg"
-    }
+        "name": "Mushroom Side Table",
+        "description": "A whimsical side table inspired by forest fungi. Solid wood cap with a sculptural tapered stem.",
+        "price": 420.00,
+        "image_url": "https://via.placeholder.com/150"
+    },
 ]
-
 def seed_database():
     db = SessionLocal()
     try:
         # 2. Check if we already have products (to avoid duplicates)
-        existing_count = db.query(models.Product).count()
+        existing_count = db.query(models.Products).count()
         if existing_count > 0:
             print(f"📊 Database already has {existing_count} products. Skipping seed.")
             return
@@ -42,7 +41,7 @@ def seed_database():
         # 3. Add the furniture
         print("🌱 Seeding database with luxury furniture...")
         for item in FURNITURE_DATA:
-            product = models.Product(**item)
+            product = models.Products(**item)
             db.add(product)
         
         db.commit()
