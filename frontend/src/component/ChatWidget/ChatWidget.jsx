@@ -9,6 +9,22 @@ function RoomieLamp({ isOpen, onToggle }) {
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [isJumping, setIsJumping] = useState(false);
   const [isBlinking, setIsBlinking] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
+  const [isWaving, setIsWaving] = useState(false);
+
+  // Show greeting bubble + wave after 2 seconds, only if chat is closed
+  useEffect(() => {
+    if (isOpen) {
+      setShowGreeting(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setShowGreeting(true);
+      setIsWaving(true);
+      setTimeout(() => setIsWaving(false), 1500);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   // Track mouse movement for eye follow
   const handleMouseMove = useCallback((e) => {
@@ -58,9 +74,14 @@ function RoomieLamp({ isOpen, onToggle }) {
   return (
     <div
       ref={lampRef}
-      className={`roomie-lamp-wrapper ${isJumping ? 'roomie-jump' : ''}`}
+      className={`roomie-lamp-wrapper ${isJumping ? 'roomie-jump' : ''} ${isWaving ? 'roomie-wave' : ''}`}
       onClick={handleClick}
     >
+      {showGreeting && !isOpen && (
+        <div className="roomie-greeting">
+          Hi! I'm Roomie 👋
+        </div>
+      )}
       <svg
         viewBox="0 0 120 140"
         width="90"
