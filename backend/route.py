@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends,HTTPException
 from database import get_db, db_dependency
 from models import Users
-from user_crud import create_user, get_user_by_username,update_role_name
+from user_crud import create_user, get_user_by_username,get_user_by_email,update_role_name
 from schema import CreateUserRequest,UserRoleUpdate
 from security.settings import validate_password,custmer_required,admin_required,accountant_required,marketing_manager_required,stock_manager_required,deliveryman_required,create_access_token,authenticate_user,verify_token
 from sqlalchemy.orm import Session
@@ -17,9 +17,23 @@ user_router=APIRouter()
 
 @user_router.post('/register')
 def register_user(user:CreateUserRequest,db: Session = Depends(get_db)):
-  db_user = get_user_by_username(db,username=user.username)
-  if db_user:
+
+  db_user_by_username = get_user_by_username(db,username=user.username)
+  db_user_by_email = get_user_by_email(db,email=user.email)
+  print("user:",user)
+  if db_user_by_username or db_user_by_email:
+    return {
+      "action": "verify",
+      "message": "User exists, go verify",
+      "redirect_url": "/verify-code",
+      "user_name": user.username
+    }
+  if db_user_by_username:
     raise HTTPException(status_code=400,detail="Username already existe")
+  if db_user_by_email:
+    raise HTTPException(status_code=400,detail="Email already existe")
+  if not user.password:
+    raise HTTPException(status_code=400,detail="Password required")
   validate_password(user.password)
   new_user=create_user(db=db,create_user_request=user)
   access_token = create_access_token(new_user.username,new_user.id,timedelta(minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))),new_user.role)

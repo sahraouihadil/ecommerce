@@ -7,12 +7,15 @@ class Users(Base):
    __tablename__ = 'users'
  
    id = Column(Integer,primary_key=True,index=True)
-   username = Column(String,index=True)
-   email = Column(String,index=True)
-   password = Column(String)
-   phoneNum = Column(String)
-   role = Column(SQLAlchemyEnum(UserRole), default=UserRole.custmer)
+   username = Column(String,nullable=False,unique=True,index=True)
+   email = Column(String,nullable=False,unique=True,index=True)
+   password = Column(String,nullable=True)
+   phoneNum = Column(String,nullable=True)
+   role = Column(SQLAlchemyEnum(UserRole), default=UserRole.customer,nullable=False)
    active = Column(Boolean,default=True)
+   last = Column(String, default="Now")
+   verification_code = Column(String,nullable=True)
+   is_verified = Column(Boolean, default=False)
 
 class Products(Base):
     __tablename__ = "products"

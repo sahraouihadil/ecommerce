@@ -1,46 +1,102 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import Header from "./ui/Header";
 import Sidebar from "./ui/Sidebar";
+import api from "../../services/api";
 
 export default function AccountsPage() {
    {/* sidebar (Mobile)*/}
    const [openBar,setOpenBar] = useState(window.innerWidth>=600);
    const [activeFilter,setActiveFilter] = useState("All");
 
-  const [users,setUsers] = useState([
-    { name: "Alex Johnson", email: "alex@example.com", role: "Customer", status: "Active",last:"2 mins ago" },
-    { name: "Sarah Miller", email: "sarah@agency.com", role: "Marketing Manager", status: "Active" ,last:"19 mins ago" },
-    { name: "Mike Ross", email: "mike@warehouse.com", role: "Stock Manager", status: "Active" ,last:"30 mins ago" },
-    { name: "John Doe", email: "john@logistics.com", role: "Deliveryman", status: "Inactive" ,last:"2 days ago"  },
-  ]);
+  const [users,setUsers] = useState([]);
+
+     useEffect(()=>{
+    api.get("/api/users").then((res)=>{
+      setUsers(res.data);
+    }).catch((err)=>{
+      console.log("Error:",err)
+    });
+   },[]);
+
+
   const [open,setOpen] = useState(false);
   const [form,setForm] = useState({
-    name:"",
+    username:"",
     email:"",
     role:"Customer",
   });
 
-  const handleCreate = () => {
-    if (!form.name || !form.email) return;
+  const handleCreate = async () => {
+    if (!form.username || !form.email){
+      console.log("Username and email required");
+         return;
+    } 
 
-     setUsers([
-      ...users,
-      {...form,status: "Active",last:"Now",},
-     ]);
-     setForm({name:"",email:"",role:"Customer"});
-     setOpen(false);
+try {
+
+    const res = await api.post("/api/users", {
+      username: form.username,
+      email: form.email,
+      role: form.role.toLocaleLowerCase(),
+    });
+      {console.log(form.role.toLocaleLowerCase())}
+    const newUser = res.data;
+    setUsers((prev) => [...prev, newUser]);
+
+    setForm({
+      username: "",
+      email: "",
+      role: "Customer",
+    });
+
+    setOpen(false);
+
+  } catch (err) {
+    console.log("Error:", err.response?.data || err.message);
   }
+};
+
+     // Edit user 
+   const [selectedUser,setSelectedUser] = useState(null);
+   const [showModel,setShowModel] = useState(false);
+   const [editForm,setEditForm] = useState({
+    username:"",
+    email:"",
+    role:"Customer",
+   });
+
+   const handleEdit = (user) => {
+    setSelectedUser(user);
+    setEditForm(user);
+    setShowModel(true);
+   }
+
+   const handleSaveEdit = () => {
+    const updatedUsers = users.map((u)=>
+      u.email === selectedUser.email ? {...u, ...editForm } : u
+    );
+
+    setUsers(updatedUsers);
+    setShowModel(false);
+   }
+   
+   // remove user
+   const handleRemoveUser =(user) =>{
+    const removeUser = users.filter((u)=> u.username !== user.username)
+    setUsers(removeUser);
+   }
 
   const filters = [
     "All",
+    "Admin",
     "Customer",
+    "Accountant",
     "Marketing Manager",
     "Stock Manager",
     "Deliveryman"
   ];
-
-  const filteredUsers = activeFilter === "All" ? users : users.filter((u)=> u.role === activeFilter);
-
+    
+  const filteredUsers = activeFilter === "All" ? users : users.filter((u)=> String(u.role).toLowerCase() === activeFilter.toLowerCase());
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -78,38 +134,45 @@ export default function AccountsPage() {
                     <tr>
                       <th className="p-4 text-left">User</th>
                       <th className="text-left">Role</th>
-                      <th>Status</th>
+                      <th className="text-left" >Status</th>
+                      <th className="text-center">Last Active</th>
                       <th className="text-right pr-6">Actions</th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {filteredUsers.map((u,i) => (
-                      <tr key={i} className="border-t hover:bg-gray-50">
+                    
+                    {filteredUsers?.map((u,i) => (
+                     
+                      <tr key={i} className="border-t hover:bg-gray-50 transition">
+                        {/* User */}
+                         
                         <td className="p-4 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold">
-                         {u.name.split(" ").map(n=>n[0]).join("")}
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold uppercase">
+                         
+                         {(u.username || "In").split(" ").map(n=>n[0]).join("")}
                           </div>
 
                           <div>
-                            <p className="font-semibold">{u.name}</p>
+                            <p className="font-semibold">{u.username}</p>
                             <p className="text-xs text-gray-500">{u.email}</p>
                           </div>
                         </td>
 
-                        <td>{u.role}</td>
+                        <td className="text-gray-700">{u.role}</td>
+
                         <td>
-                          <span className={`px-3 py-1 rounded-full text-xs ${u.status === "Active" ? "bg-green-100 text-green-600" : "bg-gray-200 text-gray-500"}`}>
-                            {u.status}
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${u.active === true ? "bg-green-100 text-green-900" : "bg-gray-200 text-gray-500"}`}>
+                            {u.active ?"Active":"Inactive"}
                           </span>
                         </td>
 
-                        <td className="text-gray-500 text-xs">{u.last}</td>
+                        <td className="text-gray-500 text-xs text-center">{u.last || "-"}</td>
 
                         <td className="text-right pr-6">
-                          <div className="flex justify-end gap-3">
-                            <button>✏️</button>
-                            <button className="hover:text-red-500">🗑</button>
+                          <div className="flex justify-end gap-3 text-gray-600">
+                            <button onClick={()=> handleEdit(u)} className="hover:text-blue-500 transition">✏️</button>
+                            <button onClick={()=>handleRemoveUser(u)} className="hover:text-red-500 transition">🗑</button>
                           </div>
                         </td>
                       </tr>
@@ -117,10 +180,11 @@ export default function AccountsPage() {
                   </tbody>
                 </table>
                </div>
+
               </main>
 
-              {/* Model */}
-
+              {/* add user Model */}
+              
               {open && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                   <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
@@ -133,18 +197,18 @@ export default function AccountsPage() {
                     
                         <input type="text"
                         placeholder="Full Name"
-                        value={form.name}
-                        onChange={(e)=>setForm({...form,name:e.target.value})}
+                        value={form.username}
+                        onChange={(e)=>setForm({...form,username:e.target.value})}
                         className="w-full p-2 border rounded-lg" />
                     
                         <input type="email"
                         placeholder="Email"
-                        value={form.name}
+                        value={form.email}
                         onChange={(e)=>setForm({...form,email:e.target.value})}
                         className="w-full p-2 border rounded-lg" />
          
                
-                        <select value={form.value} onChange={(e)=> setForm ({...form,role: e.target.value})} className="w-full p-2 border rounded-lg">
+                        <select value={form.role} onChange={(e)=> setForm ({...form,role: e.target.value})} className="w-full p-2 border rounded-lg">
                         <option>Customer</option>
                         <option>Marketing Manager</option>
                         <option>Stock Manager</option>
@@ -156,12 +220,61 @@ export default function AccountsPage() {
                     <div className="flex justify-end gap-3 mt-6">
                       <button onClick={()=> setOpen(false)} className="px-4 py-2 rounded-lg bg-gray-200">Cancel</button>
 
-                      <button onClick={handleCreate} className="px-4 py-2 rounded-lg bg-black text-white">
+                      <button onClick={handleCreate} className="px-4 py-2 rounded-lg bg-black text-white cursor-pointer">
                      Create Account
                       </button>
                     </div>
 
                   </div>
+                </div>
+              )}
+              
+              {/* edit user Model */}
+              {showModel && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-2xl w-full max-w-md p-6 relative shadow-lg">
+                    {/* Close */}
+                    <button onClick={() => setShowModel(false)} className="absolute top-4 right-4 text-gray-500">  ✕</button>
+                    <h2 className="text-lg font-semibold mb-6">Edit Account</h2>
+
+                    {/* Form */}
+                  <div className="space-y-4">
+                    {/* Name */}
+                    <div>
+                      <label className="text-sm text-gray-600">Full Name</label>
+                      <input type="text" value={editForm.username} onChange={(e)=> setEditForm({...editForm,username:e.target.value})} className="w-full p-2 border rounded-lg mt-1"/>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="text-sm text-gray-600">Email</label>
+                      <input type="text" value={editForm.email} onChange={(e)=> setEditForm({...editForm,email:e.target.value})} className="w-full p-2 border rounded-lg mt-1"/>
+                    </div>
+
+                    {/* Role */}
+                    <div>
+                      <label className="text-sm text-gray-600">Role</label>
+                      <select type="text" value={editForm.role} onChange={(e)=> setEditForm({...editForm,role:e.target.value})} className="w-full p-2 border rounded-lg mt-1">
+
+                      <option>Customer</option>
+                      <option>Marketing Manager</option>
+                      <option>Stock Manager</option>
+                      <option>Deliveryman</option>
+                       </select>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button onClick={() => setShowModel(false)} className="px-4 py-2 rounded-lg bg-gray-200">
+                      Cancel
+                    </button>
+
+                    <button onClick={handleSaveEdit} className="px-4 py-2 rounded-lg bg-black text-white">
+                      Save Changes
+                    </button>
+                  </div>
+                  </div> 
                 </div>
               )}
     </div>

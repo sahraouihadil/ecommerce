@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from models import Users
-from schema import CreateUserRequest
+from schema import CreateUserRequest,CreateUser
 from security.settings import hash_password,oauth2_bearer,PUBLIC_KEY_PATH,ALGORITHM
 from fastapi import Depends
 from jose import jwt,JWTError
@@ -17,8 +17,21 @@ def create_user(db: db_dependency,create_user_request: CreateUserRequest):
   return create_user_model
 
 
+def create_user_by_admin(db: db_dependency,create_user: CreateUser):
+  create_user_model = Users(
+     username=create_user.username,
+     email=create_user.email,
+     role=create_user.role
+  ) 
+  db.add(create_user_model)
+  db.commit()
+  return create_user_model
+
 def get_user_by_username(db: Session,username: str):
-  return db.query(Users).filter(Users.username == username).first() 
+  return db.query(Users).filter(Users.username == username).first()
+
+def get_user_by_email(db: Session,email: str):
+  return db.query(Users).filter(Users.email == email).first() 
 
 async def get_current_user(token: str = Depends(oauth2_bearer)):
   try:

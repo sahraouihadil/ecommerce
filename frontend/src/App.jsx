@@ -28,6 +28,8 @@ import ComplaintsPage from './dashbords/admin/ComplaintsPage'
 import ReportPage from './dashbords/admin/ReportPage'
 import ValidationPage from './dashbords/admin/ValidationPage'
 import AProfilePage from './dashbords/AProfilePage'
+import { VerifyCode } from './pages/VerifyCode'
+import { SetPassword } from './pages/SetPassword'
 //import AuditLogPage from './dashbords/admin/AuditLogPage'
 
 function App() {
@@ -44,6 +46,8 @@ function App() {
         <Route path='/aboutus' element={<AboutusPage />} />
         <Route path='/login' element={<LoginPage />} />
         <Route path='/register' element={<SignupPage />} />
+        <Route path='/verify-code' element={<VerifyCode />} />
+        <Route path='/set-password' element={<SetPassword />} />
         <Route path='/profile' element={<ProfilePage />} />
         <Route path='/profile/history' element={<HistoryPage/>}></Route>
 

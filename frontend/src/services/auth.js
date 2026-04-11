@@ -1,6 +1,7 @@
 import api from "./api"
 import { jwtDecode } from "jwt-decode";
 
+
 export const login = async (username,password) => {
   const params = new URLSearchParams();
   params.append("username",username);
@@ -16,7 +17,8 @@ export const login = async (username,password) => {
 
 export const register = async (username,password,role) => {
   const response = await api.post("/register",{username, password, role});
-  return response.data;
+  const data= response.data;
+  return data;
 };
 
 export const logout = () => {

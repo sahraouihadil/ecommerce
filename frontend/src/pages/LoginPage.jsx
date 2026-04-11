@@ -100,7 +100,7 @@ else navigate ("/")
 
         <p className="text-center mt-4 text-sm">
          don't have an account?
-          <Link to="/auth/signup" className="ml-1 font-semibold underline">
+          <Link to="/register" className="ml-1 font-semibold underline">
             Signup
           </Link>
         </p>

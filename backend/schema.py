@@ -17,3 +17,16 @@ class Token(BaseModel):
 
 class UserRoleUpdate(BaseModel):
   name: str
+
+class CreateUser(BaseModel):
+  username: str
+  email: str
+  role: UserRole
+
+class VerifyCode(BaseModel):
+  email: str
+  code: str
+
+class SetPassword(BaseModel):
+    user_name: str
+    password: str

@@ -42,7 +42,7 @@ export function AdminDashboard(){
       setUsers(res.data);
     }).catch((err)=>{
       console.log("Error:",err)
-      
+
     });
    },[]);
 

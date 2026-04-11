@@ -13,8 +13,8 @@ export function SignupPage() {
   const navigate = useNavigate();
   
   const validateForm = () => {
-    if (!username || !password){
-      setError('Username and password are required');
+    if (!username || !password || !email){
+      setError('Username, email and password are required');
       return false;
     }
     setError('');
@@ -34,6 +34,7 @@ export function SignupPage() {
       email,
       phoneNum
         };
+
     const response = await fetch('http://localhost:8000/register',{
       method: 'POST',
       headers: {
@@ -42,11 +43,22 @@ export function SignupPage() {
       body: JSON.stringify(bodyData),
     });
     setLoading(false);
-  
+    
+    const data = await response.json();
+
+     console.log("data:",data);
+
+    if(data.action === "verify"){
+    navigate("/verify-code",{
+      state:{email}
+    });
+    return;
+      }
+
     if(response.ok){
-      const data = await response.json();
-      localStorage.setItem('token',data.access_token);
-      navigate('/');
+    
+     localStorage.setItem('token',data.access_token);
+     navigate('/');
     }else{
       const errorData = await response.json();
       setError(errorData.detail || 'Authentication failed!');
@@ -105,7 +117,7 @@ export function SignupPage() {
 
         <p className="text-center mt-4 text-sm">
           you have an account?
-          <Link to="/auth/login" className="ml-1 font-semibold underline">
+          <Link to="/login" className="ml-1 font-semibold underline">
             Login
           </Link>
         </p>

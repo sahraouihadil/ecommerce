@@ -1,6 +1,6 @@
 import { Button } from "./dashbordComp";
 //NavLink is smart then Link is not just about navigation + isActive feature.
-import { NavLink } from "react-router-dom";
+import { NavLink,useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect} from "react";
+import { logout } from "../../../services/auth";
 
 
 const linkStyle = ({ isActive }) =>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${ isActive ? "bg-black text-white p-2 rounded-lg"
@@ -20,6 +21,12 @@ const linkStyle = ({ isActive }) =>`flex items-center gap-3 px-4 py-3 rounded-xl
 
 
 export default function Sidebar({openBar,setOpenBar}){
+  const navigate = useNavigate()
+
+  const handleLogout = ()=>{
+    logout();
+    navigate("/");
+  }
 
    useEffect(()=>{
     const handleResize = () =>{
@@ -104,7 +111,7 @@ export default function Sidebar({openBar,setOpenBar}){
                       </div>
                     </div>
                     
-                    <Button className="w-full bg white text-black border hover:bg-gray-200">Sign Out</Button>
+                    <Button onClick={handleLogout} className="w-full bg white text-black border hover:bg-gray-200">Sign Out</Button>
                   </div>
       
                 </aside> : ''}

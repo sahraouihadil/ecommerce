@@ -3,8 +3,8 @@ from enum import Enum
 class UserRole(str, Enum):
     admin = "admin"
     accountant = "accountant"
-    marketing_manager = "marketing_manager"
-    stock_manager = "stock_manager"
+    marketing_manager = "marketing manager"
+    stock_manager = "stock manager"
     deliveryman = "deliveryman"
-    custmer = "custmer"
+    customer = "customer"
     bot = "bot"
