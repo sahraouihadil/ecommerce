@@ -18,11 +18,12 @@ from routers import chat
 
 
 # Create FastAPI app
-app = FastAPI(title="ARoomX API")
+app = FastAPI(title="ARoom API")
 
 # CORS middleware
 origins = [
     "http://localhost:5173",
+    "http://localhost:5174",
     "https://aroom.com"
 ]
 
