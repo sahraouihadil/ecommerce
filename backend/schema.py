@@ -30,3 +30,8 @@ class VerifyCode(BaseModel):
 class SetPassword(BaseModel):
     user_name: str
     password: str
+
+class UpdateUser(BaseModel):
+    username: str
+    email: str
+    role: UserRole
