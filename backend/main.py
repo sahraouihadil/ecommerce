@@ -2,9 +2,6 @@ from fastapi import FastAPI, status, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
-
-import models
-import database
 from database import engine, SessionLocal, db_dependency
 from enums import UserRole
 
@@ -12,12 +9,11 @@ from route import user_router,register_user
 from fastapi.middleware.cors import CORSMiddleware
 from user_crud import get_current_user,create_user_by_admin
 from fastapi.middleware.cors import CORSMiddleware
-from schema import CreateUser,VerifyCode,SetPassword
+from schema import CreateUser,VerifyCode,SetPassword,UpdateUser
 from email_utils import send_email
 from security.settings import validate_password,hash_password
 import random
 import models, database
-from user_crud import get_current_user
 from routers import chat
 
 
@@ -52,6 +48,13 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 async def home_page(db: db_dependency):
     return {"message": "ARoom API is running"}
 
+@app.get("/api/users")
+def get_users(db: Session = Depends(database.get_db)):
+    return db.query(models.Users).all()
+
+@app.get("/api/users/{user_id}")
+def get_users_by_id(user_id: int ,db: Session = Depends(database.get_db)):
+    return db.query(models.Users).filter(models.Users.id == user_id).first()
 
 @app.post("/api/users")
 def create_user(user:CreateUser,db: Session = Depends(database.get_db)):
@@ -64,6 +67,19 @@ def create_user(user:CreateUser,db: Session = Depends(database.get_db)):
     send_email(user.email,f"Your code is:{verification_code}")
 
     return user
+
+@app.put("/api/users/{user_id}")
+def update_user(user_id:int,user:UpdateUser,db: Session = Depends(database.get_db)):
+    db_user= db.query(models.Users).filter(models.Users.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_user.username=user.username
+    db_user.email=user.email
+    db_user.role=user.role
+
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 @app.get("/verify-code")
 def verify_code(email: str,code: str,db: Session = Depends(database.get_db)):
@@ -124,8 +140,3 @@ async def user(user: user_dependency, db: db_dependency):
 @app.get("/api/products")
 def get_products(db: Session = Depends(database.get_db)):
     return db.query(models.Products).all()
-
-
-@app.get("/api/users")
-def get_users(db: Session = Depends(database.get_db)):
-    return db.query(models.User).all()

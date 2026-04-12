@@ -37,9 +37,9 @@ try {
     const res = await api.post("/api/users", {
       username: form.username,
       email: form.email,
-      role: form.role.toLocaleLowerCase(),
+      role: form.role.toLowerCase(),
     });
-      {console.log(form.role.toLocaleLowerCase())}
+      {console.log(form.role.toLowerCase())}
     const newUser = res.data;
     setUsers((prev) => [...prev, newUser]);
 
@@ -65,20 +65,43 @@ try {
     role:"Customer",
    });
 
-   const handleEdit = (user) => {
-    setSelectedUser(user);
-    setEditForm(user);
+   const handleEdit = async(user) => {
+  try {
+    const res = await api.get(`/api/users/${user.id}`);
+    setSelectedUser(res.data);
+    setEditForm(res.data);
     setShowModel(true);
+  } catch (err) {
+    console.log(err);
+  }
    }
 
-   const handleSaveEdit = () => {
-    const updatedUsers = users.map((u)=>
-      u.email === selectedUser.email ? {...u, ...editForm } : u
+const handleSaveEdit = async () => {
+  try {
+    const dataToSend = {
+      username: editForm.username,
+      email: editForm.email,
+      role: editForm.role.toLowerCase(),
+    };
+
+    const res = await api.put(
+      `/api/users/${selectedUser.id}`,
+      dataToSend
     );
 
-    setUsers(updatedUsers);
+    const updatedUser = res.data;
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === selectedUser.id ? updatedUser : u
+      )
+    );
+
     setShowModel(false);
-   }
+  } catch (err) {
+    console.log("Error:", err);
+  }
+};
    
    // remove user
    const handleRemoveUser =(user) =>{
@@ -209,10 +232,11 @@ try {
          
                
                         <select value={form.role} onChange={(e)=> setForm ({...form,role: e.target.value})} className="w-full p-2 border rounded-lg">
-                        <option>Customer</option>
-                        <option>Marketing Manager</option>
-                        <option>Stock Manager</option>
-                        <option>Deliveryman</option>
+                        <option value="admin">Admin</option>
+                        <option value="customer">Customer</option>
+                        <option value="marketing_manager">Marketing Manager</option>
+                        <option value="stock_manager">Stock Manager</option>
+                        <option value="deliveryman">Deliveryman</option>
                         </select>
                     </div>
                     
@@ -256,10 +280,11 @@ try {
                       <label className="text-sm text-gray-600">Role</label>
                       <select type="text" value={editForm.role} onChange={(e)=> setEditForm({...editForm,role:e.target.value})} className="w-full p-2 border rounded-lg mt-1">
 
-                      <option>Customer</option>
-                      <option>Marketing Manager</option>
-                      <option>Stock Manager</option>
-                      <option>Deliveryman</option>
+                        <option value="admin">Admin</option>
+                        <option value="customer">Customer</option>
+                        <option value="marketing_manager">Marketing Manager</option>
+                        <option value="stock_manager">Stock Manager</option>
+                        <option value="deliveryman">Deliveryman</option>
                        </select>
                     </div>
                   </div>
