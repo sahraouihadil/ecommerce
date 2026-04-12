@@ -23,7 +23,7 @@ export default function AccountsPage() {
   const [form,setForm] = useState({
     username:"",
     email:"",
-    role:"Customer",
+    role:"Admin",
   });
 
   const handleCreate = async () => {
@@ -104,9 +104,17 @@ const handleSaveEdit = async () => {
 };
    
    // remove user
-   const handleRemoveUser =(user) =>{
-    const removeUser = users.filter((u)=> u.username !== user.username)
-    setUsers(removeUser);
+   const handleRemoveUser =async(user) =>{
+    try{
+      await api.delete(`/api/users/${user.id}`)
+
+      setUsers((prev)=>
+        prev.filter((u)=>u.id !== user.id)
+      )
+    }catch(err){
+       console.log("Error:", err);
+    }
+ 
    }
 
   const filters = [
