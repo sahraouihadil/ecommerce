@@ -82,6 +82,17 @@ def update_user(user_id:int,user:UpdateUser,db: Session = Depends(database.get_d
     db.refresh(db_user)
     return db_user
 
+@app.delete("/api/users/{user_id}")
+def delete_users_by_id(user_id: int ,db: Session = Depends(database.get_db)):
+    db_user= db.query(models.Users).filter(models.Users.id == user_id).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404,detail="User not found")
+    db.delete(db_user)
+    db.commit()
+    return {"message": "User deleted successfully"}
+
+
 @app.get("/verify-code")
 def verify_code(email: str,code: str,db: Session = Depends(database.get_db)):
     user = db.query(models.Users).filter(models.Users.email == email).first()
