@@ -129,6 +129,34 @@ const handleSaveEdit = async () => {
     
   const filteredUsers = activeFilter === "All" ? users : users.filter((u)=> String(u.role).toLowerCase() === activeFilter.toLowerCase());
 
+  const [keyword,setKeyword] = useState("");
+  const [results,setResults] = useState([]);
+
+const handleSearch = async (event) =>{
+
+  if (event) event.preventDefault();
+
+  try{
+    const response = await api.get(`/search-users?keyword=${keyword}`);
+    console.log("Searching for:",keyword);
+
+    setResults(response.data);
+    console.log(response)
+  }catch(error){
+    console.error("Error during search:",error);
+  }
+};
+
+useEffect(() => {
+  if (keyword.trim() === "") return;
+
+  handleSearch();
+}, [keyword]);
+
+  console.log(keyword)
+  console.log(results)
+  
+  const displayedUsers = keyword ? results : filteredUsers;
   return (
     <div className="flex min-h-screen bg-gray-100">
        
@@ -155,7 +183,7 @@ const handleSaveEdit = async () => {
                {/* Search */}
                <div className="bg-white p-3 py-2 rounded-xl shadow flex items-center gap-2 w-full sm:w-80">
               <i className="fa-solid fa-magnifying-glass text-black"></i>
-                  <input type="text" placeholder="Search users by name or email..." className="outline-none w-full text-sm"/>
+                  <input type="text" placeholder="Search users by name or email..." className="outline-none w-full text-sm" onChange={(u)=>{setKeyword(u.target.value)}}/>
                </div>
 
                {/* Table */}
@@ -173,7 +201,7 @@ const handleSaveEdit = async () => {
 
                   <tbody>
                     
-                    {filteredUsers?.map((u,i) => (
+                    {displayedUsers?.map((u,i) => (
                      
                       <tr key={i} className="border-t hover:bg-gray-50 transition">
                         {/* User */}

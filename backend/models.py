@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float,String,Boolean,Enum as SQLAlchemyEnum
+from sqlalchemy import Column, Integer, String, Float,String,Boolean,DateTime,ForeignKey,Enum as SQLAlchemyEnum
 from database import Base
 from enums import UserRole
+from datetime import datetime
 
 
 class Users(Base):
@@ -24,3 +25,36 @@ class Products(Base):
     description = Column(String)
     price = Column(Float)
     image_url = Column(String)
+
+class Orders(Base):
+   __tablename__ = "orders"
+   
+   id = Column(Integer, primary_key=True, index=True)
+   orderdate = Column(DateTime, default=datetime.utcnow)
+   deliverydate = Column(DateTime)
+   totalamount = Column(Float)
+   status = Column(String)
+
+
+class OrderItems(Base):
+    __tablename__ = "orderitems"
+
+    id = Column(Integer, primary_key=True, index=True)
+    price = Column(Float)
+    quantity = Column(Integer)
+
+    order_id = Column(Integer, ForeignKey("orders.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    
+class Complaints(Base):
+   __tablename__ = "complaints"
+   
+   id = Column(Integer, primary_key=True, index=True)
+   title = Column(String)
+   description = Column(String)
+   date = Column(DateTime,default=datetime.utcnow)
+   type_c = Column(String)
+   priority = Column(String)
+   status = Column(String)
+
+   user_id = Column(Integer, ForeignKey("users.id"))

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, status, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, SessionLocal, db_dependency
@@ -139,6 +140,16 @@ async def search_products(keyword: str, db: db_dependency):
     return results
 
 
+@app.get("/search-users")
+def search_users(keyword: str, db: db_dependency):
+    return db.query(models.Users).filter(
+        or_(
+            models.Users.username.ilike(f"%{keyword}%"),
+            models.Users.email.ilike(f"%{keyword}%")
+        )
+    ).all()
+
+
 @app.get("/profile")
 async def user(user: user_dependency, db: db_dependency):
     if user is None:
@@ -152,3 +163,11 @@ async def user(user: user_dependency, db: db_dependency):
 @app.get("/api/products")
 def get_products(db: Session = Depends(database.get_db)):
     return db.query(models.Products).all()
+
+@app.get("/api/order-items")
+def get_order_items(db: Session = Depends(database.get_db)):
+    return db.query(models.OrderItems).all()
+
+@app.get("/api/complaints")
+def get_order_items(db: Session = Depends(database.get_db)):
+    return db.query(models.Complaints).all()

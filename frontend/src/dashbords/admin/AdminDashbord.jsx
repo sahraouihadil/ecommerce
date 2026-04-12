@@ -48,6 +48,20 @@ export function AdminDashboard(){
 
    const activeUsers= users.filter(u=> u.active === true).length;
 
+  // get order items
+  const [orderItems,setOrderItems]= useState([]);
+
+   useEffect(()=>{
+    api.get("/api/order-items").then((res)=>{
+      setOrderItems(res.data);
+    }).catch((err)=>{
+      console.log("Error:",err)
+
+    });
+   },[]);
+   const totalRev= orderItems.reduce((sum,o)=>sum+ o.price * o.quantity,0)
+   console.log(totalRev)
+   console.log(orderItems)
    const data = {
   labels: ["Jan", "Feb", "Mar", "Apr"],
   datasets: [
@@ -118,7 +132,7 @@ useEffect(() => {
     <Header concept="Dashboard" setOpenBar={setOpenBar} openBar={openBar}/>
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Revenue" value="999" icon="+12.5%"></StatCard>
+        <StatCard title="Total Revenue" value={totalRev} icon="+12.5%"></StatCard>
         <StatCard title="Active Users" value={activeUsers} icon="+18.2%"></StatCard>
         <StatCard title="AR Sessions" value="5,324" icon="-2.4%"></StatCard>
         <StatCard title="Bot Interactions" value="14,234" icon="+5.7%"></StatCard>
