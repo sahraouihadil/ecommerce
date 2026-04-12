@@ -1,6 +1,5 @@
 
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import './App.css'
 import ChatWidget from './component/ChatWidget/ChatWidget'
 import { HomePage } from './pages/HomePage'
 import { ProductPage } from './pages/ProductPage'
