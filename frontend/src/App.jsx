@@ -32,6 +32,17 @@ import { VerifyCode } from './pages/VerifyCode'
 import { SetPassword } from './pages/SetPassword'
 //import AuditLogPage from './dashbords/admin/AuditLogPage'
 
+import { useLocation } from 'react-router-dom';
+
+// Only show chatbot on customer-facing pages
+function CustomerChat() {
+  const location = useLocation();
+  const hiddenPaths = ['/admin-dash', '/accountant-dash', '/marketing-manager-dash', '/stock-manager-dash', '/deliveryman-dash'];
+  const shouldHide = hiddenPaths.some(path => location.pathname.startsWith(path));
+  if (shouldHide) return null;
+  return <ChatWidget />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -76,7 +87,7 @@ function App() {
         <Route path='/deliveryman-dash' element={<DeliverymanDashboard/>}/>
 
       </Routes>
-    <ChatWidget />
+    <CustomerChat />
     </BrowserRouter>
   )
 }
