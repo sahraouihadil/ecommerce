@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import Header from "./ui/Header";
 import Sidebar from "./ui/Sidebar";
+import api from "../../services/api";
 
 export default function ComplaintsPage(){
      {/* sidebar (Mobile)*/}
    const [openBar,setOpenBar] = useState(window.innerWidth>=600);
 const [selected,setSelected] = useState(null);
 const [showList, setShowList] = useState(false);
-
+/* 
 const complaints = [
     {
       id: "C-001",
@@ -16,6 +17,7 @@ const complaints = [
       date: "2023-10-24",
       priority: "HIGH",
       status: "Pending",
+      description:"hello",
     },
     {
       id: "C-002",
@@ -24,6 +26,7 @@ const complaints = [
       date: "2023-10-23",
       priority: "MEDIUM",
       status: "Pending",
+      description:"hi",
     },
     {
       id: "C-003",
@@ -32,8 +35,19 @@ const complaints = [
       date: "2023-10-22",
       priority: "LOW",
       status: "Resolved",
+      description:"bye",
     },
-  ];
+  ]; */
+
+  const [complaints,setComplaints] = useState([])
+     useEffect(()=>{
+    api.get("/api/complaints").then((res)=>{
+      setComplaints(res.data);
+    }).catch((err)=>{
+      console.log("Error:",err)
+
+    });
+   },[]);
 
   return(
     <div className="flex min-h-screen bg-gray-100">
@@ -140,7 +154,7 @@ const complaints = [
                   COPLAINT DESCRIPTION
                 </h3>
                 <div className="bg-gray-100 p-4 rounded-xl text-sm break-words">
-                  This is a detailed description of the complaint. You can replace this with real backend data.
+                  {selected.description}
                 </div>
               </div>
 
