@@ -51,3 +51,4 @@ Thumbs.db
 
 # Add this line to your .gitignore file
 echo "agent/" >> .gitignore
+agent/
