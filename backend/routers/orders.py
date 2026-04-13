@@ -116,6 +116,35 @@ def get_orders(db: Session = Depends(get_db), payload: dict = Depends(verify_tok
     return result
 
 
+
+
+@router.get("/all")
+def get_all_orders(db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
+    """Returns all orders. For staff roles (stock manager, deliveryman, accountant)."""
+    orders = db.query(Orders).order_by(Orders.orderdate.desc()).all()
+    result = []
+    for order in orders:
+        items = db.query(OrderItems).filter(OrderItems.order_id == order.id).all()
+        item_details = []
+        for i in items:
+            product = db.query(Products).filter(Products.id == i.product_id).first()
+            item_details.append({
+                "id": i.id,
+                "product_id": i.product_id,
+                "price": i.price,
+                "quantity": i.quantity,
+                "product_name": product.name if product else "Unknown",
+            })
+        result.append({
+            "id": order.id,
+            "user_id": order.user_id,
+            "orderdate": order.orderdate.isoformat() if order.orderdate else None,
+            "totalamount": order.totalamount,
+            "status": order.status,
+            "items": item_details
+        })
+    return result
+
 @router.get("/{order_id}")
 def get_order(order_id: int, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
     """
@@ -152,3 +181,13 @@ def get_order(order_id: int, db: Session = Depends(get_db), payload: dict = Depe
         "status": order.status,
         "items": item_details
     }
+
+@router.put("/{order_id}/status")
+def update_order_status(order_id: int, status: str, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
+    """Updates order status. For stock manager and deliveryman."""
+    order = db.query(Orders).filter(Orders.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order.status = status
+    db.commit()
+    return {"message": "Status updated", "order_id": order_id, "status": status}
