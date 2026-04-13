@@ -27,7 +27,14 @@ export function ProductPage() {
       const found = res.data.find((p) => p.id === parseInt(productId));
       if (found) {
         const local = localProducts.find((l) => l.name === found.name);
-        setProduct({ ...found, ...local, id: found.id });
+        setProduct({ 
+  ...local,
+  ...found,
+  id: found.id,
+  model_src: local?.modelSrc || found.model_url,
+  ios_src: local?.iosSrc || null,
+  variants: local?.variants || [],
+});
       }
     }).catch(() => navigate("/furniture"));
   }, [productId]);
