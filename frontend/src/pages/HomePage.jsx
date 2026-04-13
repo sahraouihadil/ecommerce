@@ -1,9 +1,25 @@
+/**
+ * HomePage.jsx - Main Landing Page
+ * ===================================
+ * The first page users see when they visit the site.
+ *
+ * SECTIONS:
+ *   1. Hero       - Big banner with 3D sofa preview and "Explore Collection" CTA
+ *   2. Collection - Category filter + product grid (from local data/products.js)
+ *   3. How It Works - 3-step explanation: Browse -> AR Preview -> Ask Roomie
+ *   4. Footer     - Simple branding footer
+ *
+ * Products shown here come from a LOCAL file (data/products.js), not the API.
+ * The FurniturePage fetches from the backend API instead.
+ */
+
 import React, { useState} from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search } from '../component/Search';
+import { Search } from '../components/Search';
 import products from '../data/products';
 import './Home.css';
 
+// Category icons displayed next to filter buttons
 const categoryIcons = {
   seating: '🛋️',
   lighting: '💡',
