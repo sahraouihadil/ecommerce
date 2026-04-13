@@ -408,8 +408,8 @@ export function ProductPage() {
               }} />
               <div style={{ position: "relative", zIndex: 1 }}>
                 <ProductViewer
-                  modelSrc={product.model_src}
-                  iosSrc={product.ios_rc}
+                  modelSrc={product.modelSrc}
+                  iosSrc={product.iosSrc}
                   productName={product.name}
                   price={product.price}
                   variants={product.variants}

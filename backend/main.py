@@ -288,7 +288,7 @@ async def user(user: user_dependency, db: db_dependency):
         "id": db_user.id,
         "username": db_user.username,
         "email": db_user.email,
-        "phoneNum": db_user.phoneNum,
+        "phone_num": db_user.phone_num,
         "role": db_user.role,
         "active": db_user.active,
     }
