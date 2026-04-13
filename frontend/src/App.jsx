@@ -17,6 +17,7 @@
  *   - ChatWidget: AI assistant shown on customer pages only (hidden on dashboards)
  */
 
+import { Header } from './components/Header'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import ChatWidget from './components/ChatWidget/ChatWidget'
 import { HomePage } from './pages/HomePage'
@@ -60,9 +61,21 @@ function CustomerChat() {
   return <ChatWidget />;
 }
 
+function CustomerLayout({ children }) {
+  const location = useLocation();
+  const isDash = location.pathname.startsWith('/admin') ||
+                 location.pathname.includes('-dash');
+  return (
+    <>
+      {!isDash && <Header />}
+      {children}
+    </>
+  );
+}
 function App() {
   return (
     <BrowserRouter>
+    <CustomerLayout>
       <Routes>
         <Route index element={<HomePage/>} />
         <Route path='/furniture' element={<FurniturePage />} />
@@ -79,6 +92,8 @@ function App() {
         <Route path='/profile' element={<ProfilePage />} />
         <Route path='/profile/history' element={<HistoryPage/>} />
 
+        <Route index element={<HomePage/>} />
+          <Route path='/furniture' element={<FurniturePage />} />
         <Route path='/order' element={<OrderPage />} />
         <Route path='/checkout/order' element={<OrderPage />} />
 
@@ -102,6 +117,7 @@ function App() {
         <Route path='/deliveryman-dash' element={<DeliverymanDashboard/>}/>
 
       </Routes>
+      </CustomerLayout> 
     <CustomerChat />
     </BrowserRouter>
   )
