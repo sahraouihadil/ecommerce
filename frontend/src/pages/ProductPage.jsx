@@ -63,8 +63,8 @@ export function ProductPage() {
       <div className="product-page-layout">
         <div className="product-page-viewer">
           <ProductViewer
-            modelSrc={product.modelSrc}
-            iosSrc={product.iosSrc}
+            modelSrc={product.model_src}
+            iosSrc={product.ios_src}
             productName={product.name}
             price={product.price}
             variants={product.variants}
@@ -82,7 +82,7 @@ export function ProductPage() {
             </div>
             <div className="feature">
               <span className="feature-icon">🎨</span>
-              <div><strong>Custom Colors</strong><p>{product.variants.length} color options available</p></div>
+              <div><strong>Custom Colors</strong><p>{product.variants?.length || 10} color options available</p></div>
             </div>
             <div className="feature">
               <span className="feature-icon">🚚</span>

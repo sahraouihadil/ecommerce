@@ -42,7 +42,6 @@ class Users(Base):
     verification_code = Column(String, nullable=True)  # 6-digit email verification code
     is_verified = Column(Boolean, default=False)     # True after email verification
 
-
 class Products(Base):
     """
     The products table - stores all furniture items available for sale.
@@ -51,13 +50,15 @@ class Products(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)        # Product name (e.g., "The Cloud Lounger")
-    description = Column(String)              # Full description text
-    price = Column(Float)                     # Price in DA (Algerian Dinar)
-    image_url = Column(String)               # URL to product image
-    category = Column(String)                # Category: "seating", "lighting", "tables"
-    model_url = Column(String)               # Path to 3D model file (.glb) for AR viewer
+    name = Column(String, index=True)
+    description = Column(String)
+    price = Column(Float)
+    image_url = Column(String)
+    category = Column(String)
 
+    # 3D MODEL FIELDS (UPDATED)
+    model_src = Column(String)   # GLB model for web 3D viewer
+    ios_src = Column(String)     # USDZ model for iOS AR
 
 class Orders(Base):
     """
