@@ -8,7 +8,7 @@ When the frontend sends a JSON body, FastAPI uses these schemas to:
   3. Automatically return a 422 error if validation fails
 
 Think of these as "contracts" between frontend and backend:
-  - Frontend says: "I'll send you {username, password, email, phoneNum}"
+  - Frontend says: "I'll send you {username, password, email, phone_num}"
   - Backend says: "OK, I expect exactly those fields in those types"
 
 NAMING CONVENTION:
@@ -28,7 +28,7 @@ class CreateUserRequest(BaseModel):
     username: str      # Display name (must be unique)
     password: str      # Plain text password (will be hashed before storing)
     email: str         # Email address (must be unique, used for verification)
-    phoneNum: str      # Phone number
+    phone_num: str      # Phone number
 
 
 class LoginUserRequest(BaseModel):
