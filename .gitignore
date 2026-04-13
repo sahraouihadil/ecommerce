@@ -48,3 +48,6 @@ frontend/dist/
 # Ignore OS-specific files
 .DS_Store
 Thumbs.db
+
+# Add this line to your .gitignore file
+echo "agent/" >> .gitignore
