@@ -11,19 +11,26 @@
  * The productId comes from the URL and is used to find the product in the local data.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ProductViewer from '../components/ProductViewer/ProductViewer';
-import products from '../data/products';
+import localProducts from '../data/products';
 import api from '../services/api';
-
 export function ProductPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const [product, setProduct] = useState(null);
   const [cartMsg, setCartMsg] = useState("");
   const [favMsg, setFavMsg] = useState("");
-  const product = products.find((p) => p.id === parseInt(productId));
-
+  useEffect(() => {
+    api.get("/api/products").then((res) => {
+      const found = res.data.find((p) => p.id === parseInt(productId));
+      if (found) {
+        const local = localProducts.find((l) => l.name === found.name);
+        setProduct({ ...found, ...local, id: found.id });
+      }
+    }).catch(() => navigate("/furniture"));
+  }, [productId]);
   const handleAddToCart = async () => {
     try {
       await api.post("/api/cart", null, { params: { product_id: product.id, quantity: 1 } });
