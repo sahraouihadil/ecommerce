@@ -35,7 +35,7 @@ class Users(Base):
     username = Column(String, nullable=False, unique=True, index=True)  # Must be unique
     email = Column(String, nullable=False, unique=True, index=True)     # Must be unique
     password = Column(String, nullable=True)         # Hashed with Argon2 (null until set via /set-password)
-    phoneNum = Column(String, nullable=True)         # Optional phone number
+    phone_num = Column(String, nullable=True)         # Optional phone number
     role = Column(SQLAlchemyEnum(UserRole), default=UserRole.customer, nullable=False)  # Default: customer
     active = Column(Boolean, default=True)           # Whether the account is active
     last = Column(String, default="Now")             # Last activity timestamp
