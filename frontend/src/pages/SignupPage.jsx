@@ -1,73 +1,67 @@
+/**
+ * SignupPage.jsx - User Registration Page
+ * ==========================================
+ * Shows a registration form for new users.
+ *
+ * FLOW:
+ *   1. User fills in: username, email, password, phone number
+ *   2. Calls register() -> POST /register
+ *   3. Backend sends a verification code to the user's email
+ *   4. User is redirected to /verify-code to enter the code
+ *   5. After verification -> /set-password to finalize the account
+ *
+ * The full signup flow is: SignupPage -> VerifyCode -> SetPassword -> LoginPage
+ */
+
 import { Link } from "react-router-dom";
-import React,{useState} from 'react'
-import { useNavigate} from "react-router-dom";
+import React, { useState } from 'react';
+import { useNavigate } from "react-router-dom";
+import { register } from '../services/auth';
 
 export function SignupPage() {
-  const [username,setUsername] = useState('');
-  const [password,setPassword] = useState('');
-  const [email,setEmail] = useState('');
-  const [phoneNum,setPhoneNum] = useState('');
-  const [error,setError] = useState('');
-  const [loading,setLoading] = useState(false);
-  
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneNum, setPhoneNum] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
-  
+
   const validateForm = () => {
-    if (!username || !password || !email){
+    if (!username || !password || !email) {
       setError('Username, email and password are required');
       return false;
     }
     setError('');
     return true;
   };
-  
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if(!validateForm()) return;
+    if (!validateForm()) return;
     setLoading(true);
-  
-  
-   try{
-     const bodyData = {
-      username,
-      password,
-      email,
-      phoneNum
-        };
 
-    const response = await fetch('http://localhost:8000/register',{
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(bodyData),
-    });
-    setLoading(false);
-    
-    const data = await response.json();
+    try {
+      const data = await register(username, password, email, phoneNum);
+      setLoading(false);
 
-     console.log("data:",data);
-
-    if(data.action === "verify"){
-    navigate("/verify-code",{
-      state:{email}
-    });
-    return;
+      if (data.action === "verify") {
+        navigate("/verify-code", { state: { email } });
+        return;
       }
 
-    if(response.ok){
-    
-     localStorage.setItem('token',data.access_token);
-     navigate('/');
-    }else{
-      const errorData = await response.json();
-      setError(errorData.detail || 'Authentication failed!');
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('role', data.role || 'customer');
+        navigate('/');
+      }
+    } catch (error) {
+      setLoading(false);
+      setError(error?.response?.data?.detail || 'An error occurred. Please try again later.');
     }
-   }catch(error){
-     setLoading(false);
-     setError('An error occurred. Please try again later.')
-   }
   };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md">
@@ -79,7 +73,7 @@ export function SignupPage() {
             placeholder="Full Name"
             className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
             value={username}
-            onChange={(e)=> setUsername(e.target.value)}
+            onChange={(e) => setUsername(e.target.value)}
           />
 
           <input
@@ -87,7 +81,7 @@ export function SignupPage() {
             placeholder="Email"
             className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
             value={email}
-            onChange={(e)=> setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
           />
 
           <input
@@ -95,28 +89,28 @@ export function SignupPage() {
             placeholder="Password"
             className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
             value={password}
-            onChange={(e)=> setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
           />
 
-             <input
+          <input
             type="text"
             placeholder="Phone Number"
             className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
             value={phoneNum}
-            onChange={(e)=> setPhoneNum(e.target.value)}
+            onChange={(e) => setPhoneNum(e.target.value)}
           />
           <button
             type="submit"
             className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition"
             disabled={loading}
           >
-           {loading ? 'Loading in...' : 'Create an account'}
+            {loading ? 'Loading...' : 'Create an account'}
           </button>
-           {error && <p style={{ color: 'red'}}>{error}</p>}
+          {error && <p style={{ color: 'red' }}>{error}</p>}
         </form>
 
         <p className="text-center mt-4 text-sm">
-          you have an account?
+          Already have an account?
           <Link to="/login" className="ml-1 font-semibold underline">
             Login
           </Link>

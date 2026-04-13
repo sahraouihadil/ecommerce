@@ -1,8 +1,27 @@
+/**
+ * LoginPage.jsx - User Login Page
+ * ==================================
+ * Shows a login form where users enter their username and password.
+ *
+ * FLOW:
+ *   1. User fills in username + password and clicks "Login"
+ *   2. Calls the login() function from auth.js -> POST /login
+ *   3. On success: saves JWT token + role to localStorage
+ *   4. Redirects to the correct dashboard based on user role:
+ *      - admin -> /admin-dash
+ *      - customer -> / (homepage)
+ *      - accountant, marketing manager, etc. -> their own dashboards
+ *   5. On error: shows error message
+ *
+ * NOTE: If user is already logged in, they get redirected to homepage.
+ */
+
 import React,{useEffect, useState} from 'react'
 import { useNavigate,Link } from "react-router-dom";
 import { login,isAuthenticated } from '../services/auth';
 
 export function LoginPage() {
+  // Form state: what the user types
 const [username,setUsername] = useState('');
 const [password,setPassword] = useState('');
 const [error,setError] = useState('');
@@ -32,34 +51,26 @@ const handleSubmit = async (event) => {
   setLoading(true);
 
  try{
-  const response = await login(username, password);
-  console.log(username,password);
-  console.log(response);
+  const data = await login(username, password);
   setLoading(false);
-//Store token and role 
-  if(response){
-    const data = await response;
-    localStorage.setItem('token',data.access_token);
-    console.log(data.access_token);
-    localStorage.setItem("role", data.role);
-    console.log(data.role);
-    navigate('/');
 
-    //redirect based on role
-if(response.role === "admin") navigate("/admin-dash");
-else if(response.role === "developer") navigate("/developer-dash")
-else if (response.role === "marketing-manager") navigate("/marketing-manager-dash");
-else if (response.role === "stock-manager") navigate("/stock-manager-dash");
-else if (response.role === "deliveryman") navigate ("/deliveryman-dash")
-else navigate ("/")
- 
-  }else{
-    const errorData = await response.json();
-    setError(errorData.detail || 'Authentication failed!');
+  if(data && data.access_token){
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem("role", data.role);
+
+    // Redirect based on role
+    if(data.role === "admin") navigate("/admin-dash");
+    else if(data.role === "accountant") navigate("/accountant-dash");
+    else if(data.role === "marketing manager") navigate("/marketing-manager-dash");
+    else if(data.role === "stock manager") navigate("/stock-manager-dash");
+    else if(data.role === "deliveryman") navigate("/deliveryman-dash");
+    else navigate("/");
+  } else {
+    setError('Authentication failed!');
   }
  }catch(error){
    setLoading(false);
-   setError('An error occurred. Please try again later.')
+   setError(error?.response?.data?.detail || 'An error occurred. Please try again later.');
  }
 };
 

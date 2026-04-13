@@ -1,6 +1,24 @@
+/**
+ * App.jsx - Main Application Router
+ * ===================================
+ * This is the root component that defines ALL the pages (routes) in the app.
+ *
+ * HOW ROUTING WORKS:
+ *   React Router maps URL paths to page components:
+ *     /              -> HomePage
+ *     /login         -> LoginPage
+ *     /admin-dash    -> AdminDashboard
+ *     ... and so on
+ *
+ * STRUCTURE:
+ *   - Customer pages: home, products, cart, checkout, etc.
+ *   - Auth pages: login, register, verify-code, set-password
+ *   - Dashboard pages: admin, accountant, marketing, stock, delivery
+ *   - ChatWidget: AI assistant shown on customer pages only (hidden on dashboards)
+ */
 
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import ChatWidget from './component/ChatWidget/ChatWidget'
+import ChatWidget from './components/ChatWidget/ChatWidget'
 import { HomePage } from './pages/HomePage'
 import { ProductPage } from './pages/ProductPage'
 import { CheckoutPage } from './pages/CheckoutPage'
@@ -16,21 +34,20 @@ import { FavoritePage } from './pages/FavoritePage'
 import { FurniturePage } from './pages/FurniturePage'
 import { JournalPage } from './pages/JournalPage'
 import { HistoryPage } from './pages/HistoryPage'
-import { AdminDashboard } from './dashbords/admin/AdminDashbord'
-import { AccountantDashboard } from './dashbords/AccountantDashbord'
-import { MarketingMngrDashboard } from './dashbords/MarketingMngrDashbord'
-import { StockMngrDashboard } from './dashbords/StockMngrDashbord'
-import { DeliverymanDashboard } from './dashbords/DeliverymanDashbord'
-import AccountsPage from './dashbords/admin/AccountsPage'
-import ConfigrationPage from './dashbords/admin/ConfigrationPage'
-import EngagementPage from './dashbords/admin/EngagementsPage'
-import ComplaintsPage from './dashbords/admin/ComplaintsPage'
-import ReportPage from './dashbords/admin/ReportPage'
-import ValidationPage from './dashbords/admin/ValidationPage'
-import AProfilePage from './dashbords/AProfilePage'
+import { AdminDashboard } from './dashboards/admin/AdminDashboard'
+import { AccountantDashboard } from './dashboards/AccountantDashboard'
+import { MarketingMngrDashboard } from './dashboards/MarketingManagerDashboard'
+import { StockMngrDashboard } from './dashboards/StockManagerDashboard'
+import { DeliverymanDashboard } from './dashboards/DeliverymanDashboard'
+import AccountsPage from './dashboards/admin/AccountsPage'
+import ConfigurationPage from './dashboards/admin/ConfigurationPage'
+import EngagementPage from './dashboards/admin/EngagementsPage'
+import ComplaintsPage from './dashboards/admin/ComplaintsPage'
+import ReportPage from './dashboards/admin/ReportPage'
+import ValidationPage from './dashboards/admin/ValidationPage'
+import AProfilePage from './dashboards/AProfilePage'
 import { VerifyCode } from './pages/VerifyCode'
 import { SetPassword } from './pages/SetPassword'
-//import AuditLogPage from './dashbords/admin/AuditLogPage'
 
 import { useLocation } from 'react-router-dom';
 
@@ -60,26 +77,24 @@ function App() {
         <Route path='/verify-code' element={<VerifyCode />} />
         <Route path='/set-password' element={<SetPassword />} />
         <Route path='/profile' element={<ProfilePage />} />
-        <Route path='/profile/history' element={<HistoryPage/>}></Route>
+        <Route path='/profile/history' element={<HistoryPage/>} />
 
-        {/* Fixed nested routes */}
         <Route path='/order' element={<OrderPage />} />
         <Route path='/checkout/order' element={<OrderPage />} />
 
         <Route path='/order/tracking/:orderId/:productId' element={<TrackingPage />} />
         <Route path='/favorite' element={<FavoritePage />} />
 
-        {/* Dashbords routes */}
+        {/* Dashboard routes */}
         {/* Admin */}
         <Route path='/admin-dash' element={<AdminDashboard/>}/>
-        {/* <Route path='/admin-dash/audit-log' element={<AuditLogPage/>}/> */} 
-        <Route path='/admin-dash/accounts' element={<AccountsPage/>}></Route>
-        <Route path='/admin-dash/complaints' element={<ComplaintsPage/>}></Route>
-        <Route path='/admin-dash/configration' element={<ConfigrationPage/>}></Route>
-        <Route path='/admin-dash/engagment' element={<EngagementPage/>}></Route>
-        <Route path='/admin-dash/reports' element={<ReportPage/>}></Route>
-        <Route path='/admin-dash/validation' element={<ValidationPage/>}></Route>
-        <Route path='/admin-dash/profile' element={<AProfilePage/>}></Route>
+        <Route path='/admin-dash/accounts' element={<AccountsPage/>} />
+        <Route path='/admin-dash/complaints' element={<ComplaintsPage/>} />
+        <Route path='/admin-dash/configuration' element={<ConfigurationPage/>} />
+        <Route path='/admin-dash/engagement' element={<EngagementPage/>} />
+        <Route path='/admin-dash/reports' element={<ReportPage/>} />
+        <Route path='/admin-dash/validation' element={<ValidationPage/>} />
+        <Route path='/admin-dash/profile' element={<AProfilePage/>} />
 
         <Route path='/accountant-dash' element={<AccountantDashboard/>}/>
         <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard/>}/>

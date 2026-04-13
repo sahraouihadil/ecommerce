@@ -1,12 +1,23 @@
+/**
+ * ProductList.jsx - Simple Product List Component
+ * =================================================
+ * Fetches all products from the backend API and displays them in a basic list.
+ * This is a minimal component used for testing — the main store uses
+ * FurniturePage.jsx with ProductCard.jsx for a richer UI.
+ */
+
 import { useEffect, useState } from 'react';
+import api from './services/api';
 
 function ProductList() {
+  // products: array of product objects fetched from the API
   const [products, setProducts] = useState([]);
 
+  // Fetch products once when the component first renders
   useEffect(() => {
-    fetch('http://localhost:8000/api/products')
-      .then((res) => res.json())
-      .then((data) => setProducts(data));
+    api.get('/api/products')
+      .then((res) => setProducts(res.data))
+      .catch((err) => console.error('Failed to load products:', err));
   }, []);
 
   return (
