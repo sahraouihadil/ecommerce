@@ -36,7 +36,7 @@ def create_user(db: Session, create_user_request: CreateUserRequest):
         username=create_user_request.username,
         password=hash_password(create_user_request.password),
         email=create_user_request.email,
-        phoneNum=create_user_request.phoneNum,
+        phone_num=create_user_request.phone_num,
     )
     db.add(create_user_model)     # Stage the new row
     db.commit()                    # Save to database
