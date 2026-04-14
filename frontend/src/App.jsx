@@ -64,7 +64,7 @@ function CustomerChat() {
 function CustomerLayout({ children }) {
   const location = useLocation();
   const isDash = location.pathname.startsWith('/admin') ||
-                 location.pathname.includes('-dash');
+    location.pathname.includes('-dash');
   return (
     <>
       {!isDash && <Header />}
@@ -75,50 +75,47 @@ function CustomerLayout({ children }) {
 function App() {
   return (
     <BrowserRouter>
-    <CustomerLayout>
-      <Routes>
-        <Route index element={<HomePage/>} />
-        <Route path='/furniture' element={<FurniturePage />} />
-        <Route path='/journal' element={<JournalPage />} />
-        <Route path='/product/:productId' element={<ProductPage />} />
-        <Route path='/cart' element={<CartPage />} />
-        <Route path='/checkout' element={<CheckoutPage />} />
-        <Route path='/contactus' element={<ContactusPage />} />
-        <Route path='/aboutus' element={<AboutusPage />} />
-        <Route path='/login' element={<LoginPage />} />
-        <Route path='/register' element={<SignupPage />} />
-        <Route path='/verify-code' element={<VerifyCode />} />
-        <Route path='/set-password' element={<SetPassword />} />
-        <Route path='/profile' element={<ProfilePage />} />
-        <Route path='/profile/history' element={<HistoryPage/>} />
-
-        <Route index element={<HomePage/>} />
+      <CustomerLayout>
+        <Routes>
+          <Route index element={<HomePage />} />
           <Route path='/furniture' element={<FurniturePage />} />
-        <Route path='/order' element={<OrderPage />} />
-        <Route path='/checkout/order' element={<OrderPage />} />
+          <Route path='/journal' element={<JournalPage />} />
+          <Route path='/product/:productId' element={<ProductPage />} />
+          <Route path='/cart' element={<CartPage />} />
+          <Route path='/checkout' element={<CheckoutPage />} />
+          <Route path='/contactus' element={<ContactusPage />} />
+          <Route path='/aboutus' element={<AboutusPage />} />
+          <Route path='/login' element={<LoginPage />} />
+          <Route path='/register' element={<SignupPage />} />
+          <Route path='/verify-code' element={<VerifyCode />} />
+          <Route path='/set-password' element={<SetPassword />} />
+          <Route path='/profile' element={<ProfilePage />} />
+          <Route path='/profile/history' element={<HistoryPage />} />
+          <Route path='/order' element={<OrderPage />} />
+          <Route path='/checkout/order' element={<OrderPage />} />
 
-        <Route path='/order/tracking/:orderId/:productId' element={<TrackingPage />} />
-        <Route path='/favorite' element={<FavoritePage />} />
+          <Route path='/order/tracking/:orderId/:productId' element={<TrackingPage />} />
+          <Route path='/favorite' element={<FavoritePage />} />
 
-        {/* Dashboard routes */}
-        {/* Admin */}
-        <Route path='/admin-dash' element={<AdminDashboard/>}/>
-        <Route path='/admin-dash/accounts' element={<AccountsPage/>} />
-        <Route path='/admin-dash/complaints' element={<ComplaintsPage/>} />
-        <Route path='/admin-dash/configuration' element={<ConfigurationPage/>} />
-        <Route path='/admin-dash/engagement' element={<EngagementPage/>} />
-        <Route path='/admin-dash/reports' element={<ReportPage/>} />
-        <Route path='/admin-dash/validation' element={<ValidationPage/>} />
-        <Route path='/admin-dash/profile' element={<AProfilePage/>} />
+          {/* Dashboard routes */}
+          {/* Admin */}
+          <Route path='/admin-dash' element={<AdminDashboard />} />
+          <Route path='/admin-dash/accounts' element={<AccountsPage />} />
+          <Route path='/admin-dash/complaints' element={<ComplaintsPage />} />
+          <Route path='/admin-dash/configuration' element={<ConfigurationPage />} />
+          <Route path='/admin-dash/engagement' element={<EngagementPage />} />
+          <Route path='/admin-dash/reports' element={<ReportPage />} />
+          <Route path='/admin-dash/validation' element={<ValidationPage />} />
+          <Route path='/admin-dash/profile' element={<AProfilePage />} />
 
-        <Route path='/accountant-dash' element={<AccountantDashboard/>}/>
-        <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard/>}/>
-        <Route path='/stock-manager-dash' element={<StockMngrDashboard/>}/>
-        <Route path='/deliveryman-dash' element={<DeliverymanDashboard/>}/>
+          <Route path='/accountant-dash' element={<AccountantDashboard />} />
+          <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard />} />
+          <Route path='/stock-manager-dash' element={<StockMngrDashboard />} />
+          <Route path='/deliveryman-dash' element={<DeliverymanDashboard />} />
 
-      </Routes>
-      </CustomerLayout> 
-    <CustomerChat />
+        </Routes>
+      </CustomerLayout>
+      <CustomerChat />
     </BrowserRouter>
   )
 }
