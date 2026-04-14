@@ -14,8 +14,8 @@
  *       Connect to a profile API to show real user data.
  */
 
-import Header from "./admin/ui/Header";
-import Sidebar from "./admin/ui/Sidebar";
+import Header from "./ui/Header";
+import Sidebar from "./ui/Sidebar";
 import { useState } from "react";
 
 export default function AProfilePage(){

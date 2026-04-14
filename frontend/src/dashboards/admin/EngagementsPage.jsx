@@ -11,8 +11,8 @@
  *       Connect to an analytics API for real metrics.
  */
 
-import Header from "./ui/Header";
-import Sidebar from "./ui/Sidebar";
+import Header from "../ui/Header";
+import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
 
 import {

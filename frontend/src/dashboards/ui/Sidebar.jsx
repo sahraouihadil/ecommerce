@@ -25,7 +25,7 @@ import {
   BarChart, Activity, Settings, X,
 } from "lucide-react";
 import { useEffect } from "react";
-import { logout } from "../../../services/auth";
+import { logout } from "../../services/auth";
 
 const ACCENT = "#4f8ef7";
 

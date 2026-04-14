@@ -22,8 +22,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend } from "chart.js";
 import { Line } from "react-chartjs-2";
-import Header from "./ui/Header";
-import Sidebar from "./ui/Sidebar";
+import Header from "../ui/Header";
+import Sidebar from "../ui/Sidebar";
 import api from "../../services/api";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);

@@ -18,8 +18,8 @@
  */
 
 import { useState,useEffect } from "react";
-import Header from "./ui/Header";
-import Sidebar from "./ui/Sidebar";
+import Header from "../ui/Header";
+import Sidebar from "../ui/Sidebar";
 import api from "../../services/api";
 
 export default function ComplaintsPage(){

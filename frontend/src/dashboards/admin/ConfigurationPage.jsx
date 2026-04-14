@@ -14,8 +14,8 @@
  *       Connect them to a settings API to make them functional.
  */
 
-import Header from "./ui/Header";
-import Sidebar from "./ui/Sidebar";
+import Header from "../ui/Header";
+import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
 
 export default function ConfigurationPage(){
