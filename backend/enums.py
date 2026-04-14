@@ -21,8 +21,8 @@ class UserRole(str, Enum):
     """
     admin = "admin"                         # Full platform control, user management
     accountant = "accountant"               # Financial reports and accounting
-    marketing_manager = "marketing manager" # Campaign and promotion management
-    stock_manager = "stock manager"         # Inventory and stock management
+    marketing_manager = "marketing_manager" # Campaign and promotion management
+    stock_manager = "stock_manager"         # Inventory and stock management
     deliveryman = "deliveryman"             # Delivery tracking and management
     customer = "customer"                   # Regular shopping user (default role)
     bot = "bot"                             # AI chatbot (internal use only)

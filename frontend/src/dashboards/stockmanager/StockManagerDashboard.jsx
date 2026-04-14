@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import api from "../../services/api";
 
 const STATUS_COLORS = {
   pending:    { bg: "#FFF3CD", color: "#856404" },

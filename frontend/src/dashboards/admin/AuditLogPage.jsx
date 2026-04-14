@@ -13,8 +13,8 @@
  *       Connect to an audit log API for real tracking.
  */
 
-import Header from "./ui/Header"
-import Sidebar from "./ui/Sidebar"
+import Header from "../ui/Header"
+import Sidebar from "../ui/Sidebar"
 import { useState } from "react";
 
 export default function AuditLogPage(){

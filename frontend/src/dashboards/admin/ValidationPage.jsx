@@ -14,8 +14,8 @@
  *       Connect to a submissions API for real data.
  */
 
-import Header from "./ui/Header";
-import Sidebar from "./ui/Sidebar";
+import Header from "../ui/Header";
+import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
 
 export default function ValidationPage(){
