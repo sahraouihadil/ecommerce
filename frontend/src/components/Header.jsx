@@ -84,7 +84,7 @@ export function Header() {
           textDecoration: 'none',
           letterSpacing: '0.05em',
         }}>
-          ARoomX
+          ARoom
         </Link>
 
         {/* Desktop Nav */}
