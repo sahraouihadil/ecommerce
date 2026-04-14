@@ -365,14 +365,13 @@ export function LoginPage() {
           <div style={S.leftGradient} />
 
           <div style={S.leftContent}>
-            <span style={S.brandMark}>ARoomX</span>
+            <span style={S.brandMark}>ARoom</span>
             <h1 style={S.leftH1}>
-              Welcome back to the{" "}
-              <span style={{ color: "#6448b2", fontStyle: "italic" }}>Wonderland</span>
+              Welcome back to your{" "}
+              <span style={{ color: "#6448b2", fontStyle: "italic" }}> Sanctuary</span>
             </h1>
             <p style={S.leftSub}>
-              Curating the weird, the wonderful, and the utterly unconventional
-              for your personal sanctuary.
+              Everything you need to manage your space in one place.
             </p>
 
             {/* Glass card */}
@@ -384,10 +383,12 @@ export function LoginPage() {
                   fontWeight: "700", color: "#2d2f30",
                   fontSize: "0.9rem", marginBottom: "0.1rem",
                 }}>
-                  Oddity of the Day
+                  Today’s Highlight
                 </p>
                 <p style={{ fontSize: "0.8rem", color: "#5b5b5d" }}>
-                  The Asymmetric Velvet Cloud
+                  <p style={{ fontSize: "0.8rem", color: "#5b5b5d" }}>
+                    A soft spatial concept blending light, texture, and balance
+                  </p>
                 </p>
               </div>
             </div>
@@ -420,8 +421,8 @@ export function LoginPage() {
             {/* Password */}
             <div style={S.fieldWrap}>
               <div style={S.labelRow}>
-                <span style={S.label}>Magic Word</span>
-                <a href="#" style={S.forgotLink}>Forgot Magic Word?</a>
+                <span style={S.label}>Password</span>
+                <a href="#" style={S.forgotLink}>Forgot Password?</a>
               </div>
               <InputField
                 icon={<IconLock />}
@@ -470,8 +471,9 @@ export function LoginPage() {
                 onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.02)")}
                 onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
                 onMouseDown={e => (e.currentTarget.style.transform = "scale(0.97)")}
+                onClick={() => navigate("/register")}
               >
-                Join the Circle of Odd
+                Sign up
               </button>
             </div>
           </form>
