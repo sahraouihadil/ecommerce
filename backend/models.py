@@ -19,6 +19,7 @@ TABLE RELATIONSHIPS:
 
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
 from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy.orm import relationship
 from database import Base
 from enums import UserRole
 from datetime import datetime
@@ -41,25 +42,41 @@ class Users(Base):
     last = Column(String, default="Now")             # Last activity timestamp
     verification_code = Column(String, nullable=True)  # 6-digit email verification code
     is_verified = Column(Boolean, default=False)     # True after email verification
+    created_at = Column(DateTime, default=datetime.utcnow) 
 
 class Products(Base):
     """
-    The products table - stores all furniture items available for sale.
-    Each product can have a 3D model URL for the AR viewer.
+    Products table - furniture items with 3D support + variants
     """
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
+    name = Column(String, index=True, nullable=False)
     description = Column(String)
-    price = Column(Float)
+    price = Column(Float, nullable=False)
+
     image_url = Column(String)
     category = Column(String)
 
-    # 3D MODEL FIELDS (UPDATED)
-    model_src = Column(String)   # GLB model for web 3D viewer
-    ios_src = Column(String)     # USDZ model for iOS AR
+    badge = Column(String)  
 
+    # 3D MODEL
+    model_src = Column(String)   # GLB (web)
+    ios_src = Column(String)     # USDZ (iOS)
+
+    
+    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete")
+
+class ProductVariant(Base):
+    __tablename__ = "product_variants"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    product_id = Column(Integer, ForeignKey("products.id"))
+    name = Column(String)
+    color = Column(String)
+
+    product = relationship("Products", back_populates="variants")
 
 class Orders(Base):
     """

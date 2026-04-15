@@ -37,8 +37,8 @@ export const login = async (username,password) => {
 };
 
 // Register a new user account (sends data as JSON)
-export const register = async (username, password, email, phoneNum) => {
-  const response = await api.post("/register", { username, password, email, phoneNum });
+export const register = async (username, password, email, phone_num) => {
+  const response = await api.post("/register", { username, password, email, phone_num });
   return response.data;
 };
 

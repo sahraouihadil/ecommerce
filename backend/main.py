@@ -31,7 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # ── SQLAlchemy imports ──
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_,func
 
 # ── Our project imports ──
 import models
@@ -333,7 +333,6 @@ def get_products(db: Session = Depends(database.get_db)):
     """Returns all products. Used by FurniturePage and the admin dashboard."""
     return db.query(models.Products).all()
 
-
 @app.get("/api/order-items")
 def get_order_items(db: Session = Depends(database.get_db)):
     """Returns all order items. Used by the admin dashboard for revenue calculations."""
@@ -342,5 +341,58 @@ def get_order_items(db: Session = Depends(database.get_db)):
 
 @app.get("/api/complaints")
 def get_complaints(db: Session = Depends(database.get_db)):
-    """Returns all complaints. Used by the admin ComplaintsPage."""
-    return db.query(models.Complaints).all()
+    complaints = db.query(models.Complaints, models.Users.username)\
+        .join(models.Users, models.Complaints.user_id == models.Users.id)\
+        .all()
+
+    result = []
+    for complaint, username in complaints:
+        result.append({
+            "id": complaint.id,
+            "title": complaint.title,
+            "description": complaint.description,
+            "date": complaint.date,
+            "priority": complaint.priority,
+            "status": complaint.status,
+            "username": username  
+        })
+
+    return result
+
+@app.get("/stats")
+def get_stats(db: Session = Depends(database.get_db)):
+    orders = (
+        db.query(
+            func.date(models.Orders.orderdate).label("day"),
+            func.count(models.Orders.id).label("orders_count")
+        )
+        .group_by(func.date(models.Orders.orderdate))
+        .all()
+    )
+
+    users = (
+        db.query(
+            func.date(models.Users.created_at).label("day"),
+            func.count(models.Users.id).label("users_count")
+        )
+        .group_by(func.date(models.Users.created_at))
+        .all()
+    )
+    orders_data = [
+    {
+        "day": str(o.day),
+        "orders_count": o.orders_count
+    }
+    for o in orders
+           ]
+    users_data = [
+    {
+        "day": str(u.day),
+        "users_count": u.users_count
+    }
+    for u in users
+]
+    return {
+        "orders": orders_data,
+        "users": users_data
+    }
