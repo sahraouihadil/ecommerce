@@ -454,7 +454,7 @@ export function ProductPage() {
                 {!showViewer && (
                   <div style={S.staticImgWrap}>
                     <img
-                      src="../../public/models/pink chair.png"
+                      src="../../public/pink chair.png"
                       alt={product.name}
                       style={S.staticImg}
                     />

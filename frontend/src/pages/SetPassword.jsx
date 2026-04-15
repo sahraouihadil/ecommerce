@@ -1,5 +1,4 @@
-/**
- * SetPassword.jsx - Styled ARoomX Version
+/* SetPassword.jsx - Styled ARoomX Version
  * ======================================
  */
 

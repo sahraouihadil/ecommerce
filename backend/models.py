@@ -63,6 +63,10 @@ class Products(Base):
     # 3D MODEL
     model_src = Column(String)   # GLB (web)
     ios_src = Column(String)     # USDZ (iOS)
+    
+    able_ar = Column(Boolean,default=False)
+    able_3d = Column(Boolean,default=False)
+
 
     
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete")
