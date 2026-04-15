@@ -2,20 +2,27 @@
  * ProductPage.jsx - Individual Product Detail Page
  * ===================================================
  * Shows a single product with:
- *   - 3D model viewer (with AR support via ProductViewer component)
+ *   - Static image by default (switches to 3D viewer on demand)
+ *   - "View in 3D" button (all devices)
+ *   - "View in AR" button (mobile/tablet only — shown via UA detection)
  *   - Color variant selector
  *   - Product details (name, price, category, description)
  *   - "Add to Cart" and "Add to Favorites" buttons
  *
  * ROUTE: /product/:productId  (e.g. /product/3)
- * The productId comes from the URL and is used to find the product in the local data.
  */
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+
 import ProductViewer from "../components/ProductViewer/ProductViewer";
 import localProducts from "../data/products";
 import api from "../services/api";
+
+// ── Detect mobile/tablet (AR-capable devices) ────────────────────
+const IS_MOBILE = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
+  typeof navigator !== "undefined" ? navigator.userAgent : ""
+);
 
 // ── Inline SVG Icons ─────────────────────────────────────────────
 const IconArrowBack = () => (
@@ -37,7 +44,7 @@ const IconHeart = () => (
 );
 
 const IconAR = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
     <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8 3 3 3-3a4.237 4.237 0 0 0-6 0zm-4-4 2 2a7.074 7.074 0 0 1 10 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
   </svg>
 );
@@ -66,6 +73,13 @@ const IconAward = () => (
   </svg>
 );
 
+// Icon for the "View in 3D" button
+const Icon3D = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+  </svg>
+);
+
 // ── Color swatches config ─────────────────────────────────────────
 const COLOR_OPTIONS = [
   { id: "white", label: "White", hex: "#ffffff" },
@@ -85,6 +99,9 @@ export function ProductPage() {
   const [activeColor, setActiveColor] = useState("sky");
   const [thumbHover, setThumbHover] = useState(null);
 
+  // ── NEW: 3D viewer is hidden by default; user clicks "View in 3D" to open it
+  const [showViewer, setShowViewer] = useState(false);
+
   useEffect(() => {
     api.get("/api/products").then((res) => {
       const found = res.data.find((p) => p.id === parseInt(productId));
@@ -93,6 +110,11 @@ export function ProductPage() {
         setProduct({ ...found, ...local, id: found.id });
       }
     }).catch(() => navigate("/furniture"));
+  }, [productId]);
+
+  // Reset viewer when navigating to a different product
+  useEffect(() => {
+    setShowViewer(false);
   }, [productId]);
 
   const handleAddToCart = async () => {
@@ -138,7 +160,6 @@ export function ProductPage() {
       color: "#2d2f30",
       paddingBottom: "8rem",
     },
-    // ── Back nav
     backBtn: {
       display: "inline-flex", alignItems: "center", gap: "0.5rem",
       background: "none", border: "none",
@@ -148,7 +169,6 @@ export function ProductPage() {
       fontFamily: "'Be Vietnam Pro', sans-serif",
       transition: "color 0.15s",
     },
-    // ── Content grid
     grid: {
       maxWidth: "1280px", margin: "0 auto",
       padding: "1.5rem 1.5rem 0",
@@ -156,39 +176,62 @@ export function ProductPage() {
       gridTemplateColumns: "1fr",
       gap: "3rem",
     },
-    // ── Left visuals
-    mainImgWrap: {
+    // ── Static image (shown when showViewer = false) ──
+    staticImgWrap: {
       position: "relative",
       borderRadius: "1.25rem",
       overflow: "hidden",
       backgroundColor: "#f1f0f3",
       aspectRatio: "4/3",
     },
-    mainImg: {
+    staticImg: {
       width: "100%", height: "100%",
       objectFit: "cover", display: "block",
-      transition: "transform 0.7s ease",
     },
+    // ── Action pill buttons overlaid on the image ─────────────────
+    //    Row sits at the bottom-right of the image
+    viewerActionsRow: {
+      position: "absolute",
+      bottom: "1.25rem",
+      right: "1.25rem",
+      display: "flex",
+      gap: "0.5rem",
+      zIndex: 2,
+    },
+    // Shared pill style
+    pillBtn: (primary) => ({
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "0.45rem",
+      padding: "0.55rem 1.1rem",
+      borderRadius: "9999px",
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "'Be Vietnam Pro', sans-serif",
+      fontWeight: "700",
+      fontSize: "0.85rem",
+      backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
+      transition: "transform 0.15s ease",
+      ...(primary
+        ? {
+          backgroundColor: "#6448b2",
+          color: "#f7f0ff",
+          boxShadow: "0 4px 16px rgba(100,72,178,0.35)",
+        }
+        : {
+          backgroundColor: "rgba(255,255,255,0.55)",
+          color: "#6448b2",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+        }),
+    }),
     bestSellerBadge: {
       position: "absolute", top: "1.25rem", left: "1.25rem",
       backgroundColor: "#fed01b", color: "#433500",
       fontSize: "10px", fontWeight: "700",
       letterSpacing: "0.15em", padding: "0.35rem 1rem",
       borderRadius: "9999px",
-    },
-    arBtn: {
-      position: "absolute", bottom: "1.25rem", right: "1.25rem",
-      background: "rgba(255,255,255,0.45)",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-      border: "none", borderRadius: "9999px",
-      padding: "0.6rem 1.25rem",
-      display: "flex", alignItems: "center", gap: "0.5rem",
-      color: "#6448b2", fontWeight: "700",
-      fontSize: "0.9rem", cursor: "pointer",
-      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-      transition: "transform 0.15s ease",
-      fontFamily: "'Be Vietnam Pro', sans-serif",
+      zIndex: 2,
     },
     thumbGrid: {
       display: "grid", gridTemplateColumns: "repeat(3,1fr)",
@@ -210,7 +253,6 @@ export function ProductPage() {
       border: "2px dashed rgba(173,173,175,0.4)",
       gap: "0.25rem",
     },
-    // ── Right details
     detailsWrap: { display: "flex", flexDirection: "column", gap: "2rem" },
     category: {
       fontSize: "11px", fontWeight: "700",
@@ -233,10 +275,7 @@ export function ProductPage() {
       fontSize: "1.1rem", color: "rgba(91,91,93,0.5)",
       textDecoration: "line-through",
     },
-    description: {
-      fontSize: "1rem", color: "#5b5b5d",
-      lineHeight: "1.75",
-    },
+    description: { fontSize: "1rem", color: "#5b5b5d", lineHeight: "1.75" },
     tagsRow: { display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.75rem" },
     tag: {
       display: "inline-flex", alignItems: "center", gap: "0.4rem",
@@ -245,7 +284,6 @@ export function ProductPage() {
       borderRadius: "9999px",
       fontSize: "11px", fontWeight: "700", color: "#5b5b5d",
     },
-    // ── Customisation box
     customBox: {
       backgroundColor: "#f1f0f3",
       borderRadius: "1.25rem",
@@ -267,7 +305,6 @@ export function ProductPage() {
       boxShadow: "inset 0 2px 4px rgba(0,0,0,0.08)",
       transition: "outline 0.15s ease",
     }),
-    // ── Buttons
     addToCartBtn: {
       width: "100%", padding: "1.1rem",
       backgroundColor: "#6448b2", color: "#f7f0ff",
@@ -301,7 +338,6 @@ export function ProductPage() {
       textTransform: "uppercase",
       marginTop: "0.75rem",
     },
-    // ── Roomie teaser
     roomieBox: {
       backgroundColor: "rgba(100,72,178,0.05)",
       border: "2px dashed rgba(100,72,178,0.2)",
@@ -316,7 +352,6 @@ export function ProductPage() {
       display: "flex", alignItems: "center", justifyContent: "center",
       color: "#f7f0ff",
     },
-    // ── Feedback pills
     successPill: {
       marginTop: "0.75rem", padding: "0.6rem 1rem",
       borderRadius: "0.875rem",
@@ -331,7 +366,6 @@ export function ProductPage() {
       color: "#b41340", fontSize: "0.85rem",
       fontWeight: "600", textAlign: "center",
     },
-    // ── Why magical section
     magicSection: {
       maxWidth: "1280px", margin: "4rem auto 0",
       padding: "0 1.5rem",
@@ -369,6 +403,13 @@ export function ProductPage() {
     ? Math.round(product.price * 1.19)
     : null;
 
+  // ── Pill hover helper (can't use CSS in inline styles, so use onMouse*) ──
+  const hoverScale = {
+    onMouseEnter: (e) => { e.currentTarget.style.transform = "scale(1.04)"; },
+    onMouseLeave: (e) => { e.currentTarget.style.transform = "scale(1)"; },
+    onMouseDown: (e) => { e.currentTarget.style.transform = "scale(0.97)"; },
+  };
+
   return (
     <div style={S.page}>
 
@@ -398,22 +439,98 @@ export function ProductPage() {
 
           {/* ── Left: Visuals ── */}
           <div>
-            {/* 3D viewer or main image */}
             <div style={{ position: "relative", marginBottom: "0" }}>
+              {/* Glow backing */}
               <div style={{
                 position: "absolute", inset: "-1rem", zIndex: 0,
                 backgroundColor: "rgba(171,143,254,0.1)",
                 borderRadius: "1.5rem",
                 transform: "rotate(1deg)",
               }} />
+
               <div style={{ position: "relative", zIndex: 1 }}>
-                <ProductViewer
-                  modelSrc={product.modelSrc}
-                  iosSrc={product.iosSrc}
-                  productName={product.name}
-                  price={product.price}
-                  variants={product.variants}
-                />
+
+                {/* ── STATIC IMAGE (default view) ── */}
+                {!showViewer && (
+                  <div style={S.staticImgWrap}>
+                    <img
+                      src="../../public/models/pink chair.png"
+                      alt={product.name}
+                      style={S.staticImg}
+                    />
+
+                    {/* Best seller badge */}
+                    {product.bestSeller && (
+                      <div style={S.bestSellerBadge}>Best Seller</div>
+                    )}
+
+                    {/* ── Action buttons row ── */}
+                    <div style={S.viewerActionsRow}>
+
+                      {/* "View in AR" — mobile only */}
+                      {IS_MOBILE && product.iosSrc && (
+                        <button
+                          style={S.pillBtn(false)}
+                          {...hoverScale}
+                          onClick={() => {
+                            // Trigger model-viewer AR by switching to viewer
+                            // and dispatching AR activation after mount
+                            setShowViewer(true);
+                            setTimeout(() => {
+                              document
+                                .querySelector("model-viewer")
+                                ?.activateAR?.();
+                            }, 300);
+                          }}
+                        >
+                          <IconAR />
+                          View in AR
+                        </button>
+                      )}
+
+                      {/* "View in 3D" — all devices */}
+                      {product.modelSrc && (
+                        <button
+                          style={S.pillBtn(true)}
+                          {...hoverScale}
+                          onClick={() => setShowViewer(true)}
+                        >
+                          <Icon3D />
+                          View in 3D
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 3D VIEWER (shown after clicking "View in 3D" or "View in AR") ── */}
+                {showViewer && (
+                  <div style={{ position: "relative" }}>
+                    <ProductViewer
+                      modelSrc={product.modelSrc}
+                      iosSrc={product.iosSrc}
+                      productName={product.name}
+                      price={product.price}
+                      variants={product.variants}
+                    />
+
+                    {/* "Back to photo" pill — lets user return to static image */}
+                    <button
+                      style={{
+                        ...S.pillBtn(false),
+                        position: "absolute",
+                        top: "1.25rem",
+                        left: "1.25rem",
+                        zIndex: 10,
+                      }}
+                      {...hoverScale}
+                      onClick={() => setShowViewer(false)}
+                    >
+                      ← Photo
+                    </button>
+                  </div>
+                )}
+
               </div>
             </div>
 
@@ -477,7 +594,6 @@ export function ProductPage() {
 
               {/* Customisation box */}
               <div style={S.customBox}>
-                {/* Color selector */}
                 <span style={S.colorLabel}>Select Color</span>
                 <div style={S.swatchRow}>
                   {COLOR_OPTIONS.map((c) => (
@@ -490,8 +606,6 @@ export function ProductPage() {
                   ))}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-
-                  {/* Add to Cart */}
                   <button
                     onClick={handleAddToCart}
                     style={S.addToCartBtn}
@@ -502,8 +616,6 @@ export function ProductPage() {
                     <IconCart />
                     Add to Cart
                   </button>
-
-                  {/* Add to Favourites */}
                   <button
                     onClick={handleAddToFavorites}
                     style={S.favBtn}
@@ -520,11 +632,9 @@ export function ProductPage() {
                     <IconHeart />
                     Add to Favorites
                   </button>
-
                   <p style={S.deliveryNote}>Free white-glove delivery in 4–6 weeks</p>
                 </div>
 
-                {/* Feedback messages */}
                 {cartMsg && (
                   <div style={cartMsg.startsWith("Failed") ? S.errorPill : S.successPill}>
                     {cartMsg}
@@ -541,10 +651,7 @@ export function ProductPage() {
               <div style={S.roomieBox}>
                 <div style={S.roomieIcon}><IconRobot /></div>
                 <div>
-                  <p style={{
-                    fontWeight: "700", color: "#6448b2",
-                    fontSize: "0.9rem", margin: "0 0 0.2rem"
-                  }}>
+                  <p style={{ fontWeight: "700", color: "#6448b2", fontSize: "0.9rem", margin: "0 0 0.2rem" }}>
                     Need styling advice?
                   </p>
                   <p style={{ fontSize: "0.8rem", color: "#5b5b5d", margin: 0 }}>
@@ -565,10 +672,7 @@ export function ProductPage() {
           ...S.magicGrid,
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
         }}>
-
-          {/* Card 1 */}
           <div style={{ ...S.magicCard1, gridColumn: "span 2" }}>
-            {/* Glow blob */}
             <div style={{
               position: "absolute", top: 0, right: 0,
               width: "240px", height: "240px",
@@ -593,7 +697,6 @@ export function ProductPage() {
             </div>
           </div>
 
-          {/* Card 2 */}
           <div style={S.magicCard2}>
             <div style={{ color: "#433500", marginBottom: "1rem" }}>
               <IconAward />
@@ -610,7 +713,6 @@ export function ProductPage() {
             </p>
           </div>
 
-          {/* AR / features cards */}
           {[
             { icon: "📐", title: "AR Preview", body: "See it in your room before buying" },
             { icon: "🎨", title: "Custom Colors", body: `${product.variants?.length ?? 4} color options available` },
@@ -625,10 +727,7 @@ export function ProductPage() {
             }}>
               <span style={{ fontSize: "1.5rem" }}>{f.icon}</span>
               <div>
-                <p style={{
-                  fontWeight: "700", color: "#2d2f30",
-                  marginBottom: "0.25rem", fontSize: "0.95rem"
-                }}>
+                <p style={{ fontWeight: "700", color: "#2d2f30", marginBottom: "0.25rem", fontSize: "0.95rem" }}>
                   {f.title}
                 </p>
                 <p style={{ fontSize: "0.85rem", color: "#5b5b5d", margin: 0 }}>
