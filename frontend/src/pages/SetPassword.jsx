@@ -1,5 +1,4 @@
- /**
- * SetPassword.jsx - Styled ARoomX Version
+/* SetPassword.jsx - Styled ARoomX Version
  * ======================================
  */
 
@@ -123,7 +122,6 @@ export function SetPassword() {
                 </button>
               </div>
             </div>
-
             {/* Confirm */}
             <div>
               <label className="text-sm font-bold ml-2">
