@@ -364,7 +364,8 @@ def get_stats(db: Session = Depends(database.get_db)):
     orders = (
         db.query(
             func.date(models.Orders.orderdate).label("day"),
-            func.count(models.Orders.id).label("orders_count")
+            func.count(models.Orders.id).label("orders_count"),
+            func.sum(models.Orders.totalamount).label("orders_totalamount")
         )
         .group_by(func.date(models.Orders.orderdate))
         .all()
@@ -381,7 +382,8 @@ def get_stats(db: Session = Depends(database.get_db)):
     orders_data = [
     {
         "day": str(o.day),
-        "orders_count": o.orders_count
+        "orders_count": o.orders_count,
+        "orders_totalamount":o.orders_totalamount
     }
     for o in orders
            ]

@@ -48,7 +48,7 @@ export function AdminDashboard() {
   useEffect(() => { api.get("/api/order-items").then(r => setOrderItems(r.data)).catch(console.error); }, []);
   useEffect(() => { api.get("/api/orders/all").then(r => setOrders(r.data)).catch(console.error); }, []);
 
-  // ── Polling refresh (replaces WebSocket) ─────────────────────────────
+  // ── Polling refresh  ─────────────────────────────
   useEffect(() => {
     const refresh = async () => {
       try {
@@ -62,29 +62,60 @@ export function AdminDashboard() {
         setOrderItems(oiRes.data);
       } catch (err) { console.error("Refresh error:", err); }
     };
+    
     const id = setInterval(refresh, 3000);
     return () => clearInterval(id);
   }, []);
 
   // ── Chart stats ───────────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await api.get("/stats");
-        const { orders: o, users: u } = res.data;
-        setChartData({
-          labels: o.map(x => x.day),
-          datasets: [
-            { label: "Users",  data: u.map(x => x.users_count),  borderColor: "#1a1a2e", backgroundColor: "rgba(26,26,46,0.08)" },
-            { label: "Orders", data: o.map(x => x.orders_count), borderColor: "#4f8ef7", backgroundColor: "rgba(79,142,247,0.08)" },
-          ],
-        });
-      } catch (err) { console.error(err); }
-    };
-    fetchStats();
-    const id = setInterval(fetchStats, 5000);
-    return () => clearInterval(id);
-  }, []);
+useEffect(() => {
+  const fetchStats = async () => {
+    try {
+      const res = await api.get("/stats");
+
+      const { orders: o, users: u } = res.data;
+
+      // unified dates
+      const allDays = [...new Set([
+        ...o.map(x => x.day),
+        ...u.map(x => x.day)
+      ])].sort((a, b) => new Date(a) - new Date(b));
+
+      setChartData({
+        labels:allDays.map(day =>
+           new Date(day).toLocaleDateString("en-US", { weekday: "short" })
+            ),
+        datasets: [
+          {
+            label: "Users",
+            data: allDays.map(day => {
+              const item = u.find(x => x.day === day);
+              return item ? item.users_count : 0;
+            }),
+            borderColor: "#1a1a2e",
+            backgroundColor: "rgba(26,26,46,0.08)"
+          },
+          {
+            label: "Orders",
+            data: allDays.map(day => {
+              const item = o.find(x => x.day === day);
+              return item ? item.orders_count : 0;
+            }),
+            borderColor: "#4f8ef7",
+            backgroundColor: "rgba(79,142,247,0.08)"
+          }
+        ]
+      });
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  fetchStats();
+  const id = setInterval(fetchStats, 5000);
+  return () => clearInterval(id);
+}, []);
 
   const activeUsers = users.filter(u => u.active === true).length;
   const totalRev    = orderItems.reduce((s, o) => s + o.price * o.quantity, 0);
