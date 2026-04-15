@@ -106,12 +106,22 @@ function App() {
           <Route path='/admin-dash/engagement' element={<EngagementPage />} />
           <Route path='/admin-dash/reports' element={<ReportPage />} />
           <Route path='/admin-dash/validation' element={<ValidationPage />} />
-          <Route path='/admin-dash/profile' element={<AProfilePage />} />
+
 
           <Route path='/accountant-dash' element={<AccountantDashboard />} />
           <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard />} />
           <Route path='/stock-manager-dash' element={<StockMngrDashboard />} />
           <Route path='/deliveryman-dash' element={<DeliverymanDashboard />} />
+
+                    {[
+                       "/admin-dash/profile",
+                       "/accountant-dash/profile",
+                       "/marketing-manager-dash/profile",
+                       "/stock-manager-dash/profile",
+                       "/deliveryman-dash/profile",
+                     ].map((path) => (
+                          <Route key={path} path={path} element={<AProfilePage />} />
+                        ))}
 
         </Routes>
       </CustomerLayout>

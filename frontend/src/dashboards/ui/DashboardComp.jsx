@@ -44,14 +44,36 @@ export function Button({ children , className = "", ...props}){
 }
 
 // StatCard - Shows a key metric (e.g. "Total Revenue: $12,345 +12.5%")
-export function StatCard({ title, value,icon}){
-  return(
-    <div className="bg-white rounded-2xl shadow p-5">
-      <div>
-        <p className="text-gray-500 text-sm">{title}</p>
-        <h3 className="text-2xl font-bold p-1">{value}</h3>
-          <span className="text-white bg-green-500 text-sm rounded-2xl p-0.5">{icon}</span>
+export function StatCard({ title, value, change, color, icon }) {
+  const isPositive = change && change.startsWith("+");
+  return (
+    <div style={{
+      backgroundColor: "white",
+      borderRadius: 14,
+      padding: "22px 24px",
+      boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+      borderLeft: `4px solid ${color}`,
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#8a8a9a", textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</p>
+        <span style={{ fontSize: 20 }}>{icon}</span>
       </div>
+      <p style={{ margin: 0, fontSize: 30, fontWeight: 700, color: "#1a1a2e" }}>{value}</p>
+      {change && (
+        <span style={{
+          display: "inline-block",
+          fontSize: 12,
+          fontWeight: 600,
+          padding: "3px 10px",
+          borderRadius: 20,
+          backgroundColor: isPositive ? "#D4EDDA" : "#F8D7DA",
+          color: isPositive ? "#155724" : "#721c24",
+          alignSelf: "flex-start",
+        }}>{change}</span>
+      )}
     </div>
-  )
+  );
 }

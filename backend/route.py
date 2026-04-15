@@ -65,6 +65,9 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
     # Check if username or email is already taken
     db_user_by_username = get_user_by_username(db, username=user.username)
     db_user_by_email = get_user_by_email(db, email=user.email)
+    
+    print("INPUT:", user.username)
+    print("DB USER:", db_user_by_username)
 
     # Case 1: User exists but hasn't verified their email yet
     if db_user_by_username and not db_user_by_username.is_verified:
@@ -75,6 +78,7 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
             "user_name": user.username,
             "email": user.email
         }
+    
 
     # Case 2: Username already taken (and verified)
     if db_user_by_username:

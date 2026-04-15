@@ -23,7 +23,7 @@ export default function Header({concept,setOpenBar,openBar}){
         </button>
         </div>
 
-                <h1 className="text-2xl font-bold">{concept}</h1>
+                <h1 className="font-bold mt-8 ml-3 text-4xl">{concept}</h1>
                  
                </div>
     

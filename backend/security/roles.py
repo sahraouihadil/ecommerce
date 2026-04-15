@@ -47,14 +47,14 @@ def accountant_required(payload: dict = Depends(verify_token)) -> dict:
 
 def marketing_manager_required(payload: dict = Depends(verify_token)) -> dict:
     """Only allows users with the 'marketing manager' role."""
-    if payload.get("role") != "marketing manager":
+    if payload.get("role") != "marketing_manager":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: marketing manager only")
     return payload
 
 
 def stock_manager_required(payload: dict = Depends(verify_token)) -> dict:
     """Only allows users with the 'stock manager' role."""
-    if payload.get("role") != "stock manager":
+    if payload.get("role") != "stock_manager":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: stock manager only")
     return payload
 

@@ -1,117 +1,142 @@
 /**
- * ConfigurationPage.jsx - System Configuration (Admin)
- * =======================================================
- * Admin settings page with two main sections:
- *
- *   1. Global Feature Control - Toggle switches for:
- *      - AR Support (master switch for all AR features)
- *      - AI Chatbot (automated customer assistance)
- *
- *   2. Product AR Management - Per-product AR toggles:
- *      - Enable/disable AR preview for individual products
- *
- * NOTE: Toggles are currently UI-only (not connected to backend).
- *       Connect them to a settings API to make them functional.
+ * ConfigurationPage.jsx - System Configuration (Admin) — Redesigned
+ * Logic unchanged, styling updated to match AdminDashboard.
  */
 
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
 
-export default function ConfigurationPage(){
-     {/* sidebar (Mobile)*/}
-     const [openBar,setOpenBar] = useState(window.innerWidth>=600);
+const S = {
+  page:  { display: "flex", minHeight: "100vh", backgroundColor: "#F4F6FB", fontFamily: "'Segoe UI', sans-serif" },
+  main:  { flex: 1, padding: "0 0 32px 0", overflowY: "auto" },
+  inner: { padding: "28px 32px", display: "flex", flexDirection: "column", gap: 28 },
+  card:  { backgroundColor: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,0.07)", padding: "24px 28px" },
+  grid2: { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 20 },
+  label: { margin: 0, fontSize: 11, color: "#8a8a9a", textTransform: "uppercase", letterSpacing: "0.08em" },
+};
 
-  return(
-    <div className="flex min-h-screen bg-gray-100">
+function Toggle({ on, onToggle }) {
+  return (
+    <div
+      onClick={onToggle}
+      style={{
+        width: 44, height: 24, borderRadius: 99, cursor: "pointer",
+        background: on ? "#4f8ef7" : "#dde1ec",
+        position: "relative", transition: "background 0.2s", flexShrink: 0,
+      }}
+    >
+      <div style={{
+        position: "absolute", top: 3,
+        left: on ? 22 : 3,
+        width: 18, height: 18, borderRadius: "50%",
+        background: "#fff", transition: "left 0.2s",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+      }} />
+    </div>
+  );
+}
 
-     {/* Sidebar */}
-    <Sidebar openBar={openBar} setOpenBar={setOpenBar}/>
-                
-     {/* Main */}
-      <main className="flex-1 p-6 space-y-6">
-             {/*Header*/}
-           <Header concept="Configration" setOpenBar={setOpenBar} openBar={openBar}/>
+const initialProducts = [
+  { name: "Product 1", type: "Table",  active: true  },
+  { name: "Product 2", type: "Table",  active: true  },
+  { name: "Product 3", type: "Chair",  active: true  },
+  { name: "Product 4", type: "Shelf",  active: true  },
+  { name: "Product 5", type: "Desk",   active: true  },
+];
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT: Global Feature Control */}
+export default function ConfigurationPage() {
+  const [openBar, setOpenBar]   = useState(window.innerWidth >= 600);
+  const [arOn, setArOn]         = useState(true);
+  const [botOn, setBotOn]       = useState(true);
+  const [products, setProducts] = useState(initialProducts);
+
+  const toggleProduct = i =>
+    setProducts(prev => prev.map((p, idx) => idx === i ? { ...p, active: !p.active } : p));
+
+  return (
+    <div style={S.page}>
+      <Sidebar openBar={openBar} setOpenBar={setOpenBar} />
+
+      <main style={S.main}>
+        <Header concept="Configuration" setOpenBar={setOpenBar} openBar={openBar} />
+
+        <div style={S.inner}>
+
+          {/* Title */}
           <div>
-            <h2 className="font-semibold mb-4">Global Feature Control</h2>
+            <p style={{ margin: "4px 0 0", fontSize: 14, color: "#8a8a9a" }}>Manage global features and product AR settings.</p>
+          </div>
 
-            <div className="bg-white rounded-2xl shadow p-6 space-y-4">
+          <div style={S.grid2}>
 
-              {/* Feature 1 */}
-              <div className="flex items-center justify-between bg-gray-100 p-4 rounded-xl">
-                <div>
-                  <p className="font-medium">Global AR Support</p>
-                  <p className="text-sm text-gray-500">
-                    Master switch for all AR features
-                  </p>
+            {/* LEFT — Global Feature Control */}
+            <div style={S.card}>
+              <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 600, color: "#1a1a2e" }}>Global Feature Control</h2>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+                {/* AR Toggle */}
+                <div style={{ background: "#F4F6FB", borderRadius: 12, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>Global AR Support</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 12, color: "#8a8a9a" }}>Master switch for all AR features</p>
+                  </div>
+                  <Toggle on={arOn} onToggle={() => setArOn(v => !v)} />
                 </div>
-                {/* Toggle */}
-                <div className="w-12 h-6 bg-black rounded-full relative cursor-pointer">
-                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+
+                {/* Bot Toggle */}
+                <div style={{ background: "#F4F6FB", borderRadius: 12, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>AI Support Chatbot</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 12, color: "#8a8a9a" }}>Automated customer assistance</p>
+                  </div>
+                  <Toggle on={botOn} onToggle={() => setBotOn(v => !v)} />
                 </div>
+
               </div>
+            </div>
 
-              {/* Feature 2 */}
-                   <div className="flex items-center justify-between bg-gray-100 p-4 rounded-xl">
-                <div>
-                  <p className="font-medium">AI Support Chatbot</p>
-                  <p className="text-sm text-gray-500">
-                    Automated custmer assistance
-                  </p>
-                </div>
-                {/* Toggle */}
-                <div className="w-12 h-6 bg-black rounded-full relative cursor-pointer">
-                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                </div>
-              </div>
-             
-             </div>
-             </div>
+            {/* RIGHT — Product AR Management */}
+            <div style={S.card}>
+              <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 600, color: "#1a1a2e" }}>Product AR Management</h2>
 
-             {/* RIGHT: Product AR Management */}
-             <div>
-              <h2 className="font-semibold mb-4">Product AR Management</h2>
-
-              <div className="bg-white rounded-2xl shadow overflow-hidden">
-                {/* Product Item */}
-                {[
-                  { name:"product 1", type:"Table",active:true},
-                  { name:"product 2", type:"Table",active:true},
-                  { name:"product 3", type:"Table",active:true},
-                  { name:"product 4", type:"Table",active:true},
-                  { name:"product 5", type:"Table",active:true},
-                ].map((p,i)=>(
-                  <div key={i} className="flex items-center justify-between p-4 border-b last:border-none">
-                    {/* Info */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {products.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "13px 0",
+                      borderBottom: i < products.length - 1 ? "1px solid #f0f0f5" : "none",
+                    }}
+                  >
                     <div>
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-sm text-gray-500">{p.type}</p>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>{p.name}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#8a8a9a" }}>{p.type}</p>
                     </div>
-                    {/* Status + Toggle */}
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        p.active ? "bg-blue-100 text-blue-600" :"bg-gray-200 text-gray-500"
-                      }`}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{
+                        fontSize: 11, padding: "3px 10px", borderRadius: 99, fontWeight: 500,
+                        background: p.active ? "#e8f0fe" : "#f0f0f5",
+                        color:      p.active ? "#4f8ef7" : "#8a8a9a",
+                      }}>
                         {p.active ? "AR ACTIVE" : "AR HIDDEN"}
                       </span>
-
-                      {/* Toggle */}
-                      <div className={`w-12 h-6 rounded-full relative cursor-pointer ${p.active ? "bg-blue-500":"bg-gray-300"}`}>
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${p.active ? "right-1" : "left-1"}`}/>
+                      <Toggle on={p.active} onToggle={() => toggleProduct(i)} />
                     </div>
                   </div>
-                </div>
                 ))}
-                {/* Footer */}
-                <div className="text-center p-4 text-sm text-gray-500 hover:text-black cursor-pointer"> + Manager All</div>
-             </div>
+              </div>
 
+              <button style={{ marginTop: 16, width: "100%", background: "none", border: "1.5px dashed #dde1ec", borderRadius: 10, padding: "10px", fontSize: 13, color: "#8a8a9a", cursor: "pointer" }}>
+                + Manage All
+              </button>
             </div>
+
           </div>
+        </div>
       </main>
     </div>
-  )
+  );
 }
