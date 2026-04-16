@@ -22,17 +22,18 @@ export function FurniturePage() {
     const fetchProducts = async () => {
       try {
         const response = await api.get("/api/products");
-        const mapped = response.data.map((p) => ({
-          ...p,
-          image: p.image_url,
-        }));
-        setProducts(mapped);
+
+        console.log("PRODUCTS:", response.data); 
+
+        setProducts(response.data);
       } catch (err) {
+        console.error(err);
         setError("Failed to load products");
       } finally {
         setLoading(false);
       }
     };
+
     fetchProducts();
   }, []);
 

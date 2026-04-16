@@ -25,6 +25,8 @@ export function CheckoutPage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,59 +83,6 @@ export function CheckoutPage() {
   /* ─── Main render ───────────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-[#f7f6f8] font-sans text-[#2d2f30]">
-
-      {/* ── Top App Bar ─────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-[#f7f6f8] px-6 py-4 shadow-[0_1px_0_rgba(0,0,0,0.06)]">
-        <div className="flex justify-between items-center w-full max-w-screen-xl mx-auto">
-          {/* Left: back + logo */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-10 h-10 rounded-full bg-violet-100 text-violet-600
-                         flex items-center justify-center
-                         hover:bg-violet-200 active:scale-90
-                         transition-all duration-200"
-              aria-label="Go back"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-5 h-5"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-            <span className="text-2xl font-black tracking-tighter text-violet-600 leading-none select-none">
-              ARoomX
-            </span>
-          </div>
-          {/* Right: search icon */}
-          <button
-            className="w-10 h-10 rounded-full text-violet-500
-                       flex items-center justify-center
-                       hover:bg-violet-100 active:scale-90
-                       transition-all duration-200"
-            aria-label="Search"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-5 h-5"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </button>
-        </div>
-      </header>
 
       {/* ── Page body ───────────────────────────────────────────────── */}
       <main className="max-w-screen-xl mx-auto px-6 py-12 md:py-20 lg:flex lg:gap-16">
@@ -261,6 +210,7 @@ export function CheckoutPage() {
                     <div className="w-2.5 h-2.5 rounded-full bg-violet-600" />
                   </div>
                 </div>
+
               </div>
             </div>
 
@@ -288,6 +238,16 @@ export function CheckoutPage() {
                              focus:outline-none focus:ring-2 focus:ring-violet-400
                              transition"
                 />
+                <input
+                  type="tel"
+                  placeholder="Phone Number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-5 py-3 rounded-xl bg-white border border-gray-200
+                             text-sm font-medium placeholder:text-gray-400
+                             focus:outline-none focus:ring-2 focus:ring-violet-400
+                             transition"
+                />
                 {/* Address */}
                 <input
                   type="text"
@@ -305,6 +265,15 @@ export function CheckoutPage() {
                   placeholder="City"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
+                  className="w-full px-5 py-3 rounded-xl bg-white border border-gray-200
+                             text-sm font-medium placeholder:text-gray-400
+                             focus:outline-none focus:ring-2 focus:ring-violet-400
+                             transition"
+                />
+                <textarea
+                  placeholder="Additional Notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                   className="w-full px-5 py-3 rounded-xl bg-white border border-gray-200
                              text-sm font-medium placeholder:text-gray-400
                              focus:outline-none focus:ring-2 focus:ring-violet-400

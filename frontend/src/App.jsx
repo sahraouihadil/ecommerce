@@ -16,7 +16,7 @@
  *   - Dashboard pages: admin, accountant, marketing, stock, delivery
  *   - ChatWidget: AI assistant shown on customer pages only (hidden on dashboards)
  */
-
+import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import ChatWidget from './components/ChatWidget/ChatWidget'
@@ -63,13 +63,20 @@ function CustomerChat() {
 
 function CustomerLayout({ children }) {
   const location = useLocation();
-  const isDash = location.pathname.startsWith('/admin') ||
+  const isDash =
+    location.pathname.startsWith('/admin') ||
     location.pathname.includes('-dash');
+
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       {!isDash && <Header />}
-      {children}
-    </>
+
+      <main className="flex-1">
+        {children}
+      </main>
+
+      {!isDash && <Footer />}
+    </div>
   );
 }
 function App() {
@@ -113,15 +120,15 @@ function App() {
           <Route path='/stock-manager-dash' element={<StockMngrDashboard />} />
           <Route path='/deliveryman-dash' element={<DeliverymanDashboard />} />
 
-                    {[
-                       "/admin-dash/profile",
-                       "/accountant-dash/profile",
-                       "/marketing-manager-dash/profile",
-                       "/stock-manager-dash/profile",
-                       "/deliveryman-dash/profile",
-                     ].map((path) => (
-                          <Route key={path} path={path} element={<AProfilePage />} />
-                        ))}
+          {[
+            "/admin-dash/profile",
+            "/accountant-dash/profile",
+            "/marketing-manager-dash/profile",
+            "/stock-manager-dash/profile",
+            "/deliveryman-dash/profile",
+          ].map((path) => (
+            <Route key={path} path={path} element={<AProfilePage />} />
+          ))}
 
         </Routes>
       </CustomerLayout>
