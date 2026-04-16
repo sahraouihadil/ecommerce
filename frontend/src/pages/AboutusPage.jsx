@@ -3,6 +3,7 @@
  */
 
 // Inline SVG replacements for Material Icons
+import { useNavigate } from "react-router-dom";
 const IconAutoAwesome = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="56" height="56">
     <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2zm6 12l.75 2.25L21 17l-2.25.75L18 20l-.75-2.25L15 17l2.25-.75L18 14zM5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z" />
@@ -16,7 +17,10 @@ const IconMood = () => (
 );
 
 export function AboutusPage() {
+  const navigate = useNavigate();
   return (
+
+
     <div style={{ overflowX: "hidden", paddingBottom: "8rem" }}>
 
       {/* ── Hero Section ── */}
@@ -387,7 +391,7 @@ export function AboutusPage() {
                   doing it wrong."
                 </p>
                 <p style={{ color: "rgba(255,255,255,0.8)", margin: 0, fontSize: "0.9rem" }}>
-                  — The ARoomX Founders
+                  — The ARoom Founders
                 </p>
               </div>
             </div>
@@ -419,6 +423,7 @@ export function AboutusPage() {
             Explore our latest collection of wonderfully unconventional pieces.
           </p>
           <button style={{
+
             backgroundColor: "#6448b2",
             color: "#f7f0ff",
             padding: "1rem 2.5rem",
@@ -429,7 +434,7 @@ export function AboutusPage() {
             cursor: "pointer",
             boxShadow: "0 8px 24px rgba(100,72,178,0.35)",
             transition: "transform 0.2s",
-          }}
+          }} onClick={() => navigate("/furniture")}
             onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
             onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
           >

@@ -446,6 +446,7 @@ export function HomePage() {
       </nav>
 
     </div>
+    
   );
 }
 
