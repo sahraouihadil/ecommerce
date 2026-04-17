@@ -120,85 +120,79 @@ function RoomieLamp({ isOpen, onToggle }) {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          {/* Pastel glow under lamp */}
+          {/* Ground glow — blush */}
           <radialGradient id="lampGlow" cx="50%" cy="80%" r="50%">
-            <stop offset="0%" stopColor="#c4a8f0" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#c4a8f0" stopOpacity="0" />
+            <stop offset="0%" stopColor="#E8D5CC" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#E8D5CC" stopOpacity="0" />
           </radialGradient>
-          {/* Head gradient — soft lavender */}
+          {/* Head gradient — blush */}
           <linearGradient id="headGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#c9b1f4" />
-            <stop offset="100%" stopColor="#a78bfa" />
+            <stop offset="0%" stopColor="#F0DDD6" />
+            <stop offset="100%" stopColor="#E8D5CC" />
           </linearGradient>
-          {/* Base gradient — pastel mint */}
+          {/* Base gradient — rose */}
           <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#9ae6c2" />
-            <stop offset="100%" stopColor="#6dd4a1" />
+            <stop offset="0%" stopColor="#D4A99A" />
+            <stop offset="100%" stopColor="#B8887A" />
           </linearGradient>
-          {/* Arm gradient — soft peach-pink */}
-          <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fbc4d0" />
-            <stop offset="50%" stopColor="#f9a8ba" />
-            <stop offset="100%" stopColor="#fbc4d0" />
-          </linearGradient>
-          {/* Joint accent — warm yellow */}
+          {/* Joint accent — rose */}
           <linearGradient id="jointGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffe29a" />
-            <stop offset="100%" stopColor="#ffd166" />
+            <stop offset="0%" stopColor="#D4A99A" />
+            <stop offset="100%" stopColor="#B8887A" />
           </linearGradient>
         </defs>
 
         {/* Light glow on the ground */}
         <ellipse cx="60" cy="130" rx="30" ry="6" fill="url(#lampGlow)" className="roomie-glow" />
 
-        {/* Base — mint green */}
-        <ellipse cx="60" cy="128" rx="22" ry="6" fill="url(#bodyGrad)" stroke="#6dd4a1" strokeWidth="1" />
-        <ellipse cx="60" cy="126" rx="18" ry="4" fill="#a8ecc8" />
+        {/* Base — rose */}
+        <ellipse cx="60" cy="128" rx="22" ry="6" fill="url(#bodyGrad)" stroke="#B8887A" strokeWidth="1" />
+        <ellipse cx="60" cy="126" rx="18" ry="4" fill="#E8D5CC" />
 
-        {/* Lower arm — peach pink */}
-        <line x1="60" y1="122" x2="52" y2="85" stroke="url(#armGrad)" strokeWidth="4.5" strokeLinecap="round" />
-        {/* Joint — warm yellow */}
-        <circle cx="52" cy="85" r="4.5" fill="url(#jointGrad)" stroke="#f0c040" strokeWidth="1" />
-        {/* Upper arm — peach pink */}
-        <line x1="52" y1="85" x2="62" y2="48" stroke="url(#armGrad)" strokeWidth="4.5" strokeLinecap="round" />
-        {/* Neck joint — warm yellow */}
-        <circle cx="62" cy="48" r="3.5" fill="url(#jointGrad)" stroke="#f0c040" strokeWidth="0.8" />
+        {/* Lower arm — charcoal skeleton */}
+        <line x1="60" y1="122" x2="52" y2="85" stroke="#1A1A1A" strokeWidth="4.5" strokeLinecap="round" />
+        {/* Joint — rose */}
+        <circle cx="52" cy="85" r="4.5" fill="url(#jointGrad)" stroke="#1A1A1A" strokeWidth="1" />
+        {/* Upper arm — charcoal skeleton */}
+        <line x1="52" y1="85" x2="62" y2="48" stroke="#1A1A1A" strokeWidth="4.5" strokeLinecap="round" />
+        {/* Neck joint — rose */}
+        <circle cx="62" cy="48" r="3.5" fill="url(#jointGrad)" stroke="#1A1A1A" strokeWidth="0.8" />
 
-        {/* Lamp head (shade) — lavender */}
+        {/* Lamp head (shade) — blush */}
         <path
           d="M 38 50 Q 40 30, 60 28 Q 80 30, 82 50 L 75 55 L 45 55 Z"
           fill="url(#headGrad)"
-          stroke="#b794f4"
+          stroke="#D4A99A"
           strokeWidth="1.2"
         />
-        {/* Inner shade rim — lighter accent */}
-        <path d="M 45 55 L 75 55" stroke="#e9d5ff" strokeWidth="2" strokeLinecap="round" />
+        {/* Inner shade rim — cream accent */}
+        <path d="M 45 55 L 75 55" stroke="#FAF6F2" strokeWidth="2" strokeLinecap="round" />
 
         {/* Face area (inside the shade opening) */}
-        <ellipse cx="60" cy="49" rx="13" ry="7" fill="#fff5fc" opacity="0.95" />
+        <ellipse cx="60" cy="49" rx="13" ry="7" fill="#FAF6F2" opacity="0.95" />
 
-        {/* Cheek blush */}
-        <ellipse cx="46" cy="51" rx="3.5" ry="2" fill="#fbc4d0" opacity="0.5" />
-        <ellipse cx="74" cy="51" rx="3.5" ry="2" fill="#fbc4d0" opacity="0.5" />
+        {/* Cheek blush — rose */}
+        <ellipse cx="46" cy="51" rx="3.5" ry="2" fill="#D4A99A" opacity="0.5" />
+        <ellipse cx="74" cy="51" rx="3.5" ry="2" fill="#D4A99A" opacity="0.5" />
 
         {/* Eyes */}
         <g transform={`translate(${eyeOffset.x}, ${eyeOffset.y})`}>
           {/* Left eye */}
-          <ellipse cx="53" cy="48" rx="4.5" ry={4.5 * eyeScaleY} fill="white" stroke="#6b5b95" strokeWidth="0.8" />
-          <circle cx={53 + eyeOffset.x * 0.5} cy={48 + eyeOffset.y * 0.3} r="2.2" fill="#6b5b95" />
+          <ellipse cx="53" cy="48" rx="4.5" ry={4.5 * eyeScaleY} fill="white" stroke="#1A1A1A" strokeWidth="0.8" />
+          <circle cx={53 + eyeOffset.x * 0.5} cy={48 + eyeOffset.y * 0.3} r="2.2" fill="#1A1A1A" />
           <circle cx={52 + eyeOffset.x * 0.3} cy={47 + eyeOffset.y * 0.2} r="0.9" fill="white" />
 
           {/* Right eye */}
-          <ellipse cx="67" cy="48" rx="4.5" ry={4.5 * eyeScaleY} fill="white" stroke="#6b5b95" strokeWidth="0.8" />
-          <circle cx={67 + eyeOffset.x * 0.5} cy={48 + eyeOffset.y * 0.3} r="2.2" fill="#6b5b95" />
+          <ellipse cx="67" cy="48" rx="4.5" ry={4.5 * eyeScaleY} fill="white" stroke="#1A1A1A" strokeWidth="0.8" />
+          <circle cx={67 + eyeOffset.x * 0.5} cy={48 + eyeOffset.y * 0.3} r="2.2" fill="#1A1A1A" />
           <circle cx={66 + eyeOffset.x * 0.3} cy={47 + eyeOffset.y * 0.2} r="0.9" fill="white" />
         </g>
 
-        {/* Light beam from under the head — soft lavender */}
+        {/* Light beam from under the head — blush */}
         <path
           d="M 48 56 L 38 72 L 82 72 L 72 56"
-          fill="#c4a8f0"
-          opacity="0.08"
+          fill="#E8D5CC"
+          opacity="0.12"
         />
       </svg>
 

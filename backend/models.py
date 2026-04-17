@@ -54,18 +54,20 @@ class Products(Base):
     name = Column(String, index=True, nullable=False)
     description = Column(String)
     price = Column(Float, nullable=False)
+    quantity = Column(Integer, default=0)
 
     image_url = Column(String)
     category = Column(String)
 
     badge = Column(String)  
-
+    
     # 3D MODEL
     model_src = Column(String)   # GLB (web)
     ios_src = Column(String)     # USDZ (iOS)
     
     able_ar = Column(Boolean,default=False)
     able_3d = Column(Boolean,default=False)
+
 
 
     
