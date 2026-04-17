@@ -16,6 +16,10 @@
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
+import {
+  LayoutDashboard, Users, MessageSquare, CheckSquare,
+  BarChart, Activity, Settings, X,
+} from "lucide-react";
 
 export default function AuditLogPage() {
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
@@ -74,9 +78,25 @@ export default function AuditLogPage() {
   const leftBorder = (t) =>
     t === "WARNING" ? "border-l-2 border-l-amber-500" : "border-l-2 border-l-transparent hover:border-l-indigo-500";
 
+    const adminLinks = [
+     { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
+    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
+    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
+    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
+    { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
+    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
+]; 
   return (
     <div className="flex min-h-screen bg-[#0c0e14]">
-      <Sidebar openBar={openBar} setOpenBar={setOpenBar} />
+          <Sidebar
+                     openBar={openBar}
+                     setOpenBar={setOpenBar}
+                     links={adminLinks}
+                     title="AdminCore"
+                     subtitle="Enterprise Suite"
+                     role="Super Admin"
+                     />
 
       <main className="flex-1 p-6 space-y-5">
         <Header concept="Audit Log" openBar={openBar} setOpenBar={setOpenBar} />

@@ -29,10 +29,12 @@ from models import Users
 from user_crud import create_user, get_user_by_username, get_user_by_email, update_role_name
 from schema import CreateUserRequest, UserRoleUpdate
 from security.settings import (
-    validate_password, customer_required, admin_required,
+    validate_password,create_access_token, authenticate_user, verify_token
+)
+from security.roles import (
+   customer_required, admin_required,
     accountant_required, marketing_manager_required,
     stock_manager_required, deliveryman_required,
-    create_access_token, authenticate_user, verify_token
 )
 
 # Load .env variables (for ACCESS_TOKEN_EXPIRE_MINUTES)

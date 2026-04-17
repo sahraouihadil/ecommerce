@@ -7,6 +7,10 @@ import { useState, useEffect } from "react";
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import api from "../../services/api";
+import {
+  LayoutDashboard, Users, MessageSquare, CheckSquare,
+  BarChart, Activity, Settings, X,
+} from "lucide-react";
 
 // ── Priority auto-detection from complaint type/content ────────────────
 const detectPriority = (complaint) => {
@@ -79,10 +83,27 @@ export default function ComplaintsPage() {
     setSelected(prev => prev?.id === id ? { ...prev, status: newStatus } : prev);
     // api.patch(`/api/complaints/${id}`, { status: newStatus }).catch(console.error);
   };
+ 
+    const adminLinks = [
+     { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
+    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
+    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
+    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
+    { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
+    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
+     ];
 
   return (
     <div className="flex min-h-screen bg-[#F4F6FB] font-sans">
-      <Sidebar openBar={openBar} setOpenBar={setOpenBar} />
+          <Sidebar
+                     openBar={openBar}
+                     setOpenBar={setOpenBar}
+                     links={adminLinks}
+                     title="AdminCore"
+                     subtitle="Enterprise Suite"
+                     role="Super Admin"
+                     />
 
       <main className="flex-1 overflow-y-auto pb-8">
         <Header concept="Complaints" setOpenBar={setOpenBar} openBar={openBar} />

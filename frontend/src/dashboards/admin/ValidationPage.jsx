@@ -17,6 +17,10 @@
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
+import {
+  LayoutDashboard, Users, MessageSquare, CheckSquare,
+  BarChart, Activity, Settings, X,
+} from "lucide-react";
 
 export default function ValidationPage() {
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
@@ -50,10 +54,27 @@ export default function ValidationPage() {
 
   const pillIcon = (s) =>
     s === "Pending" ? "⏳" : s === "Approved" ? "✓" : "✕";
+  
+    const adminLinks = [
+     { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
+    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
+    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
+    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
+    { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
+    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
+     ];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar openBar={openBar} setOpenBar={setOpenBar} />
+          <Sidebar
+                     openBar={openBar}
+                     setOpenBar={setOpenBar}
+                     links={adminLinks}
+                     title="AdminCore"
+                     subtitle="Enterprise Suite"
+                     role="Super Admin"
+                     />
 
       <main className="flex-1 p-6 space-y-6">
         <Header concept="Validation" setOpenBar={setOpenBar} openBar={openBar} />

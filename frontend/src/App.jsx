@@ -36,9 +36,7 @@ import { FurniturePage } from './pages/FurniturePage'
 import { JournalPage } from './pages/JournalPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { AdminDashboard } from './dashboards/admin/AdminDashboard'
-import { AccountantDashboard } from './dashboards/accountant/AccountantDashboard'
 import { MarketingMngrDashboard } from './dashboards/marketingmanager/MarketingManagerDashboard'
-import { StockMngrDashboard } from './dashboards/stockmanager/StockManagerDashboard'
 import { DeliverymanDashboard } from './dashboards/deliveryman/DeliverymanDashboard'
 import AccountsPage from './dashboards/admin/AccountsPage'
 import ConfigurationPage from './dashboards/admin/ConfigurationPage'
@@ -51,6 +49,10 @@ import { VerifyCode } from './pages/VerifyCode'
 import { SetPassword } from './pages/SetPassword'
 
 import { useLocation } from 'react-router-dom';
+import { OverviewPage } from './dashboards/stockmanager/OverviewPage'
+import { DeliveryPage } from './dashboards/stockmanager/DeliveryPage'
+import { ReturnsPage } from './dashboards/stockmanager/ReturnsPage'
+import { ProductCatalogPage } from './dashboards/stockmanager/ProductCatalogPage'
 
 // Only show chatbot on customer-facing pages
 function CustomerChat() {
@@ -108,9 +110,18 @@ function App() {
           <Route path='/admin-dash/validation' element={<ValidationPage />} />
 
 
-          <Route path='/accountant-dash' element={<AccountantDashboard />} />
+          {/* Marketing Manager */}
           <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard />} />
-          <Route path='/stock-manager-dash' element={<StockMngrDashboard />} />
+
+          {/* Stock Manager */}
+
+          <Route path='/stock-manager-dash' element={<OverviewPage />} />
+          <Route path='/stock-manager-dash/deliveries' element={<DeliveryPage />} />
+          <Route path='/stock-manager-dash/returns' element={<ReturnsPage />} />
+          <Route path='/stock-manager-dash/inventories' element={<ProductCatalogPage />} />
+
+          {/* Deliveryman */}
+          
           <Route path='/deliveryman-dash' element={<DeliverymanDashboard />} />
 
                     {[
