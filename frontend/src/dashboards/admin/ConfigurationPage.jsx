@@ -6,6 +6,10 @@
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
+import {
+  LayoutDashboard, Users, MessageSquare, CheckSquare,
+  BarChart, Activity, Settings, X,
+} from "lucide-react";
 
 const S = {
   page:  { display: "flex", minHeight: "100vh", backgroundColor: "#F4F6FB", fontFamily: "'Segoe UI', sans-serif" },
@@ -53,10 +57,27 @@ export default function ConfigurationPage() {
 
   const toggleProduct = i =>
     setProducts(prev => prev.map((p, idx) => idx === i ? { ...p, active: !p.active } : p));
+  
+    const adminLinks = [
+     { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
+    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
+    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
+    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
+    { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
+    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
+     ];
 
   return (
     <div style={S.page}>
-      <Sidebar openBar={openBar} setOpenBar={setOpenBar} />
+          <Sidebar
+                     openBar={openBar}
+                     setOpenBar={setOpenBar}
+                     links={adminLinks}
+                     title="AdminCore"
+                     subtitle="Enterprise Suite"
+                     role="Super Admin"
+                     />
 
       <main style={S.main}>
         <Header concept="Configuration" setOpenBar={setOpenBar} openBar={openBar} />

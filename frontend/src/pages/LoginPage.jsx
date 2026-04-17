@@ -131,14 +131,16 @@ export function LoginPage() {
     setLoading(true);
     try {
       const data = await login(username, password);
+      console.log(username,password);
+      console.log(data);
       setLoading(false);
       if (data && data.access_token) {
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("role", data.role);
         if (data.role === "admin") navigate("/admin-dash");
         else if (data.role === "accountant") navigate("/accountant-dash");
-        else if (data.role === "marketing manager") navigate("/marketing-manager-dash");
-        else if (data.role === "stock manager") navigate("/stock-manager-dash");
+        else if (data.role === "marketing_manager") navigate("/marketing-manager-dash");
+        else if (data.role === "stock_manager") navigate("/stock-manager-dash");
         else if (data.role === "deliveryman") navigate("/deliveryman-dash");
         else navigate("/");
       } else {
