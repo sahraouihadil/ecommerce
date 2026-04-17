@@ -1,16 +1,177 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #000000;
-  --color-primary-hover: #1f2937;
-  --color-accent: #2a9d8f;
-  --color-accent-hover: #21867a;
-  --color-danger: #e53e3e;
-  --color-success: #38a169;
-  --color-warning: #ecc94b;
+  --color-cream: #FAF6F2;
+  --color-blush: #E8D5CC;
+  --color-charcoal: #1A1A1A;
+  --color-rose: #D4A99A;
+  --color-rose-light: #F0DDD6;
+
+  /* Aliases for backwards compat with existing pages */
+  --color-bg: #FAF6F2;
+  --color-surface: #F3EDE7;
+  --color-primary: #1A1A1A;
+  --color-accent: #E8D5CC;
+  --color-accent2: #D4A99A;
+  --color-text: #1A1A1A;
+  --color-muted: #8A8078;
+  --color-white: #FFFFFF;
+  --color-danger: #9B2C2C;
+  --color-success: #5B7A5E;
+  --color-warning: #B8860B;
+
+  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #f9fafb;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-cream);
+    color: var(--color-charcoal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
+
+  ::selection {
+    background-color: var(--color-blush);
+    color: var(--color-charcoal);
+  }
+
+  ::-moz-selection {
+    background-color: var(--color-blush);
+    color: var(--color-charcoal);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-cream);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-rose);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rose) var(--color-cream);
+  }
+
+  input:focus,
+  button:focus-visible {
+    outline: 2px solid var(--color-rose);
+    outline-offset: 2px;
+  }
+
+  input:focus {
+    outline: none;
+  }
+
+  a:focus, a:focus-visible {
+    outline: none;
+  }
+}
+
+@layer components {
+  .btn-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 36px;
+    border-radius: 999px;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+  }
+
+  .btn-pill-black {
+    background-color: var(--color-charcoal);
+    color: var(--color-cream);
+  }
+
+  .btn-pill-black:hover {
+    background-color: var(--color-rose);
+    color: var(--color-charcoal);
+  }
+
+  .btn-pill-outline {
+    background-color: transparent;
+    color: var(--color-charcoal);
+    border: 1.5px solid var(--color-charcoal);
+  }
+
+  .btn-pill-outline:hover {
+    background-color: var(--color-charcoal);
+    color: var(--color-cream);
+  }
+
+  .btn-pill-blush {
+    background-color: var(--color-blush);
+    color: var(--color-charcoal);
+  }
+
+  .btn-pill-blush:hover {
+    background-color: var(--color-rose);
+    color: var(--color-charcoal);
+  }
+
+  .divider-line {
+    height: 1px;
+    background-color: var(--color-blush);
+    width: 100%;
+  }
+
+  .divider-diamond {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .divider-diamond::before,
+  .divider-diamond::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: var(--color-blush);
+  }
+
+  .divider-diamond span {
+    font-size: 10px;
+    color: var(--color-rose);
+    line-height: 1;
+  }
+
+  .fade-in-up {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .fade-in-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

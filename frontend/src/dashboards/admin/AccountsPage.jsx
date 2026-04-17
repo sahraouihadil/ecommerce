@@ -24,6 +24,10 @@ import { useState, useEffect } from "react";
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import api from "../../services/api";
+import {
+  LayoutDashboard, Users, MessageSquare, CheckSquare,
+  BarChart, Activity, Settings, X,
+} from "lucide-react";
 
 // ── Role color map ─────────────────────────────────────────────────────
 const roleColors = {
@@ -224,12 +228,28 @@ const handleCreate = async () => {
     boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
   };
 
+    const adminLinks = [
+     { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
+    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
+    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
+    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
+    { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
+    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
+];
   /* ══════════════════════════════════════════════════════════════════ */
   return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#F4F6FB", fontFamily: "'Segoe UI', sans-serif" }}>
 
       {/* Sidebar */}
-      <Sidebar openBar={openBar} setOpenBar={setOpenBar} />
+          <Sidebar
+                     openBar={openBar}
+                     setOpenBar={setOpenBar}
+                     links={adminLinks}
+                     title="AdminCore"
+                     subtitle="Enterprise Suite"
+                     role="Super Admin"
+                     />
 
       {/* Main */}
       <main style={{ flex: 1, overflowY: "auto", padding: "0 0 40px 0" }}>

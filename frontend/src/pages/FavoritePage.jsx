@@ -18,9 +18,7 @@ export function FavoritePage() {
     }
   };
 
-  useEffect(() => {
-    fetchFavorites();
-  }, []);
+  useEffect(() => { fetchFavorites(); }, []);
 
   const removeFavorite = async (favId) => {
     try {
@@ -31,130 +29,72 @@ export function FavoritePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 via-white to-purple-50">
-        <span className="material-symbols-outlined text-5xl text-purple-500 animate-pulse">
-          favorite
-        </span>
+  if (loading) return (
+    <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-accent2 border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted text-sm">Loading favorites...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-purple-50 text-gray-800">
+    <div className="min-h-screen bg-cream text-text">
+      <main className="max-w-7xl mx-auto px-6 pt-36 pb-32">
 
-      <main className="max-w-7xl mx-auto px-6 pt-10 pb-32">
+        <p className="text-[0.8125rem] uppercase tracking-[0.2em] font-semibold text-muted mb-4">Saved</p>
+        <h1 className="font-serif font-bold text-5xl tracking-tight mb-16">
+          Favorites
+        </h1>
 
-        {/* HEADER */}
-        <div className="mb-10">
-          <h2 className="text-5xl font-bold text-purple-700">
-            Your Favorites
-          </h2>
-          <p className="text-gray-500 mt-2">
-            A curated gallery of your saved pieces.
-          </p>
-        </div>
-
-        {/* FILTERS */}
-        <div className="flex gap-3 mb-10 overflow-x-auto">
-
-          <button className="px-5 py-2 bg-purple-600 text-white rounded-full">
-            All Saved
-          </button>
-
-          <button className="px-5 py-2 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200">
-            Seating
-          </button>
-
-          <button className="px-5 py-2 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200">
-            Lighting
-          </button>
-
-          <button className="px-5 py-2 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200">
-            Eccentricities
-          </button>
-        </div>
-
-        {/* EMPTY STATE */}
         {favorites.length === 0 ? (
           <div className="text-center py-24">
-            <h3 className="text-2xl font-bold mb-2">
-              No favorites yet
-            </h3>
-            <p className="text-gray-500 mb-6">
-              Save pieces you love and they'll appear here.
-            </p>
-
-            <Link
-              to="/furniture"
-              className="px-8 py-4 bg-purple-600 text-white rounded-full hover:bg-purple-700"
-            >
-              Browse Furniture
+            <span className="material-symbols-outlined text-[48px] text-accent2/50 mb-4 block">favorite</span>
+            <p className="text-muted text-lg mb-6">No saved pieces yet.</p>
+            <Link to="/furniture" className="btn-pill btn-pill-black">
+              Browse the Collection
             </Link>
           </div>
         ) : (
-          /* PINTEREST STYLE */
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-8">
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {favorites.map((fav) => (
-              <div
-                key={fav.id}
-                className="inline-block w-full break-inside-avoid mb-8 bg-white/70 backdrop-blur-md border border-purple-100 rounded-xl p-6 shadow-sm hover:shadow-[0_10px_30px_rgba(147,51,234,0.2)] transition"
-              >
-
-                {/* REMOVE BUTTON */}
+              <div key={fav.id} className="group relative">
+                {/* Remove button */}
                 <button
                   onClick={() => removeFavorite(fav.id)}
-                  className="absolute top-4 right-4 w-10 h-10 bg-purple-100 hover:bg-purple-200 rounded-full flex items-center justify-center text-purple-600"
+                  className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center
+                    text-muted hover:text-danger transition-colors duration-300 bg-white/80 rounded-full"
+                  aria-label="Remove from favorites"
                 >
-                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    favorite
-                  </span>
+                  <span className="material-symbols-outlined text-[18px]">close</span>
                 </button>
 
-                {/* IMAGE */}
-                <Link to={`/product/${fav.product_id}`}>
-                  <div className="rounded-xl overflow-hidden mb-4 min-h-[240px] flex items-center justify-center bg-purple-50">
-                    {fav.product?.image_url ? (
-                      <img
-                        src={fav.product.image_url}
-                        alt={fav.product?.name}
-                        className="w-full h-full object-cover hover:scale-[1.03] transition"
-                      />
+                <Link to={`/product/${fav.product_id}`}
+                  className="block bg-white rounded-lg overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                  <div className="aspect-[3/4] bg-surface overflow-hidden">
+                    {fav.product?.image ? (
+                      <img src={fav.product.image} alt={fav.product?.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                     ) : (
-                      <span className="material-symbols-outlined text-5xl text-purple-300">
-                        chair
-                      </span>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[48px] text-muted/20">image</span>
+                      </div>
                     )}
                   </div>
+                  <div className="px-5 pt-5 pb-6">
+                    <h3 className="font-serif text-lg text-primary leading-snug mb-2
+                      group-hover:text-accent2 transition-colors duration-300">
+                      {fav.product?.name}
+                    </h3>
+                    <p className="font-serif font-semibold text-primary text-lg">
+                      {fav.product?.price} DA
+                    </p>
+                  </div>
                 </Link>
-
-                {/* INFO */}
-                <Link to={`/product/${fav.product_id}`}>
-                  <h3 className="text-xl font-bold text-gray-800">
-                    {fav.product?.name}
-                  </h3>
-
-                  <p className="text-gray-500 text-sm">
-                    {fav.product?.brand ?? "ARoomX"}
-                  </p>
-
-                  <p className="text-purple-600 font-bold mt-1">
-                    {fav.product?.price} DA
-                  </p>
-                </Link>
-
-                {/* BUTTON */}
-                <button className="mt-5 w-full py-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 active:scale-95 transition">
-                  Add to Bag
-                </button>
-
               </div>
             ))}
           </div>
         )}
-
       </main>
     </div>
   );

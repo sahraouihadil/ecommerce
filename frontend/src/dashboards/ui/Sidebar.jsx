@@ -1,35 +1,18 @@
-/**
- * Sidebar.jsx - Admin Dashboard Sidebar Navigation
- * ===================================================
- * Left-side navigation panel for the admin dashboard.
- *
- * FEATURES:
- *   - Navigation links: Dashboard, Accounts, Complaints, Reports, etc.
- *   - Active link highlighting (using NavLink's isActive)
- *   - Responsive: on mobile (<600px), sidebar becomes a slide-out overlay
- *   - Admin profile section at the bottom with Sign Out button
- *
- * PROPS:
- *   openBar    - Whether sidebar is visible (boolean)
- *   setOpenBar - Toggle function for mobile sidebar
- */
-
-/**
- * Sidebar.jsx - Admin Dashboard Sidebar Navigation (Redesigned)
- * Clean light theme with blue accent, matching other dashboards style.
- */
-
 import { NavLink, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard, Users, MessageSquare, CheckSquare,
-  BarChart, Activity, Settings, X,
-} from "lucide-react";
 import { useEffect } from "react";
+import { X } from "lucide-react";
 import { logout } from "../../services/auth";
 
 const ACCENT = "#4f8ef7";
 
-export default function Sidebar({ openBar, setOpenBar }) {
+export default function Sidebar({
+  openBar,
+  setOpenBar,
+  links = [],
+  title = "Dashboard",
+  subtitle = "System Panel",
+  role = "User"
+}) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -42,68 +25,85 @@ export default function Sidebar({ openBar, setOpenBar }) {
       if (window.innerWidth >= 600) setOpenBar(true);
       else setOpenBar(false);
     };
+
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const links = [
-    { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
-    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
-    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
-    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
-    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
-    { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
-    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
-  ];
+  }, [setOpenBar]);
 
   return (
-    <div className="flex">
-      {/* Sidebar */}
+    <>
       {openBar && (
-        <aside style={{
-          width: 240,
-          minHeight: "100vh",
-          backgroundColor: "white",
-          borderRight: "1px solid #eef0f5",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "24px 16px",
-          position: "sticky",
-          top: 0,
-          boxShadow: "2px 0 12px rgba(0,0,0,0.04)",
-        }}
+        <aside
+          style={{
+            width: 240,
+            minHeight: "100vh",
+            backgroundColor: "white",
+            borderRight: "1px solid #eef0f5",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            padding: "24px 16px",
+            position: "sticky",
+            top: 0,
+            boxShadow: "2px 0 12px rgba(0,0,0,0.04)",
+          }}
           className="fixed top-0 left-0 h-full z-50 min-[600px]:static"
         >
-          {/* Top */}
+          {/* TOP */}
           <div>
-            {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32, padding: "0 8px" }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                backgroundColor: ACCENT,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18,
-              }}>
-                🛡
+            {/* LOGO */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 32,
+                padding: "0 8px",
+              }}
+            >
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  backgroundColor: ACCENT,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                }}
+              >
+                🧩
               </div>
+
               <div>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: "#1a1a2e" }}>AdminCore</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#8a8a9a" }}>Enterprise Suite</p>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>
+                  {title}
+                </p>
+                <p style={{ margin: 0, fontSize: 11, color: "#8a8a9a" }}>
+                  {subtitle}
+                </p>
               </div>
             </div>
 
-            {/* Close button mobile */}
+            {/* CLOSE BUTTON (mobile) */}
             <button
               onClick={() => setOpenBar(false)}
-              style={{ display: "none", position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer" }}
               className="min-[600px]:hidden"
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
             >
               <X size={20} />
             </button>
 
-            {/* Nav Links */}
+            {/* LINKS */}
             <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {links.map(({ to, label, icon, end }) => (
                 <NavLink
@@ -131,25 +131,45 @@ export default function Sidebar({ openBar, setOpenBar }) {
             </nav>
           </div>
 
-          {/* Bottom — user profile */}
-          <div style={{
-            backgroundColor: "#f8f9fc",
-            borderRadius: 12,
-            padding: "14px 16px",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          {/* BOTTOM */}
+          <div
+            style={{
+              backgroundColor: "#f8f9fc",
+              borderRadius: 12,
+              padding: "14px 16px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
               <img
                 src="https://i.pravatar.cc/40"
-                style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
-                alt="Admin"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+                alt="User"
               />
+
               <div>
-                <NavLink to="/admin-dash/profile" style={{ textDecoration: "none" }}>
-                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: "#1a1a2e" }}>Admin User</p>
+                <NavLink to="/profile" style={{ textDecoration: "none" }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
+                    {role}
+                  </p>
                 </NavLink>
-                <p style={{ margin: 0, fontSize: 11, color: "#8a8a9a" }}>Super Admin</p>
+                <p style={{ margin: 0, fontSize: 11, color: "#8a8a9a" }}>
+                  Active
+                </p>
               </div>
             </div>
+
             <button
               onClick={handleLogout}
               style={{
@@ -162,10 +182,15 @@ export default function Sidebar({ openBar, setOpenBar }) {
                 fontWeight: 600,
                 fontSize: 13,
                 cursor: "pointer",
-                transition: "all 0.15s",
               }}
-              onMouseEnter={e => { e.target.style.backgroundColor = ACCENT; e.target.style.color = "white"; }}
-              onMouseLeave={e => { e.target.style.backgroundColor = "white"; e.target.style.color = ACCENT; }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = ACCENT;
+                e.target.style.color = "white";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "white";
+                e.target.style.color = ACCENT;
+              }}
             >
               Sign Out
             </button>
@@ -173,13 +198,13 @@ export default function Sidebar({ openBar, setOpenBar }) {
         </aside>
       )}
 
-      {/* Mobile overlay */}
+      {/* OVERLAY */}
       {openBar && (
         <div
           onClick={() => setOpenBar(false)}
           className="fixed inset-0 bg-black/30 z-30 min-[600px]:hidden"
         />
       )}
-    </div>
+    </>
   );
 }
