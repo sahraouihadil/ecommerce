@@ -1,20 +1,6 @@
-/**
- * Header.jsx - Site Navigation Header
- * =====================================
- * Displays the top navigation bar on all customer-facing pages.
- *
- * FEATURES:
- *   - Logo linking to home
- *   - Nav links: Collection, About, Contact
- *   - Cart and Favorites icons
- *   - If logged in: shows username + Profile link + Logout button
- *   - If NOT logged in: shows Login / Register links
- */
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
-// Decode JWT payload without a library (it's just base64)
 function decodeToken(token) {
   try {
     const payload = token.split('.')[1];
@@ -26,10 +12,11 @@ function decodeToken(token) {
 
 export function Header() {
   const [user, setUser] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Re-check auth every time the route changes (e.g. after login)
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -45,6 +32,21 @@ export function Header() {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [menuOpen]);
+
   function handleLogout() {
     localStorage.removeItem('token');
     setUser(null);
@@ -52,141 +54,194 @@ export function Header() {
   }
 
   const navLinks = [
-    { to: '/furniture', label: 'Collection' },
-    { to: '/aboutus',   label: 'About' },
+    { to: '/furniture', label: 'Shop' },
+    { to: '/aboutus', label: 'How It Works' },
     { to: '/contactus', label: 'Contact' },
   ];
 
   return (
-    <header style={{
-      backgroundColor: '#F5F0E8',
-      borderBottom: '1px solid #E0D8CC',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '0 24px',
-        height: '64px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
+          scrolled
+            ? 'bg-white/90 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05)]'
+            : 'bg-transparent'
+        }`}
+      >
+        <div className={`transition-all duration-500 ${scrolled ? 'py-4' : 'py-6'}`}>
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="flex items-center justify-between">
 
-        {/* Logo */}
-        <Link to="/" style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: '24px',
-          fontWeight: '600',
-          color: '#1C1C1A',
-          textDecoration: 'none',
-          letterSpacing: '0.05em',
-        }}>
-          ARoom
-        </Link>
-
-        {/* Desktop Nav */}
-        <nav style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          {navLinks.map(({ to, label }) => (
-            <Link key={to} to={to} style={{
-              fontSize: '11px',
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-              color: location.pathname === to ? '#8B6F47' : '#1C1C1A',
-              textDecoration: 'none',
-              fontWeight: location.pathname === to ? '600' : '400',
-              transition: 'color 0.2s',
-            }}>
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Right Side: Icons + Auth */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-
-          {/* Cart icon */}
-          <Link to="/cart" title="Cart" style={{
-            color: '#1C1C1A',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5">
-              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <path d="M16 10a4 4 0 01-8 0"/>
-            </svg>
-          </Link>
-
-          {/* Favorites icon */}
-          <Link to="/favorite" title="Favorites" style={{
-            color: '#1C1C1A',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5">
-              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-            </svg>
-          </Link>
-
-          {/* Auth */}
-          {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <Link to="/profile" style={{
-                fontSize: '11px',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: '#8B6F47',
-                textDecoration: 'none',
-                fontWeight: '600',
-              }}>
-                {user.sub || user.username || 'Profile'}
+              {/* Logo */}
+              <Link
+                to="/"
+                className="font-serif text-2xl font-bold text-primary hover:text-accent2 transition-colors duration-300 select-none"
+              >
+                ARoom
               </Link>
-              <button onClick={handleLogout} style={{
-                fontSize: '11px',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#1C1C1A',
-                background: 'none',
-                border: '1px solid #1C1C1A',
-                padding: '6px 14px',
-                cursor: 'pointer',
-              }}>
-                Logout
+
+              {/* Center nav - desktop */}
+              <nav className="hidden lg:flex items-center gap-10">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`text-[0.8125rem] uppercase tracking-[0.1em] font-semibold transition-colors duration-300 ${
+                      location.pathname === link.to
+                        ? 'text-primary'
+                        : 'text-muted hover:text-primary'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+
+              {/* Right icons - desktop */}
+              <div className="hidden lg:flex items-center gap-5">
+                <Link
+                  to="/favorite"
+                  title="Favorites"
+                  className="text-muted hover:text-primary transition-colors duration-300"
+                >
+                  <span className="material-symbols-outlined text-[22px]">favorite</span>
+                </Link>
+
+                <Link
+                  to="/cart"
+                  title="Cart"
+                  className="text-muted hover:text-primary transition-colors duration-300"
+                >
+                  <span className="material-symbols-outlined text-[22px]">shopping_bag</span>
+                </Link>
+
+                {user ? (
+                  <div className="flex items-center gap-4 ml-4 pl-4 border-l border-blush/60">
+                    <Link
+                      to="/profile"
+                      className="text-[0.8125rem] font-medium text-primary hover:text-accent2 transition-colors duration-300"
+                    >
+                      {user.sub || user.username || 'Profile'}
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="text-[0.8125rem] text-muted hover:text-primary transition-colors duration-300"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="btn-pill btn-pill-black text-[0.75rem] py-2.5 px-6 ml-4"
+                  >
+                    Sign in
+                  </Link>
+                )}
+              </div>
+
+              {/* Mobile right side */}
+              <div className="flex lg:hidden items-center gap-5">
+                <Link
+                  to="/favorite"
+                  title="Favorites"
+                  className="text-muted hover:text-primary transition-colors duration-300"
+                >
+                  <span className="material-symbols-outlined text-[22px]">favorite</span>
+                </Link>
+                <Link
+                  to="/cart"
+                  title="Cart"
+                  className="text-muted hover:text-primary transition-colors duration-300"
+                >
+                  <span className="material-symbols-outlined text-[22px]">shopping_bag</span>
+                </Link>
+
+                <button
+                  className="text-primary hover:text-accent2 transition-colors duration-300"
+                  onClick={() => setMenuOpen(true)}
+                  aria-label="Open menu"
+                >
+                  <span className="material-symbols-outlined text-[24px]">menu</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile menu overlay */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-[200] lg:hidden">
+          <div
+            className="absolute inset-0 bg-primary/30 backdrop-blur-sm"
+            onClick={() => setMenuOpen(false)}
+          />
+
+          <div className="absolute inset-0 bg-cream flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6">
+              <span className="font-serif text-2xl font-bold text-primary">
+                ARoom
+              </span>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="text-muted hover:text-primary transition-colors"
+                aria-label="Close menu"
+              >
+                <span className="material-symbols-outlined text-[24px]">close</span>
               </button>
             </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <Link to="/login" style={{
-                fontSize: '11px',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#1C1C1A',
-                textDecoration: 'none',
-              }}>
-                Login
-              </Link>
-              <Link to="/register" style={{
-                fontSize: '11px',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#F5F0E8',
-                backgroundColor: '#1C1C1A',
-                padding: '8px 16px',
-                textDecoration: 'none',
-              }}>
-                Register
-              </Link>
+
+            {/* Nav links */}
+            <nav className="flex-1 flex flex-col justify-center px-6 gap-8">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setMenuOpen(false)}
+                  className={`font-serif text-4xl font-bold transition-colors duration-300 ${
+                    location.pathname === link.to
+                      ? 'text-accent2'
+                      : 'text-primary hover:text-accent2'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Footer auth */}
+            <div className="p-6">
+              {user ? (
+                <div className="flex items-center justify-between">
+                  <Link
+                    to="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="text-sm text-primary hover:text-accent2 transition-colors"
+                  >
+                    {user.sub || user.username || 'Profile'}
+                  </Link>
+                  <button
+                    onClick={() => { handleLogout(); setMenuOpen(false); }}
+                    className="text-sm text-muted hover:text-primary transition-colors duration-300"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="btn-pill btn-pill-black w-full text-center"
+                >
+                  Sign in
+                </Link>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
-    </header>
+      )}
+    </>
   );
 }

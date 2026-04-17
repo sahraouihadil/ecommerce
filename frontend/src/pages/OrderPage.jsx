@@ -1,14 +1,3 @@
-/**
- * OrderPage.jsx - My Orders Page
- * ==================================
- * Lists all orders placed by the current user.
- *   - Shows a success banner if user just placed a new order
- *   - Each order card shows: order ID, status badge, date, total, item count
- *   - Clicking an order navigates to TrackingPage for detailed tracking
- *
- * API: GET /api/orders - fetches all orders for the logged-in user
- */
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../services/api";
@@ -18,7 +7,6 @@ export function OrderPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-
   const justPlaced = location.state?.orderId;
 
   useEffect(() => {
@@ -35,42 +23,73 @@ export function OrderPage() {
     fetchOrders();
   }, [navigate]);
 
-  if (loading) return <div className="text-center mt-10">Loading orders...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-accent2 border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted text-sm">Loading orders...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      {justPlaced && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <p className="text-green-800 font-semibold">Order #{justPlaced} placed successfully!</p>
-        </div>
-      )}
+    <div className="min-h-screen bg-cream text-text">
+      <div className="max-w-3xl mx-auto px-6 pt-36 pb-32">
 
-      <h1 className="text-3xl font-bold mb-6">My Orders</h1>
-
-      {orders.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No orders yet</p>
-          <Link to="/furniture" className="bg-black text-white px-6 py-2 rounded-lg">Browse Furniture</Link>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <Link key={order.id} to={`/order/tracking/${order.id}/0`} className="block bg-white shadow rounded-lg p-4 hover:shadow-md transition">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">Order #{order.id}</span>
-                <span className={`px-2 py-1 rounded text-sm ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                  {order.status}
-                </span>
+        {justPlaced && (
+          <div className="mb-10 p-6 bg-success/10 rounded-xl">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-[24px] text-success">check_circle</span>
+              <div>
+                <p className="text-success font-semibold text-sm">Order #{justPlaced} placed successfully!</p>
+                <p className="text-muted text-sm mt-0.5">We'll send you tracking updates via email.</p>
               </div>
-              <p className="text-sm text-gray-500">
-                {order.orderdate ? new Date(order.orderdate).toLocaleDateString() : "N/A"}
-              </p>
-              <p className="font-semibold mt-1">{order.totalamount} DA</p>
-              <p className="text-sm text-gray-400">{order.items?.length || 0} item(s)</p>
+            </div>
+          </div>
+        )}
+
+        <p className="text-[0.8125rem] uppercase tracking-[0.2em] font-semibold text-muted mb-4">Account</p>
+        <h1 className="font-serif font-bold text-5xl tracking-tight mb-16">Orders</h1>
+
+        {orders.length === 0 ? (
+          <div className="text-center py-24">
+            <span className="material-symbols-outlined text-[48px] text-accent2/50 mb-4 block">receipt_long</span>
+            <p className="text-muted text-lg mb-6">No orders yet.</p>
+            <Link to="/furniture" className="btn-pill btn-pill-black">
+              Browse the Collection
             </Link>
-          ))}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="border-t border-surface">
+            {orders.map((order) => (
+              <Link key={order.id} to={`/order/tracking/${order.id}/0`}
+                className="flex items-center justify-between py-6 border-b border-surface
+                  hover:bg-surface/50 transition-colors duration-300 -mx-4 px-4 rounded-lg group">
+                <div>
+                  <span className="font-serif font-semibold text-base
+                    group-hover:text-accent2 transition-colors duration-300">
+                    Order #{order.id}
+                  </span>
+                  <p className="text-muted text-xs mt-1">
+                    {order.orderdate ? new Date(order.orderdate).toLocaleDateString('en-US', {
+                      month: 'long', day: 'numeric', year: 'numeric'
+                    }) : "N/A"}
+                  </p>
+                </div>
+                <div className="text-right flex items-center gap-4">
+                  <div>
+                    <p className="text-muted text-sm capitalize">{order.status}</p>
+                    <p className="font-serif font-semibold text-primary mt-1">
+                      {order.totalamount} DA
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-[18px] text-muted group-hover:text-primary transition-colors">chevron_right</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

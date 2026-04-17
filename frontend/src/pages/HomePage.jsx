@@ -1,26 +1,7 @@
-/**
- * HomePage.jsx - Main Landing Page
- * ===================================
- * NOTE: No TopAppBar here — the global Header.jsx handles navigation.
- *
- * SECTIONS:
- *   1. Hero         - Asymmetric banner with Roomie AI overlay + stats row
- *   2. Stats        - Bento-style 3-card highlights
- *   3. Collection   - Category filter + bento product grid
- *   4. How It Works - 3-step: Browse → AR Preview → Ask Roomie
- *   5. Newsletter   - "Join the Circle of Odd" CTA
- *   6. Footer       - Simple branding line
- *   7. BottomNavBar - Mobile sticky nav (md:hidden)
- *   8. Roomie FAB   - Floating action button
- *
- * Products come from data/products.js (replace the inline stub below).
- */
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import products from '../data/products';   ← uncomment when ready
+import { Button, Card, Section, Divider } from '../components/ui';
 
-// ─── Inline product stub (replace with real import above) ────────────────────
 const products = [
   {
     id: 1,
@@ -59,7 +40,7 @@ const products = [
     id: 4,
     name: 'Mushroom Side Table',
     category: 'tables',
-    description: 'Hand-carved organic geometry.',
+    description: 'Compact organic geometry.',
     price: 410,
     badge: null,
     featured: true,
@@ -90,32 +71,14 @@ const products = [
   },
 ];
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const categoryIcons = { seating: '🛋️', lighting: '💡', tables: '🍄' };
-
-const stats = [
-  { icon: 'star_outline', value: '450+', label: 'Unique Pieces', highlight: false },
-  { icon: 'view_in_ar', value: '100%', label: 'AR Try-on', highlight: true },
-  { icon: 'smart_toy', value: '24/7', label: 'Smart Assistant', highlight: false },
-];
-
 const steps = [
-  { num: '1', title: 'Browse', desc: 'Explore our collection of weird and wonderful furniture pieces.' },
-  { num: '2', title: 'Preview in AR', desc: "Place any piece in your room using your phone's camera." },
-  { num: '3', title: 'Ask Roomie', desc: 'Chat with our AI assistant for styling tips and recommendations.' },
+  { num: '01', title: 'Browse', desc: 'Explore the full furniture catalog — filter by category, style, or room.' },
+  { num: '02', title: 'Preview in AR', desc: "Place any piece in your real room using your phone's camera. See exactly how it fits." },
+  { num: '03', title: 'Ask Roomie', desc: 'Get AI-powered styling advice, color matching, and layout recommendations.' },
 ];
 
-const navItems = [
-  { label: 'Home', icon: 'home', href: '#' },
-  { label: 'Browse', icon: 'explore', href: '#collection' },
-  { label: 'Roomie', icon: 'robot_2', href: '#' },
-  { label: 'Cart', icon: 'shopping_cart', href: '#' },
-];
-
-// =============================================================================
 export function HomePage() {
   const [activeCategory, setActiveCategory] = useState('all');
-  const [activeNav, setActiveNav] = useState('Home');
   const navigate = useNavigate();
 
   const categories = ['all', ...new Set(products.map((p) => p.category))];
@@ -123,328 +86,245 @@ export function HomePage() {
     ? products
     : products.filter((p) => p.category === activeCategory);
 
+  const featuredProduct = products.find((p) => p.featured);
+
   return (
-    <div className="bg-[#f7f6f8] text-[#2d2f30] font-['Be_Vietnam_Pro'] min-h-screen">
+    <div className="bg-cream text-charcoal min-h-screen">
 
-      <main className="max-w-screen-xl mx-auto px-6 pt-12 pb-36">
+      {/* ── HERO ── */}
+      <section className="min-h-[90vh] flex items-center overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full py-20 md:py-32">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
-        {/* ── HERO ──────────────────────────────────────────────────────────── */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center mb-32">
-
-          {/* Left copy */}
-          <div className="lg:col-span-7 z-10">
-            <span className="inline-block bg-[#fed01b] text-[#594700] px-4 py-1 rounded-full
-              text-xs font-bold tracking-widest uppercase mb-6">
-              AR-Powered Shopping
-            </span>
-            <h2 className="text-7xl md:text-8xl font-extrabold font-['Plus_Jakarta_Sans']
-              tracking-tighter leading-[0.9] text-[#6448b2] mb-6">
-              Weird.<br />Wonderful.<br />Furniture.
-            </h2>
-            <p className="text-xl md:text-2xl text-[#5b5b5d] max-w-xl mb-10 leading-relaxed">
-              Furniture that sparks conversation. See every piece in your space with
-              augmented reality before you buy.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <a
-                href="#collection"
-                className="bg-[#fed01b] text-[#594700] px-10 py-5 rounded-full font-bold text-lg
-                  shadow-[0px_20px_40px_rgba(254,208,27,0.25)] hover:scale-105 transition-transform"
+            {/* Left — copy */}
+            <div className="order-2 lg:order-1">
+              <p className="text-muted text-[0.8125rem] uppercase tracking-[0.2em] font-semibold mb-8">
+                AR-Powered Furniture Shopping
+              </p>
+              <h1 className="font-serif text-[clamp(3rem,6vw,5.5rem)] font-bold leading-[0.95] tracking-tight mb-8">
+                See It in
+                <br />
+                Your Space
+              </h1>
+              <p className="text-muted text-lg font-light max-w-md mb-12 leading-relaxed">
+                Preview any piece of furniture in your actual room with AR before you buy. Plus AI styling help from Roomie.
+              </p>
+              <Button
+                as="a"
+                href="#shop"
+                variant="black"
+                size="lg"
               >
-                Explore Collection
-              </a>
-              <button className="bg-white text-[#6448b2] px-10 py-5 rounded-full font-bold text-lg
-                shadow-[0px_20px_40px_rgba(45,47,48,0.06)] hover:bg-[#f1f0f3] transition-colors
-                border border-[#adadaf]/20">
-                Try AR Mode
-              </button>
+                Start Shopping
+              </Button>
             </div>
 
-            {/* Inline stats */}
-            <div className="flex gap-10 mt-12">
-              {[
-                { value: `${products.length}`, label: 'Unique Pieces' },
-                { value: 'AR', label: 'Try in Your Room' },
-                { value: 'AI', label: 'Smart Assistant' },
-              ].map((s) => (
-                <div key={s.label}>
-                  <p className="text-3xl font-black font-['Plus_Jakarta_Sans'] text-[#6448b2]">{s.value}</p>
-                  <p className="text-xs uppercase tracking-widest text-[#5b5b5d] mt-1">{s.label}</p>
+            {/* Right — featured image */}
+            <div className="order-1 lg:order-2 relative flex justify-center lg:justify-end">
+              <div className="relative w-full max-w-[480px]">
+                <div className="rounded-3xl overflow-hidden aspect-[3/4] bg-surface shadow-[0_8px_40px_rgba(26,26,26,0.06)]">
+                  <img
+                    className="w-full h-full object-cover"
+                    src={featuredProduct.img}
+                    alt={featuredProduct.name}
+                  />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right visual */}
-          <div className="lg:col-span-5 relative">
-            <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden
-              shadow-[0px_40px_80px_rgba(45,47,48,0.1)] rotate-3 hover:rotate-0 transition-transform duration-500">
-              <img
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-ZlSyzlvP1zaKAVmQV0uD9Gz11RXYzKO_OreqTH3t3h-zMP5KbIjKZSxs4GwSyFhy1uWz82JIqXMylrdDwfrNL5tIdWRfygrFtx4caY13sDVlHEM9Guo9jr4G2DM6zFWoKnhZL7bp3k5RnRQBTkaoU9iiFVcg2TwDQBfHlpSUt4Roj2Au5e94_f8Vs9aJ62NsVE8hzfzdRuuOntjUfDRPASZiU2ybcigeEeUL2aYWRBpqliMYRD8CKNbXxW654ezgNRZ4mMuzMhU"
-                alt="Modern sculptural lounge chair"
-              />
-              <div className="absolute inset-0 bg-[#6448b2]/10 mix-blend-multiply" />
-            </div>
-            {/* Hand-Picked Oddities badge */}
-            <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-[#fed01b] rounded-full
-              flex items-center justify-center p-5 -rotate-12 shadow-xl z-10">
-              <p className="text-[#594700] font-black font-['Plus_Jakarta_Sans'] text-center
-                leading-tight uppercase tracking-tighter text-sm">
-                Hand-Picked Oddities
-              </p>
-            </div>
-            {/* Roomie AI glassmorphism chip */}
-            <div className="absolute -top-6 -right-6 backdrop-blur-xl bg-white/70 p-5
-              rounded-[1rem] shadow-2xl border border-white/40 max-w-[200px]">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-[#6448b2] text-base">robot_2</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#6448b2]">Roomie AI</span>
+                {featuredProduct.badge && (
+                  <span className="absolute top-6 right-6 bg-white text-charcoal text-[0.6875rem] uppercase tracking-[0.1em] font-semibold px-4 py-2 rounded-full shadow-sm">
+                    {featuredProduct.badge}
+                  </span>
+                )}
               </div>
-              <p className="text-sm font-medium leading-snug">
-                "This blob sofa would fit perfectly in your corner."
-              </p>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── STATS ─────────────────────────────────────────────────────────── */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-32">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className={`p-10 rounded-[2rem] flex flex-col items-center text-center
-                ${s.highlight
-                  ? 'bg-[#6448b2] text-[#f7f0ff] shadow-[0px_20px_40px_rgba(100,72,178,0.22)] scale-105 z-10'
-                  : 'bg-white text-[#2d2f30] shadow-[0px_20px_40px_rgba(45,47,48,0.06)]'}`}
+      <Divider variant="diamond" className="max-w-7xl mx-auto px-6" />
+
+      {/* ── SHOP FURNITURE ── */}
+      <Section size="lg" id="shop">
+        <h2 className="font-serif text-[2.5rem] font-bold tracking-tight mb-16">
+          Shop Furniture
+        </h2>
+
+        {/* Filter - pill buttons */}
+        <div className="flex flex-wrap gap-3 mb-16">
+          {categories.map((cat) => (
+            <Button
+              key={cat}
+              variant={activeCategory === cat ? 'black' : 'blush'}
+              size="sm"
+              onClick={() => setActiveCategory(cat)}
             >
-              <span className={`material-symbols-outlined text-5xl mb-4
-                ${s.highlight ? 'text-[#fed01b]' : 'text-[#6448b2]'}`}>
-                {s.icon}
-              </span>
-              <h3 className="text-5xl font-black font-['Plus_Jakarta_Sans'] mb-2">{s.value}</h3>
-              <p className={`font-medium uppercase tracking-widest text-sm
-                ${s.highlight ? 'text-[#f7f0ff]/80' : 'text-[#5b5b5d]'}`}>
-                {s.label}
+              {cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </Button>
+          ))}
+        </div>
+
+        {/* Product grid — circular image cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+          {filtered.map((product) => (
+            <div
+              key={product.id}
+              className="group relative cursor-pointer flex flex-col items-center text-center bg-white rounded-3xl pt-10 pb-8 px-6 shadow-[0_4px_24px_rgba(26,26,26,0.04)] hover:shadow-[0_8px_32px_rgba(26,26,26,0.08)] transition-shadow duration-300"
+              onClick={() => navigate(`/product/${product.id}`)}
+            >
+              {product.badge && (
+                <span className="absolute top-4 right-4 z-10 bg-charcoal text-cream text-[0.625rem] uppercase tracking-[0.1em] font-semibold px-3 py-1 rounded-full shadow-sm">
+                  {product.badge}
+                </span>
+              )}
+
+              <div className="relative mb-8">
+                <div className="w-[220px] h-[220px] md:w-[260px] md:h-[260px] rounded-full overflow-hidden bg-surface shadow-[0_4px_24px_rgba(26,26,26,0.05)] transition-transform duration-500 ease-out group-hover:scale-[1.03]">
+                  <img
+                    className="w-full h-full object-cover"
+                    src={product.img}
+                    alt={product.name}
+                    loading="lazy"
+                  />
+                </div>
+                <span className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 bg-charcoal text-cream text-[0.75rem] font-semibold tracking-wide px-5 py-2 rounded-full shadow-md whitespace-nowrap">
+                  ${product.price.toLocaleString()}
+                </span>
+              </div>
+
+              <h3 className="font-serif text-lg font-semibold mt-8 mb-1 group-hover:text-rose transition-colors duration-300">
+                {product.name}
+              </h3>
+              <p className="text-muted text-sm leading-relaxed max-w-[220px]">
+                {product.description}
               </p>
             </div>
           ))}
-        </section>
+        </div>
+      </Section>
 
-        {/* ── COLLECTION ────────────────────────────────────────────────────── */}
-        <section className="mb-32" id="collection">
-          <div className="flex justify-between items-end mb-8">
-            <div>
-              <span className="bg-[#fed01b] text-[#594700] px-4 py-1 rounded-full
-                text-xs font-bold tracking-widest uppercase mb-3 inline-block">
-                Curated
-              </span>
-              <h2 className="text-5xl font-bold font-['Plus_Jakarta_Sans'] tracking-tight">
-                Our Collection
-              </h2>
-              <p className="text-lg text-[#5b5b5d] mt-2 max-w-xl">
-                Each piece is designed to be{' '}
-                <em className="not-italic font-semibold text-[#6448b2]">delightfully unexpected</em>,
-                blending whimsical geometry with everyday function.
+      <Divider className="max-w-7xl mx-auto" />
+
+      {/* ── HOW IT WORKS ── */}
+      <Section size="lg">
+        <h2 className="font-serif text-[2.5rem] font-bold tracking-tight text-center mb-24">
+          How It Works
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-12 max-w-4xl mx-auto">
+          {steps.map((step) => (
+            <Card key={step.num} variant="surface" className="text-center">
+              <p className="font-serif text-5xl font-bold text-blush mb-6">
+                {step.num}
               </p>
-            </div>
-            <button className="hidden md:flex items-center gap-2 text-[#6448b2] font-bold hover:gap-4 transition-all">
-              View All <span className="material-symbols-outlined">arrow_forward</span>
-            </button>
-          </div>
+              <h3 className="font-serif text-xl font-semibold mb-3">
+                {step.title}
+              </h3>
+              <p className="text-muted text-sm leading-relaxed">
+                {step.desc}
+              </p>
+            </Card>
+          ))}
+        </div>
+      </Section>
 
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3 mb-10 items-center">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-7 py-3 rounded-full font-medium text-sm transition-all
-                  ${activeCategory === cat
-                    ? 'bg-[#6448b2] text-[#f7f0ff] shadow-lg shadow-[#6448b2]/20 scale-105'
-                    : 'bg-[#f1f0f3] text-[#5b5b5d] hover:bg-[#e2e2e5]'}`}
-              >
-                {cat === 'all'
-                  ? 'All'
-                  : `${categoryIcons[cat] || ''} ${cat.charAt(0).toUpperCase() + cat.slice(1)}`}
-              </button>
-            ))}
-            <div className="ml-auto flex items-center gap-2 text-[#5b5b5d] text-sm
-              uppercase tracking-widest bg-white px-4 py-2 rounded-full cursor-pointer
-              hover:bg-[#f1f0f3] transition-colors">
-              <span>Filter by</span>
-              <span className="material-symbols-outlined text-base">tune</span>
-            </div>
-          </div>
+      <Divider variant="diamond" className="max-w-3xl mx-auto" />
 
-          {/* Bento grid */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            {filtered.map((product) => {
-              const isWide = product.featured;
-              return (
-                <div
-                  key={product.id}
-                  className={`group cursor-pointer ${isWide ? 'md:col-span-8' : 'md:col-span-4'}`}
-                  onClick={() => navigate(`/product/${product.id}`)}
-                >
-                  <div className={`relative overflow-hidden rounded-[2rem]
-                    bg-gradient-to-br from-white to-[#ab8ffe]/10
-                    ${isWide ? 'aspect-[16/9]' : 'aspect-square'}`}>
-                    <img
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      src={product.img}
-                      alt={product.name}
-                    />
-                    {product.badge && (
-                      <div className="absolute top-4 left-4">
-                        <span className="bg-[#fed01b] text-[#594700] px-4 py-1 rounded-full
-                          font-bold text-[10px] tracking-widest uppercase">
-                          {product.badge}
-                        </span>
-                      </div>
-                    )}
-                    {!isWide && (
-                      <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-md p-2
-                        rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="material-symbols-outlined text-[#6448b2] text-base">favorite</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-[#6448b2]/5 opacity-0
-                      group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="bg-white/90 backdrop-blur-md px-8 py-3 rounded-full
-                        font-bold text-[#6448b2] shadow-xl text-sm">
-                        View in 3D
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`mt-5 flex justify-between
-                    ${isWide ? 'items-end' : 'items-start flex-col gap-1'}`}>
-                    <div>
-                      <h3 className={`font-bold font-['Plus_Jakarta_Sans'] mb-1
-                        ${isWide ? 'text-3xl' : 'text-2xl'}`}>
-                        {product.name}
-                      </h3>
-                      <p className="text-[#5b5b5d]">{product.description}</p>
-                      {product.variants?.length > 0 && (
-                        <div className="flex gap-1 mt-2">
-                          {product.variants.slice(0, 3).map((v, i) => (
-                            <span
-                              key={i}
-                              className="w-4 h-4 rounded-full border border-[#adadaf]/40 inline-block"
-                              style={{ backgroundColor: v.color }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <p className={`font-black font-['Plus_Jakarta_Sans'] text-[#6448b2]
-                      ${isWide ? 'text-2xl' : 'text-xl mt-2'}`}>
-                      ${product.price.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── HOW IT WORKS ──────────────────────────────────────────────────── */}
-        <section className="mb-32">
-          <div className="text-center mb-14">
-            <span className="bg-[#65fde6] text-[#004a41] px-4 py-1 rounded-full
-              text-xs font-bold tracking-widest uppercase mb-4 inline-block">
-              Simple Process
-            </span>
-            <h2 className="text-5xl font-bold font-['Plus_Jakarta_Sans'] tracking-tight">
-              How It Works
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-            {steps.map((step, idx) => (
-              <React.Fragment key={step.num}>
-                <div className="bg-white rounded-[2rem] p-8 text-center
-                  shadow-[0px_20px_40px_rgba(45,47,48,0.06)] flex flex-col items-center">
-                  <div className="w-14 h-14 rounded-full bg-[#6448b2] text-[#f7f0ff]
-                    font-black font-['Plus_Jakarta_Sans'] text-2xl flex items-center justify-center
-                    mb-5 shadow-lg shadow-[#6448b2]/20">
-                    {step.num}
-                  </div>
-                  <h3 className="text-xl font-bold font-['Plus_Jakarta_Sans'] mb-2">{step.title}</h3>
-                  <p className="text-[#5b5b5d] text-sm leading-relaxed">{step.desc}</p>
-                </div>
-                {idx < steps.length - 1 && (
-                  <div className="hidden md:flex justify-center text-[#6448b2] text-3xl font-black">→</div>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        </section>
-
-        {/* ── NEWSLETTER ────────────────────────────────────────────────────── */}
-        <section className="bg-[#f1f0f3] rounded-[2rem] p-12 md:p-24 flex flex-col
-          items-center text-center overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-64 h-64 bg-[#ab8ffe]/20 rounded-full
-            blur-[100px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#fed01b]/10 rounded-full
-            blur-[120px] translate-x-1/3 translate-y-1/3 pointer-events-none" />
-          <h2 className="text-5xl md:text-6xl font-bold font-['Plus_Jakarta_Sans']
-            mb-6 relative z-10 tracking-tight">
-            Join Our Creative Circle
-          </h2>
-          <p className="text-lg md:text-xl text-[#5b5b5d] max-w-2xl mb-10 relative z-10 leading-relaxed">
-            Discover unique furniture pieces designed to elevate your space, 
-            with early access to our latest collections and smart styling inspiration.
+      {/* ── QUOTE ── */}
+      <Section size="md" maxWidth="3xl">
+        <blockquote className="text-center">
+          <p className="font-serif text-[clamp(1.5rem,3vw,2.5rem)] font-bold tracking-tight leading-[1.4] italic text-charcoal/80">
+            Try it in your room before you commit.
+            That's the ARoom difference.
           </p>
-          <div className="w-full max-w-md flex bg-white p-2 rounded-full shadow-lg relative z-10">
+        </blockquote>
+      </Section>
+
+      {/* ── NEWSLETTER ── */}
+      <section className="bg-charcoal w-full">
+        <div className="max-w-xl mx-auto px-6 py-20 md:py-28 text-center">
+          <h2 className="font-serif text-cream text-[2.5rem] font-bold tracking-tight mb-4">
+            Stay in touch
+          </h2>
+          <p className="text-cream/50 text-sm mb-12">
+            New arrivals, AR features, and exclusive drops — straight to your inbox.
+          </p>
+
+          <div className="flex max-w-md mx-auto">
             <input
-              className="bg-transparent border-none focus:ring-0 px-6 py-4 flex-grow
-                font-medium outline-none placeholder:text-[#767779] text-sm"
-              placeholder="Your weird email address…"
+              className="flex-1 bg-transparent border-b border-cream/20 px-0 py-4 text-cream text-sm
+                placeholder:text-cream/25 focus:border-rose focus:ring-0 outline-none transition-colors duration-300"
+              placeholder="your@email.com"
               type="email"
             />
-            <button className="bg-[#6448b2] text-[#f7f0ff] px-8 py-3 rounded-full font-bold
-              text-sm hover:bg-[#583ba5] transition-colors">
-              Join
-            </button>
+            <Button variant="outline" size="sm" className="ml-6 border-cream/40 text-cream/80 hover:bg-cream hover:text-charcoal hover:border-cream flex-shrink-0">
+              Subscribe
+            </Button>
           </div>
-        </section>
+        </div>
+      </section>
 
-      </main>
+      {/* ── FOOTER ── */}
+      <footer className="bg-cream">
+        <Divider className="max-w-7xl mx-auto" />
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-16 mb-16">
+            <div>
+              <h3 className="font-serif text-2xl font-bold mb-4 text-charcoal">
+                ARoom
+              </h3>
+              <p className="text-muted text-sm leading-[1.8] max-w-xs">
+                AR-powered furniture shopping. Preview any piece in your real room
+                before you buy, with AI styling help from Roomie.
+              </p>
+            </div>
 
-      {/* ── FOOTER ────────────────────────────────────────────────────────── */}
-      <footer className="max-w-screen-xl mx-auto px-6 py-6 text-center text-[#5b5b5d] text-sm mb-20 md:mb-4">
-        <p>ARoom — Weird Wonderful Furniture, Seen in Your Space</p>
+            <div>
+              <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.1em] text-charcoal mb-5">Navigate</p>
+              <div className="flex flex-col gap-3">
+                {[
+                  { label: 'Shop', href: '/furniture' },
+                  { label: 'How It Works', href: '/aboutus' },
+                  { label: 'Contact', href: '/contactus' },
+                ].map((link) => (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    className="text-sm text-muted font-light hover:text-charcoal transition-colors duration-300 w-fit"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.1em] text-charcoal mb-5">Contact</p>
+              <div className="flex flex-col gap-3 text-sm text-muted font-light">
+                <span>hello@aroom.com</span>
+                <span>+1 (555) 123-4567</span>
+                <span>Mon - Fri, 9am - 6pm</span>
+              </div>
+            </div>
+          </div>
+
+          <Divider className="mb-8" />
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-muted/50 text-sm font-light">
+              &copy; 2024 ARoom
+            </p>
+            <div className="flex gap-6">
+              {['Privacy', 'Terms'].map((link) => (
+                <a
+                  key={link}
+                  href="#"
+                  className="text-muted/40 text-sm font-light hover:text-charcoal transition-colors duration-300"
+                >
+                  {link}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
       </footer>
-
-      {/* ── BOTTOM NAV — mobile only ───────────────────────────────────────── */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center
-          px-4 py-3 bg-white/80 backdrop-blur-xl rounded-t-[3rem]
-          shadow-[0px_-20px_40px_rgba(45,47,48,0.06)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        {navItems.map((item) => {
-          const active = activeNav === item.label;
-          return (
-            <a
-              key={item.label}
-              href={item.href}
-              onClick={() => setActiveNav(item.label)}
-              className={`flex flex-col items-center justify-center px-5 py-2 rounded-full transition-all
-                ${active
-                  ? 'bg-violet-100 text-violet-700 scale-105'
-                  : 'text-gray-400 hover:text-violet-500'}`}
-            >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="font-medium text-[11px] tracking-wide uppercase mt-0.5">
-                {item.label}
-              </span>
-            </a>
-          );
-        })}
-      </nav>
-
     </div>
   );
 }
