@@ -1,12 +1,4 @@
-/**
- * JournalPage.jsx - Blog / Journal Page
- * ========================================
- * Displays blog posts about furniture, AR technology, and design trends.
- * Currently uses hardcoded posts — in the future, these could come from a CMS or API.
- */
-
 export function JournalPage() {
-  // Static blog post data (title, excerpt, date)
   const posts = [
     {
       id: 1,
@@ -16,30 +8,52 @@ export function JournalPage() {
     },
     {
       id: 2,
-      title: "Top 5 Furniture Trends for 2026",
-      excerpt: "From biophilic design to curved silhouettes, explore the trends shaping modern interiors this year.",
+      title: "How AR Is Changing Furniture Returns",
+      excerpt: "When you can see exactly how a piece fits in your room before buying, return rates drop dramatically.",
       date: "2026-03-15",
     },
     {
       id: 3,
       title: "Designing Your Perfect Living Room",
-      excerpt: "Tips and tricks from our design team on creating a cohesive, comfortable living space.",
+      excerpt: "Tips and guidance from our curators on creating a cohesive, comfortable living space with character.",
       date: "2026-03-01",
     },
   ];
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Journal</h1>
+    <div className="min-h-screen bg-cream text-text">
+      <div className="max-w-3xl mx-auto px-6 pt-36 pb-32">
 
-      <div className="space-y-6">
-        {posts.map((post) => (
-          <article key={post.id} className="bg-white shadow rounded-lg p-6">
-            <p className="text-sm text-gray-400 mb-1">{new Date(post.date).toLocaleDateString()}</p>
-            <h2 className="text-xl font-semibold mb-2">{post.title}</h2>
-            <p className="text-gray-600">{post.excerpt}</p>
-          </article>
-        ))}
+        <p className="text-[0.8125rem] uppercase tracking-[0.2em] font-semibold text-muted mb-4">Stories</p>
+        <h1 className="font-serif text-5xl md:text-7xl font-bold text-primary tracking-tight mb-5">
+          Journal
+        </h1>
+        <p className="text-muted text-lg max-w-xl leading-relaxed mb-20">
+          Reflections on design, craftsmanship, and the art of creating spaces that tell your story.
+        </p>
+
+        <div className="space-y-0">
+          {posts.map((post, idx) => (
+            <article key={post.id}
+              className="py-12 border-b border-surface group cursor-pointer">
+
+              <p className="text-xs text-muted mb-4">
+                {new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+
+              <h2 className="font-serif text-3xl font-bold leading-[1.2] mb-4
+                group-hover:text-accent2 transition-colors duration-300">
+                {post.title}
+              </h2>
+
+              <p className="text-muted leading-[1.8] text-[15px] mb-5 max-w-2xl">{post.excerpt}</p>
+
+              <span className="text-primary text-sm font-semibold hover:text-accent2 transition-colors duration-300">
+                Read more &rarr;
+              </span>
+            </article>
+          ))}
+        </div>
       </div>
     </div>
   );

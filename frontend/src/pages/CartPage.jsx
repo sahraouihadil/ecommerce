@@ -1,19 +1,3 @@
-/**
- * CartPage.jsx - Shopping Cart Page
- * ====================================
- * Displays the user's shopping cart with:
- *   - List of items (product name, price, quantity controls)
- *   - Remove button for each item
- *   - Total price calculation
- *   - "Proceed to Checkout" button
- *
- * API ENDPOINTS USED:
- *   GET    /api/cart          - Fetch all cart items
- *   PUT    /api/cart/:itemId  - Update item quantity
- *   DELETE /api/cart/:itemId  - Remove item from cart
- *
- * NOTE: Requires authentication. Redirects to /login if not logged in.
- */
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
@@ -56,245 +40,146 @@ export function CartPage() {
   };
 
   const subtotal = items.reduce((sum, i) => sum + (i.product?.price || 0) * i.quantity, 0);
+  const shipping = 0;
   const taxes = subtotal * 0.08;
   const total = subtotal + taxes;
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-surface font-body">
-      <div className="flex flex-col items-center gap-4 text-on-surface-variant">
-        <span
-          className="material-symbols-outlined text-5xl text-primary animate-bounce-short"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-        >
-          shopping_cart
-        </span>
-        <p className="font-label font-medium text-lg">Loading cart...</p>
+    <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-accent2 border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted text-sm">Loading cart...</p>
       </div>
     </div>
   );
 
   return (
-    <div className="bg-surface font-body text-on-surface min-h-screen">
+    <div className="bg-cream text-text min-h-screen">
+      <main className="max-w-7xl mx-auto px-6 pt-36 pb-32">
 
-      {/* ── Top Navigation ── */}
-      <header className="flex justify-between items-center px-6 py-4 w-full sticky top-0 z-50 bg-surface rounded-b-xl shadow-[0px_20px_40px_rgba(45,47,48,0.06)]">
-        <div className="flex items-center gap-4">
-          <button className="scale-95 active:scale-90 transition-transform duration-200 hover:bg-surface-container-high p-2 rounded-full">
-            <span className="material-symbols-outlined text-primary">menu</span>
-          </button>
-          <h1 className="text-2xl font-black text-primary tracking-tighter italic font-headline">ARoomX</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="scale-95 active:scale-90 transition-transform duration-200 hover:bg-surface-container-high p-2 rounded-full">
-            <span className="material-symbols-outlined text-primary">search</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-6 pt-8 pb-32">
-
-        {/* ── Editorial Header ── */}
-        <div className="mb-12">
-          <p className="font-label text-secondary tracking-widest text-xs font-bold uppercase mb-2">
-            Review Your Finds
-          </p>
-          <h2 className="font-headline font-bold text-5xl text-on-surface tracking-tight">
-            Your Cart{" "}
-            <span className="text-primary-fixed italic font-black">Ready for Magic?</span>
-          </h2>
+        <div className="mb-16">
+          <p className="text-[0.8125rem] uppercase tracking-[0.2em] font-semibold text-muted mb-4">Shopping</p>
+          <h1 className="font-serif font-bold text-5xl tracking-tight">
+            Cart
+          </h1>
+          {items.length > 0 && (
+            <p className="text-muted text-sm mt-3">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+          )}
         </div>
 
-        {/* ── Empty State ── */}
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <span
-              className="material-symbols-outlined text-8xl text-primary-container mb-6"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              shopping_cart
-            </span>
-            <h3 className="font-headline font-bold text-3xl text-on-surface mb-3">Your cart is empty</h3>
-            <p className="text-on-surface-variant text-lg mb-8 max-w-sm">
-              Discover pieces that speak to you and add them here.
-            </p>
-            <Link
-              to="/furniture"
-              className="px-10 py-4 bg-primary text-on-primary rounded-full font-semibold text-lg hover:bg-primary-dim transition-colors"
-            >
-              Browse Furniture
+          <div className="text-center py-24">
+            <span className="material-symbols-outlined text-[48px] text-accent2/50 mb-4 block">shopping_bag</span>
+            <p className="text-muted text-lg mb-6">Your cart is empty.</p>
+            <Link to="/furniture" className="btn-pill btn-pill-black">
+              Browse the Collection
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
 
-            {/* ── Cart Items ── */}
-            <div className="lg:col-span-8 space-y-6">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-surface-container-lowest rounded-xl p-6 flex flex-col md:flex-row gap-6 items-center shadow-[0px_20px_40px_rgba(45,47,48,0.06)] relative overflow-hidden group transition-all"
-                >
-                  {/* Product image */}
-                  <div className="w-full md:w-48 h-48 bg-surface-container-low rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                    {item.product?.image ? (
-                      <img
-                        src={item.product.image}
-                        alt={item.product?.name}
-                        className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <span className="material-symbols-outlined text-6xl text-primary-container">chair</span>
-                    )}
-                  </div>
+            {/* Cart Items */}
+            <div className="lg:col-span-8 space-y-0">
+              <div className="border-t border-surface">
+                {items.map((item) => (
+                  <div key={item.id}
+                    className="flex items-center gap-6 py-8 border-b border-surface">
 
-                  {/* Details */}
-                  <div className="flex-1 flex flex-col justify-between h-full w-full">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-headline font-bold text-2xl text-on-surface">
-                          {item.product?.name || "Product"}
-                        </h3>
-                        <p className="text-on-surface-variant text-sm mt-1">
-                          {item.product?.variant ?? ""}
-                        </p>
-                      </div>
-                      <p className="font-headline font-bold text-2xl text-primary whitespace-nowrap">
-                        {item.product?.price} DA
-                      </p>
+                    {/* Image */}
+                    <div className="w-24 h-24 bg-surface rounded-lg flex-shrink-0 overflow-hidden">
+                      {item.product?.image ? (
+                        <img src={item.product.image} alt={item.product?.name}
+                          className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[24px] text-muted/20">image</span>
+                        </div>
+                      )}
                     </div>
-                    {/* Qty controls + Remove */}
-                    <div className="mt-8 flex justify-between items-center">
-                      <div className="flex items-center bg-surface-container-high rounded-full px-4 py-2 gap-4">
-                        <button
-                          onClick={() => updateQty(item.id, item.quantity - 1)}
-                          className="text-primary hover:scale-125 transition-transform"
-                          aria-label="Decrease quantity"
-                        >
-                          <span className="material-symbols-outlined text-lg">remove</span>
-                        </button>
-                        <span className="font-headline font-bold w-6 text-center">
-                          {String(item.quantity).padStart(2, "0")}
-                        </span>
-                        <button
-                          onClick={() => updateQty(item.id, item.quantity + 1)}
-                          className="text-primary hover:scale-125 transition-transform"
-                          aria-label="Increase quantity"
-                        >
-                          <span className="material-symbols-outlined text-lg">add</span>
-                        </button>
-                      </div>
+
+                    {/* Name + Category */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-serif font-semibold text-base">
+                        {item.product?.name || "Product"}
+                      </h3>
+                      {item.product?.category && (
+                        <p className="text-muted text-xs mt-1">{item.product.category}</p>
+                      )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="flex items-center gap-0 border border-surface rounded-full">
                       <button
-                        onClick={() => removeItem(item.id)}
-                        className="text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
-                        aria-label="Remove item"
+                        onClick={() => updateQty(item.id, item.quantity - 1)}
+                        className="w-9 h-9 flex items-center justify-center text-muted hover:text-primary transition-colors text-lg"
                       >
-                        <span className="material-symbols-outlined">delete</span>
-                        <span className="font-label text-xs font-bold uppercase tracking-wider">Remove</span>
+                        &minus;
+                      </button>
+                      <span className="text-sm font-semibold w-8 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQty(item.id, item.quantity + 1)}
+                        className="w-9 h-9 flex items-center justify-center text-muted hover:text-primary transition-colors text-lg"
+                      >
+                        +
                       </button>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* ── Summary Panel ── */}
-            <div className="lg:col-span-4 sticky top-32">
-              <div className="bg-surface-container-low rounded-xl p-8 shadow-inner">
-                <h3 className="font-headline font-bold text-2xl mb-8">Summary</h3>
+                    {/* Price */}
+                    <p className="font-serif font-semibold text-primary text-lg w-28 text-right">
+                      {item.product?.price} DA
+                    </p>
 
-                <div className="space-y-4 mb-8">
-                  <div className="flex justify-between text-on-surface-variant">
-                    <span>Subtotal</span>
-                    <span className="font-headline font-bold text-on-surface">
-                      {subtotal.toFixed(2)} DA
-                    </span>
+                    {/* Remove */}
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className="text-muted hover:text-danger transition-colors"
+                      aria-label="Remove item"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
                   </div>
-                  <div className="flex justify-between text-on-surface-variant">
-                    <span>Magic Shipping</span>
-                    <span className="font-headline font-bold text-tertiary">FREE</span>
-                  </div>
-                  <div className="flex justify-between text-on-surface-variant">
-                    <span>Taxes (8%)</span>
-                    <span className="font-headline font-bold text-on-surface">
-                      {taxes.toFixed(2)} DA
-                    </span>
-                  </div>
-                  <div className="pt-4 border-t border-outline-variant/15 flex justify-between items-baseline">
-                    <span className="font-headline font-bold text-xl">Total</span>
-                    <span className="font-headline font-bold text-3xl text-primary">
-                      {total.toFixed(2)} DA
-                    </span>
-                  </div>
-                </div>
-
-                {/* Checkout CTA */}
-                <Link
-                  to="/checkout"
-                  className="w-full bg-primary text-on-primary rounded-full py-6 font-headline font-extrabold text-lg flex items-center justify-center gap-3 hover:bg-primary-dim hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20 group"
-                >
-                  Continue to Magic Checkout
-                  <span className="material-symbols-outlined group-hover:translate-x-2 transition-transform">
-                    magic_button
-                  </span>
-                </Link>{/* Trust badges */}
-                <div className="mt-6 flex flex-col gap-3">
-                  <div className="flex items-center gap-3 p-3 bg-surface-container-lowest rounded-lg">
-                    <span className="material-symbols-outlined text-tertiary">verified_user</span>
-                    <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                      30-Day Bliss Guarantee
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-surface-container-lowest rounded-lg">
-                    <span className="material-symbols-outlined text-secondary">local_shipping</span>
-                    <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                      Eco-Neutral Delivery
-                    </span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
+            {/* Summary */}
+            <div className="lg:col-span-4 lg:sticky lg:top-28">
+              <div className="bg-surface rounded-xl p-8">
+                <h3 className="font-serif font-bold text-xl mb-8">
+                  Order Summary
+                </h3>
+
+                <div className="space-y-4 mb-8">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">Subtotal</span>
+                    <span>{subtotal.toFixed(2)} DA</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">Shipping</span>
+                    <span className="text-success text-xs uppercase tracking-wide font-semibold">Free</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">Taxes (8%)</span>
+                    <span>{taxes.toFixed(2)} DA</span>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-accent/40 flex justify-between items-baseline mb-8">
+                  <span className="font-serif font-bold text-lg">Total</span>
+                  <span className="font-serif font-bold text-2xl text-primary">
+                    {total.toFixed(2)} DA
+                  </span>
+                </div>
+
+                <Link to="/checkout"
+                  className="btn-pill btn-pill-black w-full text-center">
+                  Proceed to Checkout
+                </Link>
+              </div>
+            </div>
           </div>
         )}
       </main>
-
-      {/* ── Bottom Navigation ── */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-white/80 backdrop-blur-xl rounded-t-xl border-none shadow-[0px_-10px_40px_rgba(45,47,48,0.08)]">
-        <Link
-          to="/"
-          className="flex flex-col items-center justify-center text-outline-variant px-4 py-2 hover:text-primary transition-all"
-        >
-          <span className="material-symbols-outlined">home</span>
-          <span className="font-label font-medium text-[10px] uppercase tracking-widest">Home</span>
-        </Link>
-        <Link
-          to="/furniture"
-          className="flex flex-col items-center justify-center text-outline-variant px-4 py-2 hover:text-primary transition-all"
-        >
-          <span className="material-symbols-outlined">explore</span>
-          <span className="font-label font-medium text-[10px] uppercase tracking-widest">Browse</span>
-        </Link>
-        <Link
-          to="/roomie"
-          className="flex flex-col items-center justify-center text-outline-variant px-4 py-2 hover:text-primary transition-all"
-        >
-          <span className="material-symbols-outlined">smart_toy</span>
-          <span className="font-label font-medium text-[10px] uppercase tracking-widest">Roomie</span>
-        </Link>
-        {/* Active — Cart */}
-        <Link
-          to="/cart"
-          className="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-6 py-2 scale-105 shadow-lg animate-bounce-short"
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            shopping_cart
-          </span>
-          <span className="font-label font-medium text-[10px] uppercase tracking-widest">Cart</span>
-        </Link>
-      </nav>
     </div>
   );
 }

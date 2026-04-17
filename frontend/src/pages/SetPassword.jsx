@@ -1,9 +1,5 @@
-/* SetPassword.jsx - Styled ARoomX Version
- * ======================================
- */
-
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 
 export function SetPassword() {
@@ -19,17 +15,18 @@ export function SetPassword() {
 
   const userName = location.state?.userName;
 
-  // If no user → block access
   if (!userName) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
-        <p className="text-red-500 text-center">
-          No user found. Please{" "}
-          <a href="/register" className="underline font-bold">
-            register again
-          </a>
-          .
-        </p>
+      <div className="min-h-screen bg-cream flex items-center justify-center px-6">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-[48px] text-rose/50 mb-4 block">error</span>
+          <p className="text-muted text-lg mb-4">
+            No user found. Please{" "}
+            <Link to="/register" className="text-charcoal font-semibold underline underline-offset-4 hover:text-rose transition-colors">
+              register again
+            </Link>.
+          </p>
+        </div>
       </div>
     );
   }
@@ -68,97 +65,93 @@ export function SetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-6 py-10 font-body">
-      <div className="grid grid-cols-1 lg:grid-cols-2 max-w-6xl w-full gap-12 items-center">
+    <div className="min-h-dvh bg-cream flex items-center justify-center px-6 py-16">
+      <div className="w-full max-w-[440px]">
 
-        {/* LEFT SIDE */}
-        <div className="space-y-6">
-          <span className="px-4 py-1 text-xs font-bold uppercase tracking-widest bg-secondary-container text-on-secondary-fixed rounded-full">
-            Security First
-          </span>
-
-          <h1 className="text-5xl font-headline font-extrabold text-on-surface leading-tight">
+        <div className="text-center mb-12">
+          <Link to="/" className="font-serif text-2xl font-bold text-charcoal">ARoom</Link>
+          <h1 className="font-serif font-bold text-4xl tracking-tight mt-8 mb-3">
             Set Password
           </h1>
-
-          <p className="text-lg text-on-surface-variant">
-            Define your magic word. Make it strong enough to protect your account.
+          <p className="text-muted text-sm">
+            Choose a strong password to secure your account.
           </p>
+        </div>
 
-          {/* Message */}
+        <div className="bg-surface rounded-xl p-10 space-y-6">
+
+          <div>
+            <label className="text-[0.6875rem] text-muted uppercase tracking-[0.1em] font-semibold block mb-2">
+              New Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPass ? "text" : "password"}
+                placeholder="Enter password"
+                value={password}
+                className="w-full h-14 px-4 pr-12 bg-cream border-b border-muted/20 rounded-t-lg
+                  text-sm focus:outline-none focus:border-charcoal transition-colors"
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {showPass ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[0.6875rem] text-muted uppercase tracking-[0.1em] font-semibold block mb-2">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirm ? "text" : "password"}
+                placeholder="Confirm password"
+                value={confirmPassword}
+                className="w-full h-14 px-4 pr-12 bg-cream border-b border-muted/20 rounded-t-lg
+                  text-sm focus:outline-none focus:border-charcoal transition-colors"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {showConfirm ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+            </div>
+          </div>
+
           {message && (
-            <div className="p-3 rounded-lg bg-surface-container-low text-sm text-on-surface">
+            <div className={`p-3 rounded-xl text-sm font-medium text-center ${
+              message.includes("match") || message.includes("short") || message.includes("Error")
+                ? 'bg-danger/10 text-danger'
+                : 'bg-success/10 text-success'
+            }`}>
               {message}
             </div>
           )}
-        </div>
 
-        {/* RIGHT SIDE CARD */}
-        <div className="relative">
-          <div className="absolute -inset-1 bg-primary/10 rounded-2xl blur-xl"></div>
+          <button
+            onClick={handleSetPassword}
+            disabled={loading}
+            className="btn-pill btn-pill-black w-full
+              disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? "Saving..." : "Set Password"}
+          </button>
 
-          <div className="relative bg-surface-container-lowest p-8 rounded-2xl shadow-lg space-y-6">
-
-            {/* Password */}
-            <div>
-              <label className="text-sm font-bold ml-2">
-                New Password
-              </label>
-
-              <div className="relative mt-2">
-                <input
-                  type={showPass ? "text" : "password"}
-                  placeholder="••••••••••"
-                  className="w-full h-14 px-5 rounded-full bg-surface-container-low focus:ring-2 focus:ring-primary outline-none"
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
-                >
-                  {showPass ? "🙈" : "👁"}
-                </button>
-              </div>
-            </div>
-            {/* Confirm */}
-            <div>
-              <label className="text-sm font-bold ml-2">
-                Confirm Password
-              </label><div className="relative mt-2">
-                <input
-                  type={showConfirm ? "text" : "password"}
-                  placeholder="••••••••••"
-                  className="w-full h-14 px-5 rounded-full bg-surface-container-low focus:ring-2 focus:ring-primary outline-none"
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
-                >
-                  {showConfirm ? "🙈" : "👁"}
-                </button>
-              </div>
-            </div>
-
-            {/* Button */}
-            <button
-              onClick={handleSetPassword}
-              disabled={loading}
-              className="w-full h-14 rounded-full bg-[#583ba5] text-white text-on-primary font-bold text-lg hover:shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
-            >
-              {loading ? "Saving..." : "Secure My Account"}
-              <span>🔑</span>
-            </button>
-
-            {/* small hint */}
-            <p className="text-xs text-on-surface-variant text-center">
-              Use a strong mix of letters, numbers & symbols.
-            </p>
-          </div>
+          <p className="text-[0.75rem] text-muted text-center">
+            Use a strong mix of letters, numbers & symbols.
+          </p>
         </div>
       </div>
     </div>
