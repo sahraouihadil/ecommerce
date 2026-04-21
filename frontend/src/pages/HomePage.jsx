@@ -261,72 +261,8 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="bg-cream">
-        <Divider className="max-w-7xl mx-auto" />
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16 mb-16">
-            <div>
-              <h3 className="font-serif text-2xl font-bold mb-4 text-charcoal">
-                ARoom
-              </h3>
-              <p className="text-muted text-sm leading-[1.8] max-w-xs">
-                AR-powered furniture shopping. Preview any piece in your real room
-                before you buy, with AI styling help from Roomie.
-              </p>
-            </div>
-
-            <div>
-              <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.1em] text-charcoal mb-5">Navigate</p>
-              <div className="flex flex-col gap-3">
-                {[
-                  { label: 'Shop', href: '/furniture' },
-                  { label: 'How It Works', href: '/aboutus' },
-                  { label: 'Contact', href: '/contactus' },
-                ].map((link) => (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    className="text-sm text-muted font-light hover:text-charcoal transition-colors duration-300 w-fit"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.1em] text-charcoal mb-5">Contact</p>
-              <div className="flex flex-col gap-3 text-sm text-muted font-light">
-                <span>hello@aroom.com</span>
-                <span>+1 (555) 123-4567</span>
-                <span>Mon - Fri, 9am - 6pm</span>
-              </div>
-            </div>
-          </div>
-
-          <Divider className="mb-8" />
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-muted/50 text-sm font-light">
-              &copy; 2024 ARoom
-            </p>
-            <div className="flex gap-6">
-              {['Privacy', 'Terms'].map((link) => (
-                <a
-                  key={link}
-                  href="#"
-                  className="text-muted/40 text-sm font-light hover:text-charcoal transition-colors duration-300"
-                >
-                  {link}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
-    
+
   );
 }
 
