@@ -201,7 +201,7 @@ export function ProfilePage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 pt-24">
+      <main className="max-w-5xl mx-auto px-6 pt-36">
 
         {/* HEADER PROFILE ROW */}
         <div className="flex items-center gap-8 mb-10">
@@ -395,7 +395,7 @@ export function ProfilePage() {
                         <p className="text-xs text-[#bbb] mt-0.5">{order.date} · {order.price}</p>
                         {orderPts !== null && (
                           <p className="text-[10px] mt-0.5" style={{ color: "#16A34A", fontWeight: "700" }}>
-                            +{orderPts} pts collected
+                            +{orderPts} pts gagnés
                           </p>
                         )}
                       </div>
