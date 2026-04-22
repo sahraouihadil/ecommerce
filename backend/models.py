@@ -44,45 +44,57 @@ class Users(Base):
     is_verified = Column(Boolean, default=False)     # True after email verification
     created_at = Column(DateTime, default=datetime.utcnow) 
 
+
 class Products(Base):
-    """
-    Products table - furniture items with 3D support + variants
-    """
     __tablename__ = "products"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, nullable=False)
+    id          = Column(Integer, primary_key=True, index=True)
+    name        = Column(String, index=True, nullable=False)
     description = Column(String)
-    price = Column(Float, nullable=False)
-    quantity = Column(Integer, default=0)
+    price       = Column(Float, nullable=False)
+    quantity    = Column(Integer, default=0)
+    min_stock   = Column(Integer, default=10)
+    sku         = Column(String, unique=True, index=True)
+    category    = Column(String, index=True)
+    badge       = Column(String)
+    model_src   = Column(String)
+    model_3d    = Column(String)
+    ios_src     = Column(String)
+    able_3d     = Column(Boolean, default=False)
+    able_ar     = Column(Boolean, default=False)
+    is_active   = Column(Boolean, default=True)
+    created_at  = Column(DateTime, default=datetime.utcnow)
 
-    image_url = Column(String)
-    category = Column(String)
-
-    badge = Column(String)  
-    
-    # 3D MODEL
-    model_src = Column(String)   # GLB (web)
-    ios_src = Column(String)     # USDZ (iOS)
-    
-    able_ar = Column(Boolean,default=False)
-    able_3d = Column(Boolean,default=False)
+    # ── relationships ──────────────────────────────────────────────────────────
+    colors = relationship("ProductColor", back_populates="product",
+                          cascade="all, delete-orphan")
+    images = relationship("ProductImage",  back_populates="product",
+                          cascade="all, delete-orphan",
+                          order_by="ProductImage.order")
 
 
+class ProductColor(Base):
+    __tablename__ = "product_colors"
 
-    
-    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete")
+    id         = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"),
+                        nullable=False, index=True)
+    color      = Column(String, nullable=False)
 
-class ProductVariant(Base):
-    __tablename__ = "product_variants"
+    product = relationship("Products", back_populates="colors")
 
-    id = Column(Integer, primary_key=True, index=True)
 
-    product_id = Column(Integer, ForeignKey("products.id"))
-    name = Column(String)
-    color = Column(String)
+class ProductImage(Base):
+    __tablename__ = "product_images"
 
-    product = relationship("Products", back_populates="variants")
+    id         = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"),
+                        nullable=False, index=True)
+    image_url  = Column(String, nullable=False)
+    order      = Column(Integer, default=0)   # 0 = primary / cover image
+
+    product = relationship("Products", back_populates="images")
+
 
 class Orders(Base):
     """
@@ -151,5 +163,82 @@ class Complaints(Base):
     date = Column(DateTime, default=datetime.utcnow)      # When filed
     type_c = Column(String)                               # Complaint type/category
     priority = Column(String)                             # "HIGH", "MEDIUM", "LOW"
-    status = Column(String)                               # "Pending", "Resolved", "Rejected"
+    status = Column(String, default='pending')            # "Pending", "Resolved", "Rejected"
+    internal_note = Column(String)
     user_id = Column(Integer, ForeignKey("users.id"))     # Who filed the complaint
+
+
+class Campaigns(Base):
+    __tablename__ = "campaigns"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    name = Column(String, nullable=False)
+    channel = Column(String)  # Email / Social / AR / Search
+
+    status = Column(String, default="draft")  # draft / active / paused / completed
+
+    budget = Column(Float, default=0)
+    spent = Column(Float, default=0)
+
+    impressions = Column(Integer, default=0)
+    clicks = Column(Integer, default=0)
+
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Promotions(Base):
+    __tablename__ = "promotions"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    title = Column(String, nullable=False)
+    code = Column(String, unique=True, index=True)
+
+    discount = Column(Float)  # better than "25%" → 25
+    discount_type = Column(String)  # percentage / fixed
+
+    usage_max = Column(Integer, default=0)
+    usage_current = Column(Integer, default=0)
+
+    expiry = Column(DateTime)
+
+    status = Column(String, default="upcoming")  # active / expired / upcoming
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Newsletters(Base):
+    __tablename__ = "newsletters"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    name = Column(String)
+    email = Column(String, unique=True, index=True)
+
+    status = Column(String, default="subscribed")  # subscribed / unsubscribed
+
+    tags = Column(String) 
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Blogs(Base):
+    __tablename__ = "blogs"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    title = Column(String, nullable=False)
+    category = Column(String, index=True)
+
+    content = Column(String)  
+    excerpt = Column(String)
+
+    author = Column(String)
+
+    views = Column(Integer, default=0)
+
+    status = Column(String, default="draft")  # draft / published / scheduled
+
+    published_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)

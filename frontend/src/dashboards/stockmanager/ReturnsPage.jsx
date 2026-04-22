@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RotateCcw, LayoutDashboard, Boxes, Truck } from "lucide-react";
+import { RotateCcw, LayoutDashboard, Boxes, Truck,Bot } from "lucide-react";
 
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
@@ -35,7 +35,6 @@ export function ReturnsPage() {
   const navigate = useNavigate();
 
   const [returns, setReturns] = useState([]);
-  const [filter, setFilter] = useState("all");
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
 
   // AUTH
@@ -62,7 +61,7 @@ export function ReturnsPage() {
   useEffect(() => {
     const fetchReturns = async () => {
       try {
-        const res = await api.get("/api/returns"); // ⚡ بدلها حسب API
+        const res = await api.get("/api/returns"); 
         setReturns(res.data || []);
       } catch (err) {
         console.error(err);
@@ -72,22 +71,14 @@ export function ReturnsPage() {
     fetchReturns();
   }, []);
 
-  // FILTER
-  const filtered =
-    filter === "all"
-      ? returns
-      : returns.filter(r => r.status === filter);
-
   // STATS
   const total = returns.length;
-  const requested = returns.filter(r => r.status === "requested").length;
-  const inspecting = returns.filter(r => r.status === "inspecting").length;
-  const restocked = returns.filter(r => r.status === "restocked").length;
   const refund = returns.reduce((s, r) => s + (r.amount || 0), 0);
 
   const stockManagerLinks = [
     { to: "/stock-manager-dash", label: "Dashboard", icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories", label: "Inventory", icon: <Boxes /> },
+    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes /> },
+    { to: "/stock-manager-dash/ar",          label: "AR/3D Management", icon: <Bot size={18} /> },
     { to: "/stock-manager-dash/deliveries", label: "Delivery", icon: <Truck /> },
     { to: "/stock-manager-dash/returns", label: "Returns", icon: <RotateCcw /> }
   ];
@@ -100,22 +91,19 @@ export function ReturnsPage() {
         openBar={openBar}
         setOpenBar={setOpenBar}
         links={stockManagerLinks}
-        title="StockFlow"
+        title="StockManagerCore"
         subtitle="Returns System"
         role="Manager"
       />
 
       {/* MAIN */}
       <main className="flex-1">
-        <Header concept="Returns" />
+        <Header concept="Returns Dashboard" />
 
         <div className="p-7 flex flex-col gap-6">
 
           {/* TITLE */}
           <div>
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Returns Dashboard
-            </h2>
             <p className="text-gray-400">
               Track and manage all product returns.
             </p>
@@ -124,30 +112,12 @@ export function ReturnsPage() {
           {/* STATS */}
           <div className="grid grid-cols-4 gap-5">
             <Stat title="Total Returns" value={total} subtitle="all time" />
-            <Stat title="Awaiting Action" value={requested + inspecting} subtitle="requested + inspecting" color="#f59e0b" />
-            <Stat title="Restocked" value={restocked} subtitle="items back" color="#22c55e" />
             <Stat title="Refund Value" value={`$${refund}`} subtitle="total refunded" color="#6366f1" />
-          </div>
-
-          {/* FILTERS */}
-          <div className="flex gap-3">
-            {["all", "requested", "inspecting", "restocked", "rejected"].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-full text-sm capitalize
-                  ${filter === f
-                    ? "bg-indigo-600 text-white"
-                    : "bg-white border text-gray-600"}`}
-              >
-                {f}
-              </button>
-            ))}
           </div>
 
           {/* LIST */}
           <div className="flex flex-col gap-4">
-            {filtered.map((r) => (
+            {returns.map((r) => (
               <div
                 key={r.id}
                 className="bg-white p-5 rounded-xl shadow-sm flex justify-between items-center border"

@@ -36,7 +36,6 @@ import { FurniturePage } from './pages/FurniturePage'
 import { JournalPage } from './pages/JournalPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { AdminDashboard } from './dashboards/admin/AdminDashboard'
-import { MarketingMngrDashboard } from './dashboards/marketingmanager/MarketingManagerDashboard'
 import { DeliverymanDashboard } from './dashboards/deliveryman/DeliverymanDashboard'
 import AccountsPage from './dashboards/admin/AccountsPage'
 import ConfigurationPage from './dashboards/admin/ConfigurationPage'
@@ -53,6 +52,12 @@ import { OverviewPage } from './dashboards/stockmanager/OverviewPage'
 import { DeliveryPage } from './dashboards/stockmanager/DeliveryPage'
 import { ReturnsPage } from './dashboards/stockmanager/ReturnsPage'
 import { ProductCatalogPage } from './dashboards/stockmanager/ProductCatalogPage'
+import  MarketingMngrDashboard from './dashboards/marketingmanager/MarketingManagerDashboard'
+import BlogsPage from './dashboards/marketingmanager/BlogPage'
+import CampaignsPage from './dashboards/marketingmanager/CampaignsPage'
+import NewslettersPage from './dashboards/marketingmanager/NewslettersPage'
+import PromotionsPage from './dashboards/marketingmanager/PromotionsPage'
+import ARPage from './dashboards/stockmanager/ArPage'
 
 // Only show chatbot on customer-facing pages
 function CustomerChat() {
@@ -119,6 +124,11 @@ function App() {
 
           {/* Marketing Manager */}
           <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard />} />
+          <Route path='/marketing-manager-dash/blogs' element={<BlogsPage />} />
+          <Route path='/marketing-manager-dash/campaigns' element={<CampaignsPage />} />
+          <Route path='/marketing-manager-dash/newsletters' element={<NewslettersPage />} />
+          <Route path='/marketing-manager-dash/promotions' element={<PromotionsPage />} />
+              
 
           {/* Stock Manager */}
 
@@ -126,6 +136,7 @@ function App() {
           <Route path='/stock-manager-dash/deliveries' element={<DeliveryPage />} />
           <Route path='/stock-manager-dash/returns' element={<ReturnsPage />} />
           <Route path='/stock-manager-dash/inventories' element={<ProductCatalogPage />} />
+          <Route path='/stock-manager-dash/ar' element={<ARPage />} />
 
           {/* Deliveryman */}
           

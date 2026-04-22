@@ -1,6 +1,6 @@
 /**
- * ConfigurationPage.jsx - System Configuration (Admin) — Redesigned
- * Logic unchanged, styling updated to match AdminDashboard.
+ * ConfigurationPage.jsx - System Configuration (Admin)
+ * All logic preserved, design improved + responsive.
  */
 
 import Header from "../ui/Header";
@@ -8,36 +8,31 @@ import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
 import {
   LayoutDashboard, Users, MessageSquare, CheckSquare,
-  BarChart, Activity, Settings, X,
+  BarChart, Activity, Settings,
 } from "lucide-react";
-
-const S = {
-  page:  { display: "flex", minHeight: "100vh", backgroundColor: "#F4F6FB", fontFamily: "'Segoe UI', sans-serif" },
-  main:  { flex: 1, padding: "0 0 32px 0", overflowY: "auto" },
-  inner: { padding: "28px 32px", display: "flex", flexDirection: "column", gap: 28 },
-  card:  { backgroundColor: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,0.07)", padding: "24px 28px" },
-  grid2: { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 20 },
-  label: { margin: 0, fontSize: 11, color: "#8a8a9a", textTransform: "uppercase", letterSpacing: "0.08em" },
-};
 
 function Toggle({ on, onToggle }) {
   return (
-    <div
+    <button
       onClick={onToggle}
+      aria-checked={on}
+      role="switch"
       style={{
-        width: 44, height: 24, borderRadius: 99, cursor: "pointer",
-        background: on ? "#4f8ef7" : "#dde1ec",
-        position: "relative", transition: "background 0.2s", flexShrink: 0,
+        width: 46, height: 26, borderRadius: 99, cursor: "pointer", border: "none",
+        background: on ? "#6366f1" : "#e2e8f0",
+        position: "relative", transition: "background .2s", flexShrink: 0, padding: 0,
+        boxShadow: on ? "0 0 0 3px rgba(99,102,241,.2)" : "none",
       }}
     >
-      <div style={{
+      <span style={{
         position: "absolute", top: 3,
         left: on ? 22 : 3,
-        width: 18, height: 18, borderRadius: "50%",
-        background: "#fff", transition: "left 0.2s",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+        width: 20, height: 20, borderRadius: "50%",
+        background: "#fff", transition: "left .2s",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
+        display: "block",
       }} />
-    </div>
+    </button>
   );
 }
 
@@ -50,97 +45,88 @@ const initialProducts = [
 ];
 
 export default function ConfigurationPage() {
-  const [openBar, setOpenBar]   = useState(window.innerWidth >= 600);
+  const [openBar, setOpenBar]   = useState(window.innerWidth >= 768);
   const [arOn, setArOn]         = useState(true);
   const [botOn, setBotOn]       = useState(true);
   const [products, setProducts] = useState(initialProducts);
 
   const toggleProduct = i =>
     setProducts(prev => prev.map((p, idx) => idx === i ? { ...p, active: !p.active } : p));
-  
-    const adminLinks = [
-     { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
-    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
-    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
-    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
-    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
+
+  const adminLinks = [
+    { to: "/admin-dash",               label: "Dashboard",     icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/admin-dash/accounts",      label: "Accounts",      icon: <Users size={18} /> },
+    { to: "/admin-dash/complaints",    label: "Complaints",    icon: <MessageSquare size={18} /> },
+    { to: "/admin-dash/reports",       label: "Reports",       icon: <BarChart size={18} /> },
+    { to: "/admin-dash/engagement",    label: "Engagement",    icon: <Activity size={18} /> },
     { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
-    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
-     ];
+    { to: "/admin-dash/validation",    label: "Validation",    icon: <CheckSquare size={18} /> },
+  ];
 
   return (
-    <div style={S.page}>
-          <Sidebar
-                     openBar={openBar}
-                     setOpenBar={setOpenBar}
-                     links={adminLinks}
-                     title="AdminCore"
-                     subtitle="Enterprise Suite"
-                     role="Super Admin"
-                     />
+    <>
+      <style>{`
+        .cfg-page { display: flex; min-height: 100vh; background: #f8fafc; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        .cfg-main { flex: 1; overflow-y: auto; min-width: 0; }
+        .cfg-inner { padding: 24px 28px 40px; }
+        .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .cfg-card { background: #fff; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 24px; }
+        .cfg-card h2 { margin: 0 0 20px; font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -0.01em; }
+        .cfg-toggle-row { background: #f8fafc; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; border: 1px solid #f1f5f9; }
+        .cfg-toggle-row + .cfg-toggle-row { margin-top: 12px; }
+        .cfg-product-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f8fafc; }
+        .cfg-product-row:last-of-type { border-bottom: none; }
+        .cfg-ar-badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; font-weight: 700; }
+        .cfg-manage-btn { margin-top: 16px; width: 100%; background: none; border: 2px dashed #e2e8f0; border-radius: 12px; padding: 10px; font-size: 13px; color: #94a3b8; cursor: pointer; font-family: inherit; font-weight: 600; transition: all .15s; }
+        .cfg-manage-btn:hover { border-color: #6366f1; color: #6366f1; background: #f5f3ff; }
+        @media (max-width: 900px) { .cfg-grid { grid-template-columns: 1fr; } .cfg-inner { padding: 16px 12px 32px; } }
+      `}</style>
+      <div className="cfg-page">
+        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" />
+        <main className="cfg-main">
+          <Header concept="Configuration" setOpenBar={setOpenBar} openBar={openBar} />
+          <div className="cfg-inner">
+            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>Manage global features and product AR settings.</p>
+            <div className="cfg-grid">
 
-      <main style={S.main}>
-        <Header concept="Configuration" setOpenBar={setOpenBar} openBar={openBar} />
-
-        <div style={S.inner}>
-
-          {/* Title */}
-          <div>
-            <p style={{ margin: "4px 0 0", fontSize: 14, color: "#8a8a9a" }}>Manage global features and product AR settings.</p>
-          </div>
-
-          <div style={S.grid2}>
-
-            {/* LEFT — Global Feature Control */}
-            <div style={S.card}>
-              <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 600, color: "#1a1a2e" }}>Global Feature Control</h2>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-                {/* AR Toggle */}
-                <div style={{ background: "#F4F6FB", borderRadius: 12, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>Global AR Support</p>
-                    <p style={{ margin: "3px 0 0", fontSize: 12, color: "#8a8a9a" }}>Master switch for all AR features</p>
+              {/* LEFT — Global Feature Control */}
+              <div className="cfg-card">
+                <h2>Global Feature Control</h2>
+                <div className="cfg-toggle-row">
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🥽</div>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#0f172a" }}>Global AR Support</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>Master switch for all AR features</p>
+                    </div>
                   </div>
                   <Toggle on={arOn} onToggle={() => setArOn(v => !v)} />
                 </div>
-
-                {/* Bot Toggle */}
-                <div style={{ background: "#F4F6FB", borderRadius: 12, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>AI Support Chatbot</p>
-                    <p style={{ margin: "3px 0 0", fontSize: 12, color: "#8a8a9a" }}>Automated customer assistance</p>
+                <div className="cfg-toggle-row">
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🤖</div>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#0f172a" }}>AI Support Chatbot</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>Automated customer assistance</p>
+                    </div>
                   </div>
                   <Toggle on={botOn} onToggle={() => setBotOn(v => !v)} />
                 </div>
-
               </div>
-            </div>
 
-            {/* RIGHT — Product AR Management */}
-            <div style={S.card}>
-              <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 600, color: "#1a1a2e" }}>Product AR Management</h2>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {/* RIGHT — Product AR Management */}
+              <div className="cfg-card">
+                <h2>Product AR Management</h2>
                 {products.map((p, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "13px 0",
-                      borderBottom: i < products.length - 1 ? "1px solid #f0f0f5" : "none",
-                    }}
-                  >
+                  <div key={i} className="cfg-product-row">
                     <div>
-                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>{p.name}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#8a8a9a" }}>{p.type}</p>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{p.name}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{p.type}</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{
-                        fontSize: 11, padding: "3px 10px", borderRadius: 99, fontWeight: 500,
-                        background: p.active ? "#e8f0fe" : "#f0f0f5",
-                        color:      p.active ? "#4f8ef7" : "#8a8a9a",
+                      <span className="cfg-ar-badge" style={{
+                        background: p.active ? "#eef2ff" : "#f8fafc",
+                        color:      p.active ? "#6366f1" : "#94a3b8",
                       }}>
                         {p.active ? "AR ACTIVE" : "AR HIDDEN"}
                       </span>
@@ -148,16 +134,13 @@ export default function ConfigurationPage() {
                     </div>
                   </div>
                 ))}
+                <button className="cfg-manage-btn">+ Manage All</button>
               </div>
 
-              <button style={{ marginTop: 16, width: "100%", background: "none", border: "1.5px dashed #dde1ec", borderRadius: 10, padding: "10px", fontSize: 13, color: "#8a8a9a", cursor: "pointer" }}>
-                + Manage All
-              </button>
             </div>
-
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   );
 }

@@ -3,7 +3,7 @@ import ProductCard from '../components/ProductCard';
 import { Section, Button, Divider } from '../components/ui';
 import api from '../services/api';
 
-const CATEGORIES = ["All", "Chairs", "Tables", "Lighting", "Storage", "Decor"];
+const CATEGORIES = ["All", "Chairs", "Tables", "Lamps", "Sofas"];
 
 export function FurniturePage() {
   const [products, setProducts] = useState([]);

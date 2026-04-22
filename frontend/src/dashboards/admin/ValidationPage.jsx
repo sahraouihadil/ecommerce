@@ -1,17 +1,6 @@
 /**
  * ValidationPage.jsx - Content Validation Queue (Admin)
- * ========================================================
- * Admin page for reviewing and approving/rejecting submissions.
- * Items can be: Products, AR Models, Campaigns, or Promotions.
- *
- * LAYOUT:
- *   - Left panel: filterable list of submissions (by type)
- *   - Right panel: detailed view of selected submission
- *   - Top stats: Pending / Approved / Rejected counts
- *   - Actions: Approve or Reject with optional rejection note
- *
- * NOTE: Currently uses hardcoded sample data.
- *       Connect to a submissions API for real data.
+ * All logic preserved, design improved + responsive.
  */
 
 import Header from "../ui/Header";
@@ -19,13 +8,13 @@ import Sidebar from "../ui/Sidebar";
 import { useState } from "react";
 import {
   LayoutDashboard, Users, MessageSquare, CheckSquare,
-  BarChart, Activity, Settings, X,
+  BarChart, Activity, Settings,
 } from "lucide-react";
 
 export default function ValidationPage() {
-  const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
+  const [openBar, setOpenBar] = useState(window.innerWidth >= 768);
   const [selected, setSelected] = useState(null);
-  const [showList, setShowList] = useState(false);
+  //const [showList, setShowList] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
 
   const items = [
@@ -38,247 +27,202 @@ export default function ValidationPage() {
   ];
 
   const filters = ["All", "Products", "AR", "Campaigns", "Promotions"];
-  const filteredTypes =
-    activeFilter === "All" ? items : items.filter((u) => u.type === activeFilter);
+  const filteredTypes = activeFilter === "All" ? items : items.filter(u => u.type === activeFilter);
 
-  const statusColor = (s) =>
-    s === "Pending"  ? "text-amber-500"   :
-    s === "Approved" ? "text-emerald-500" : "text-red-500";
+  const STATUS_STYLE = {
+    Pending:  { bg: "#fffbeb", color: "#d97706", icon: "⏳", dot: "#f59e0b" },
+    Approved: { bg: "#f0fdf4", color: "#16a34a", icon: "✓",  dot: "#10b981" },
+    Rejected: { bg: "#fff1f2", color: "#dc2626", icon: "✕",  dot: "#ef4444" },
+  };
 
-  const pillClass = (s) =>
-    s === "Pending"
-      ? "bg-amber-50 text-amber-600 border border-amber-200"
-      : s === "Approved"
-      ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-      : "bg-red-50 text-red-500 border border-red-200";
+  const TYPE_STYLE = {
+    Products:   { bg: "#eff6ff", color: "#2563eb" },
+    AR:         { bg: "#f5f3ff", color: "#7c3aed" },
+    Campaigns:  { bg: "#fef3c7", color: "#92400e" },
+    Promotions: { bg: "#fce7f3", color: "#9d174d" },
+  };
 
-  const pillIcon = (s) =>
-    s === "Pending" ? "⏳" : s === "Approved" ? "✓" : "✕";
-  
-    const adminLinks = [
-     { to: "/admin-dash", label: "Dashboard", icon: <LayoutDashboard size={18} />, end: true },
-    { to: "/admin-dash/accounts", label: "Accounts", icon: <Users size={18} /> },
-    { to: "/admin-dash/complaints", label: "Complaints", icon: <MessageSquare size={18} /> },
-    { to: "/admin-dash/reports", label: "Reports", icon: <BarChart size={18} /> },
-    { to: "/admin-dash/engagement", label: "Engagement", icon: <Activity size={18} /> },
+  const adminLinks = [
+    { to: "/admin-dash",               label: "Dashboard",     icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/admin-dash/accounts",      label: "Accounts",      icon: <Users size={18} /> },
+    { to: "/admin-dash/complaints",    label: "Complaints",    icon: <MessageSquare size={18} /> },
+    { to: "/admin-dash/reports",       label: "Reports",       icon: <BarChart size={18} /> },
+    { to: "/admin-dash/engagement",    label: "Engagement",    icon: <Activity size={18} /> },
     { to: "/admin-dash/configuration", label: "Configuration", icon: <Settings size={18} /> },
-    { to: "/admin-dash/validation", label: "Validation", icon: <CheckSquare size={18} /> },
-     ];
+    { to: "/admin-dash/validation",    label: "Validation",    icon: <CheckSquare size={18} /> },
+  ];
+
+  const pendingCount  = items.filter(i => i.status === "Pending").length;
+  const approvedCount = items.filter(i => i.status === "Approved").length;
+  const rejectedCount = items.filter(i => i.status === "Rejected").length;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-          <Sidebar
-                     openBar={openBar}
-                     setOpenBar={setOpenBar}
-                     links={adminLinks}
-                     title="AdminCore"
-                     subtitle="Enterprise Suite"
-                     role="Super Admin"
-                     />
+    <>
+      <style>{`
+        .val-page { display: flex; min-height: 100vh; background: #f8fafc; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        .val-main { flex: 1; overflow-y: auto; min-width: 0; }
+        .val-inner { padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px; }
+        .val-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .val-stat-card { background: #fff; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
+        .val-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; min-height: 540px; }
+        .val-panel { background: #fff; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; flex-direction: column; overflow: hidden; }
+        .val-filters { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px; border-bottom: 1px solid #f8fafc; }
+        .val-filter-btn { padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; border: 1.5px solid #e2e8f0; cursor: pointer; transition: all .15s; background: #fff; color: #64748b; font-family: inherit; }
+        .val-filter-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+        .val-filter-btn:not(.active):hover { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+        .val-list-scroll { flex: 1; overflow-y: auto; }
+        .val-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; border-bottom: 1px solid #f8fafc; border-left: 3px solid transparent; transition: all .12s; gap: 8px; }
+        .val-item:last-child { border-bottom: none; }
+        .val-item:hover { background: #fafbff; }
+        .val-item.active { background: #f0f4ff; border-left-color: #6366f1; }
+        .val-type-tag { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .05em; display: inline-block; margin-bottom: 4px; }
+        .val-detail-content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+        .val-detail-actions { border-top: 1px solid #f1f5f9; padding: 16px; display: flex; gap: 12px; }
+        .val-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .val-info-cell { background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 14px; }
+        .val-section-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .07em; margin: 0 0 8px; }
+        .val-textarea { width: 100%; padding: 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 13px; font-family: inherit; resize: vertical; outline: none; min-height: 100px; background: #f8fafc; color: #0f172a; box-sizing: border-box; transition: border-color .2s; }
+        .val-textarea:focus { border-color: #6366f1; background: #fff; }
+        .val-btn-approve { flex: 1; background: #10b981; color: #fff; border: none; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s; }
+        .val-btn-approve:hover { background: #059669; }
+        .val-btn-reject { flex: 1; background: #fff; color: #dc2626; border: 1.5px solid #fecaca; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
+        .val-btn-reject:hover { background: #fff1f2; border-color: #fca5a5; }
+        @media (max-width: 1024px) { .val-layout { grid-template-columns: 260px 1fr; } }
+        @media (max-width: 768px) {
+          .val-inner { padding: 16px 12px 32px; gap: 14px; }
+          .val-stats-grid { grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+          .val-layout { grid-template-columns: 1fr; }
+          .val-info-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) { .val-stats-grid { grid-template-columns: 1fr; } }
+      `}</style>
+      <div className="val-page">
+        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" />
+        <main className="val-main">
+          <Header concept="Validation" setOpenBar={setOpenBar} openBar={openBar} />
+          <div className="val-inner">
 
-      <main className="flex-1 p-6 space-y-6">
-        <Header concept="Validation" setOpenBar={setOpenBar} openBar={openBar} />
-
-        {/* ── Stats ─────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-4">
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-base shrink-0">⏳</div>
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Pending</p>
-              <p className="text-xl font-bold text-gray-800">3</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-base shrink-0">✅</div>
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Approved</p>
-              <p className="text-xl font-bold text-gray-800">3</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-base shrink-0">❌</div>
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Rejected</p>
-              <p className="text-xl font-bold text-gray-800">2</p>
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── Content ──────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 min-h-[520px]">
-
-          {/* LEFT PANEL */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-
-            {/* Filters */}
-            <div className="flex gap-2 flex-wrap mb-4">
-              {filters.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setActiveFilter(f)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer transition-all duration-150
-                    ${activeFilter === f
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
-                    }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-
-            {/* Mobile toggle */}
-            <div className="lg:hidden mb-3">
-              <button
-                onClick={() => setShowList(true)}
-                className="w-full bg-gray-900 text-white py-3 px-4 rounded-xl flex justify-between items-center cursor-pointer text-sm font-medium"
-              >
-                <span>Submissions</span>
-                <span className="bg-white text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold">
-                  {filteredTypes.length}
-                </span>
-              </button>
-
-              <div className={`${showList ? "block" : "hidden"} mt-3 space-y-2`}>
-                {filteredTypes.map((cs, i) => (
-                  <div
-                    key={i}
-                    onClick={() => { setSelected(cs); setShowList(false); }}
-                    className="p-3 rounded-xl border border-gray-100 bg-white shadow-sm cursor-pointer hover:border-indigo-200 hover:bg-indigo-50/40 transition-all"
-                  >
-                    <p className="font-semibold text-gray-800 text-sm">{cs.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{cs.user}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Desktop list */}
-            <div className="hidden lg:flex flex-col flex-1 overflow-y-auto gap-2 pr-1">
-              {filteredTypes.map((item, i) => (
-                <div
-                  key={i}
-                  onClick={() => setSelected(item)}
-                  className={`flex justify-between items-center p-3 rounded-xl border cursor-pointer transition-all duration-150
-                    ${selected === item
-                      ? "border-indigo-300 bg-indigo-50"
-                      : "border-gray-100 hover:border-indigo-200 hover:bg-gray-50"
-                    }`}
-                >
+            {/* Stats */}
+            <div className="val-stats-grid">
+              {[
+                { label: "Pending Review", count: pendingCount, icon: "⏳", iconBg: "#fffbeb", color: "#d97706" },
+                { label: "Approved",       count: approvedCount, icon: "✅", iconBg: "#ecfdf5", color: "#16a34a" },
+                { label: "Rejected",       count: rejectedCount, icon: "❌", iconBg: "#fff1f2", color: "#dc2626" },
+              ].map(s => (
+                <div key={s.label} className="val-stat-card">
+                  <div style={{ width: 42, height: 42, borderRadius: 12, background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{s.icon}</div>
                   <div>
-                    <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 mb-1 tracking-wide uppercase">
-                      {item.type}
-                    </span>
-                    <p className="text-sm font-semibold text-gray-800">{item.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Submitted by {item.user}</p>
+                    <p style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".07em", fontWeight: 700 }}>{s.label}</p>
+                    <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>{s.count}</p>
                   </div>
-                  <span className={`text-xs font-semibold whitespace-nowrap ${statusColor(item.status)}`}>
-                    ● {item.status}
-                  </span>
                 </div>
               ))}
             </div>
 
-          </div>
+            {/* Main layout */}
+            <div className="val-layout">
 
-          {/* RIGHT PANEL */}
-          <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden ${!showList ? "flex" : "hidden"} lg:flex`}>
-            {selected ? (
-              <>
-                <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* LEFT PANEL */}
+              <div className="val-panel">
+                <div className="val-filters">
+                  {filters.map(f => (
+                    <button key={f} className={`val-filter-btn${activeFilter === f ? " active" : ""}`} onClick={() => setActiveFilter(f)}>{f}</button>
+                  ))}
+                </div>
+                <div className="val-list-scroll">
+                  {filteredTypes.map((item, i) => {
+                    const ss = STATUS_STYLE[item.status] || STATUS_STYLE.Pending;
+                    const ts = TYPE_STYLE[item.type] || { bg: "#f8fafc", color: "#64748b" };
+                    return (
+                      <div key={i} className={`val-item${selected === item ? " active" : ""}`} onClick={() => setSelected(item)}>
+                        <div style={{ minWidth: 0 }}>
+                          <span className="val-type-tag" style={{ background: ts.bg, color: ts.color }}>{item.type}</span>
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</p>
+                          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>By {item.user}</p>
+                        </div>
+                        <span style={{ ...ss, background: "transparent", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: ss.dot, display: "inline-block" }} />
+                          {item.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-                  {/* Header row */}
-                  <div className="flex justify-between items-start gap-3 flex-wrap">
-                    <div className="flex gap-3 items-center">
-                      <img
-                        src="https://via.placeholder.com/50"
-                        className="w-12 h-12 rounded-xl object-cover border border-gray-100"
-                        alt=""
-                      />
+              {/* RIGHT PANEL */}
+              <div className="val-panel">
+                {selected ? (
+                  <>
+                    <div className="val-detail-content">
+                      {/* Header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+                        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                          <img
+                            src="https://via.placeholder.com/50"
+                            style={{ width: 52, height: 52, borderRadius: 14, objectFit: "cover", border: "2px solid #f1f5f9", flexShrink: 0 }}
+                            alt=""
+                          />
+                          <div>
+                            <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.01em" }}>{selected.title}</h2>
+                            <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", fontFamily: "monospace" }}>V-001 · {selected.user}</p>
+                          </div>
+                        </div>
+                        {(() => {
+                          const ss = STATUS_STYLE[selected.status] || STATUS_STYLE.Pending;
+                          return (
+                            <span style={{ background: ss.bg, color: ss.color, padding: "5px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                              {ss.icon} {selected.status}
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Info grid */}
+                      <div className="val-info-grid">
+                        <div className="val-info-cell">
+                          <p className="val-section-label">Category</p>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#334155" }}>📦 {selected.type}</p>
+                        </div>
+                        <div className="val-info-cell">
+                          <p className="val-section-label">Submitted</p>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#334155", fontFamily: "monospace" }}>2023-10-25 09:00 AM</p>
+                        </div>
+                      </div>
+
+                      {/* Submission details */}
                       <div>
-                        <h2 className="text-base font-bold text-gray-800">{selected.title}</h2>
-                        <p className="text-xs text-gray-400 mt-0.5 font-mono">V-001 · {selected.user}</p>
+                        <p className="val-section-label">Submission Details</p>
+                        <div style={{ background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 12, padding: "14px 16px", fontSize: 14, color: "#475569", lineHeight: 1.6 }}>
+                          New bookshelf listing with 6 color variants, dimensions and material specs included.
+                        </div>
+                      </div>
+
+                      {/* Rejection note */}
+                      <div>
+                        <p className="val-section-label">Rejection Note <span style={{ color: "#cbd5e1", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(shown to submitter)</span></p>
+                        <textarea className="val-textarea" placeholder="Describe why this was rejected or what needs to be corrected..." />
                       </div>
                     </div>
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${pillClass(selected.status)}`}>
-                      {pillIcon(selected.status)} {selected.status}
-                    </span>
-                  </div>
 
-                  {/* Info grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
-                      <p className="text-sm font-semibold text-gray-700">📦 {selected.type}</p>
+                    {/* Actions */}
+                    <div className="val-detail-actions">
+                      <button className="val-btn-approve">✓ Approve</button>
+                      <button className="val-btn-reject">✕ Reject</button>
                     </div>
-                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Submitted</p>
-                      <p className="text-xs font-semibold text-gray-700 font-mono">2023-10-25 09:00 AM</p>
-                    </div>
+                  </>
+                ) : (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
+                    <div style={{ width: 64, height: 64, background: "#f8fafc", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 16, border: "1px solid #f1f5f9" }}>📄</div>
+                    <h3 style={{ margin: "0 0 8px", fontWeight: 800, fontSize: 16, color: "#334155" }}>Select an item to review</h3>
+                    <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.5 }}>Choose a submission from the queue to view details and approve or reject it.</p>
                   </div>
-
-                  {/* Submission details */}
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                      Submission Details
-                    </p>
-                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-sm text-gray-600 leading-relaxed">
-                      New bookshelf listing with 6 color variants, dimensions and material specs included.
-                    </div>
-                  </div>
-
-                  {/* Rejection note */}
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                      Rejection Note{" "}
-                      <span className="text-gray-300 normal-case font-normal">(shown to submitter)</span>
-                    </p>
-                    <textarea
-                      placeholder="Describe why this was rejected or what needs to be corrected..."
-                      className="w-full p-3 text-sm border border-gray-200 rounded-xl outline-none min-h-[110px] resize-none text-gray-700 placeholder-gray-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="border-t border-gray-100 p-4 flex flex-col sm:flex-row gap-3">
-                  <button className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-sm font-semibold cursor-pointer transition-colors">
-                    ✓ Approve
-                  </button>
-                  <button className="flex-1 bg-white hover:bg-red-50 text-red-500 border border-red-200 hover:border-red-300 py-3 rounded-xl text-sm font-semibold cursor-pointer transition-colors">
-                    ✕ Reject
-                  </button>
-                </div>
-
-                {/* Mobile back */}
-                <div className="lg:hidden px-4 pb-3">
-                  <button
-                    onClick={() => setShowList(true)}
-                    className="text-xs text-indigo-500 font-medium cursor-pointer hover:text-indigo-700"
-                  >
-                    ← Back
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full p-16 text-center">
-                <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center text-3xl mb-4">
-                  📄
-                </div>
-                <h3 className="font-bold text-gray-700 text-base">Select an item to review</h3>
-                <p className="text-gray-400 text-sm mt-2 leading-relaxed">
-                  Choose a submission from the queue to view details, approve or reject it.
-                </p>
+                )}
               </div>
-            )}
+            </div>
           </div>
-
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   );
 }

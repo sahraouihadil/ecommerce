@@ -16,8 +16,14 @@ NAMING CONVENTION:
   - No suffix = data going TO the frontend or used internally
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from enums import UserRole
+from fastapi import Form,File
+from datetime import datetime
+from typing import Optional, List
+
+def today():
+    return datetime.today().strftime("%Y-%m-%d")
 
 
 class CreateUserRequest(BaseModel):
@@ -96,3 +102,94 @@ class UpdateUser(BaseModel):
     username: str
     email: str
     role: UserRole
+
+
+# ── Campaigns ───────────────────────────────
+
+class CampaignCreate(BaseModel):
+    name:        str
+    channel:     str
+    status:      str   = "draft"
+    budget:      float = 0
+    spent:       float = 0
+    impressions: str   = "0"
+    clicks:      str   = "0"
+    start_date:  str
+    end_date:    str
+
+class Campaign(CampaignCreate):
+    id: int
+
+class CampaignUpdate(BaseModel):
+    name:        Optional[str]   = None
+    channel:     Optional[str]   = None
+    status:      Optional[str]   = None
+    budget:      Optional[float] = None
+    spent:       Optional[float] = None
+    impressions: Optional[str]   = None
+    clicks:      Optional[str]   = None
+    start_date:  Optional[str]   = None
+    end_date:    Optional[str]   = None
+
+# ── Promotions ──────────────────────────────
+
+class PromotionCreate(BaseModel):
+    title:         str
+    code:          str
+    discount:      str
+    type:          str
+    usage:         str = "0/0"
+    usage_max:     int = 0
+    usage_current: int = 0
+    expiry:        str
+    status:        str = "upcoming"
+
+class PromotionUpdate(BaseModel):
+    title:         Optional[str] = None
+    code:          Optional[str] = None
+    discount:      Optional[str] = None
+    type:          Optional[str] = None
+    usage:         Optional[str] = None
+    usage_max:     Optional[int] = None
+    usage_current: Optional[int] = None
+    expiry:        Optional[str] = None
+    status:        Optional[str] = None
+
+# ── Subscribers ─────────────────────────────
+
+class NewsletterCreate(BaseModel):
+    name:   str
+    email:  str
+    status: str       = "subscribed"
+    tags:   List[str] = []
+    date:   str       = Field(default_factory=today)
+
+class NewsletterUpdate(BaseModel):
+    name:   Optional[str]       = None
+    email:  Optional[str]       = None
+    status: Optional[str]       = None
+    tags:   Optional[List[str]] = None
+
+# ── Blogs ────────────────────────────────────
+
+class BlogCreate(BaseModel):
+    title:    str
+    category: str
+    excerpt:  str
+    author:   str
+    views:    str = "0"
+    status:   str = "draft"
+    date:     str = Field(default_factory=today)
+
+class Blog(BlogCreate):
+    id: int
+
+class BlogUpdate(BaseModel):
+    title:    Optional[str] = None
+    category: Optional[str] = None
+    excerpt:  Optional[str] = None
+    author:   Optional[str] = None
+    views:    Optional[str] = None
+    status:   Optional[str] = None
+    date:     Optional[str] = None
+
