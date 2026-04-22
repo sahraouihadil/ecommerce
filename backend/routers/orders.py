@@ -145,6 +145,46 @@ def get_all_orders(db: Session = Depends(get_db), payload: dict = Depends(verify
         })
     return result
 
+@router.get("/history")
+async def user_history(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(verify_token)
+):
+    user = payload
+    
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication Failed")
+
+    orders = db.query(Orders).filter(
+        Orders.user_id == user["id"],
+        Orders.status.in_(["delivered", "canceled"])
+    ).all()
+     
+    result = []
+    for order in orders:
+        items = db.query(OrderItems).filter(
+            OrderItems.order_id == order.id
+        ).all()
+        
+        result.append({
+            "id": order.id,
+            "orderdate": order.orderdate,
+            "deliverydate": order.deliverydate,
+            "totalamount": order.totalamount,
+            "status": order.status,
+            "items": [
+                {
+                    "id": i.id,
+                    "product_id": i.product_id,
+                    "price": i.price,
+                    "quantity": i.quantity
+                }
+                for i in items
+            ]
+        })
+
+    return result
+
 @router.get("/{order_id}")
 def get_order(order_id: int, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
     """

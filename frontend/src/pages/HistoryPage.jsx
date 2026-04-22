@@ -4,14 +4,14 @@ import api from "../services/api";
 
 export function HistoryPage() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
+  const [historyOrders, setHistoryOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await api.get("/profile/history");
-        setOrders(response.data);
+        const response = await api.get("/api/orders/history");
+        setHistoryOrders(response.data);
       } catch (error) {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
@@ -21,7 +21,7 @@ export function HistoryPage() {
     };
     fetchHistory();
   }, [navigate]);
-
+  
   if (loading) return (
     <div className="min-h-screen bg-cream flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
@@ -40,14 +40,14 @@ export function HistoryPage() {
           Order History
         </h1>
 
-        {orders.length === 0 ? (
+        {historyOrders.length === 0 ? (
           <div className="text-center py-24">
             <span className="material-symbols-outlined text-[48px] text-accent2/50 mb-4 block">history</span>
             <p className="text-muted text-lg">No history yet.</p>
           </div>
         ) : (
           <div className="border-t border-surface">
-            {orders.map((order) => (
+            {historyOrders.map((order) => (
               <div key={order.id}
                 className="flex items-center justify-between py-6 border-b border-surface">
                 <div>

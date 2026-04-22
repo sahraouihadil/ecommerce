@@ -73,7 +73,7 @@ export function ProductPage() {
       else setFavMsg("Failed to add");
     }
   };
-
+   console.log(product)
   // ── loading state ─────────────────────────────────────────────
   if (!product) return (
     <div className="min-h-screen bg-cream flex items-center justify-center">

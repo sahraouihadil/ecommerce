@@ -19,7 +19,7 @@ export function FavoritePage() {
   };
 
   useEffect(() => { fetchFavorites(); }, []);
-
+   
   const removeFavorite = async (favId) => {
     try {
       await api.delete(`/api/favorites/${favId}`);
@@ -28,6 +28,8 @@ export function FavoritePage() {
       console.error(err);
     }
   };
+const BASE = "http://127.0.0.1:8000";
+const img  = (path) => (path ? `${BASE}/${path}` : null);
 
   if (loading) return (
     <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -72,9 +74,13 @@ export function FavoritePage() {
                 <Link to={`/product/${fav.product_id}`}
                   className="block bg-white rounded-lg overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
                   <div className="aspect-[3/4] bg-surface overflow-hidden">
-                    {fav.product?.image ? (
-                      <img src={fav.product.image} alt={fav.product?.name}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                    {fav.product?.image_url ? (
+                      <img
+                      src={img(fav.product.image_url)}
+                      alt={fav.product.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                    />
+    
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <span className="material-symbols-outlined text-[48px] text-muted/20">image</span>

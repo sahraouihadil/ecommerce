@@ -37,14 +37,28 @@ def get_favorites(db: Session = Depends(get_db), payload: dict = Depends(verify_
     for fav in favs:
         product = db.query(Products).filter(Products.id == fav.product_id).first()
         if product:
+            # Primary image = ProductImage with the lowest order value (order=0)
+            primary_image = (
+                sorted(product.images, key=lambda img: img.order)[0].image_url
+                if product.images else None
+            )
             result.append({
-                "id": fav.id,
+                "id":         fav.id,
                 "product_id": fav.product_id,
                 "product": {
-                    "id": product.id,
-                    "name": product.name,
-                    "price": product.price,
-                    "image_url": product.image_url,
+                    "id":        product.id,
+                    "name":      product.name,
+                    "price":     product.price,
+                    "category":  product.category,
+                    "badge":     product.badge,
+                    "model_src": product.model_src,
+                    "model_3d":  product.model_3d,
+                    "ios_src":   product.ios_src,
+                    "able_3d":   product.able_3d,
+                    "able_ar":   product.able_ar,
+                    "image_url": primary_image,
+                    "images":    [img.image_url for img in sorted(product.images, key=lambda img: img.order)],
+                    "colors":    [c.color for c in product.colors],
                 }
             })
     return result

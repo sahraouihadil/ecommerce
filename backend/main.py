@@ -308,35 +308,6 @@ async def user(user: user_dependency, db: db_dependency):
     }
 
 
-@app.get("/profile/history")
-async def user_history(user: user_dependency, db: db_dependency):
-    """
-    Returns the current user's order history.
-    Each order includes its items (product_id, price, quantity).
-
-    Called by: HistoryPage.jsx → GET /profile/history
-    """
-    if user is None:
-        raise HTTPException(status_code=401, detail="Authentication Failed")
-
-    # Get all orders for this user, with their items
-    orders = db.query(models.Orders).filter(models.Orders.user_id == user["id"]).all()
-    result = []
-    for order in orders:
-        items = db.query(models.OrderItems).filter(models.OrderItems.order_id == order.id).all()
-        result.append({
-            "id": order.id,
-            "orderdate": order.orderdate,
-            "deliverydate": order.deliverydate,
-            "totalamount": order.totalamount,
-            "status": order.status,
-            "items": [
-                {"id": i.id, "product_id": i.product_id, "price": i.price, "quantity": i.quantity}
-                for i in items
-            ]
-        })
-    return result
-
 
 # ======================================================================
 # DATA ENDPOINTS (Public — used by admin dashboard)
