@@ -230,10 +230,12 @@ class Blogs(Base):
 
     title = Column(String, nullable=False)
     category = Column(String, index=True)
+    image  = Column(String, nullable=False)
 
     content = Column(String)  
     excerpt = Column(String)
 
+    tag = Column(String)
     author = Column(String)
 
     views = Column(Integer, default=0)

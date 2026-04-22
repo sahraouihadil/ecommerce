@@ -16,10 +16,9 @@ export function HomePage() {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    console.log("useEffect running");
     api.get("/api/products").then((res) => {
       setProducts(res.data);
-      console.log(res.data);
+
     }).catch((err) => {
       console.error("FAILED:", err);
     });
@@ -47,7 +46,6 @@ if (!products || products.length === 0) {
 }
 
   const featuredProduct = products[0] || null;
-  console.log(products)
 
   // ↓ THIS is the fix — don't render until data is ready
   if (!featuredProduct) return null;

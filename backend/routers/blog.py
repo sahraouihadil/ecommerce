@@ -10,6 +10,8 @@ def blog_dict(b):
     return {
         "id": b.id,
         "title": b.title,
+        "image": "",
+        "tag":b.tag,
         "category": b.category,
         "content": b.content,
         "excerpt": b.excerpt,
