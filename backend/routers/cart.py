@@ -37,7 +37,7 @@ def get_cart(db: Session = Depends(get_db), payload: dict = Depends(verify_token
 
     # Get all cart items for this user
     items = db.query(CartItems).filter(CartItems.user_id == user_id).all()
-
+    print(items)
     # Build the response with product details included
     result = []
     for item in items:
