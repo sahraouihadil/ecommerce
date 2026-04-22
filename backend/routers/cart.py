@@ -37,22 +37,43 @@ def get_cart(db: Session = Depends(get_db), payload: dict = Depends(verify_token
 
     # Get all cart items for this user
     items = db.query(CartItems).filter(CartItems.user_id == user_id).all()
-    print(items)
+
     # Build the response with product details included
     result = []
     for item in items:
         product = db.query(Products).filter(Products.id == item.product_id).first()
+
+        if product:
+            # Primary image = the ProductImage with the lowest order value (order=0)
+            primary_image = (
+                sorted(product.images, key=lambda img: img.order)[0].image_url
+                if product.images else None
+            )
+            product_data = {
+                "id":          product.id,
+                "name":        product.name,
+                "price":       product.price,
+                "category":    product.category,
+                "badge":       product.badge,
+                "model_src":   product.model_src,
+                "model_3d":    product.model_3d,
+                "ios_src":     product.ios_src,
+                "able_3d":     product.able_3d,
+                "able_ar":     product.able_ar,
+                "image_url":   primary_image,
+                "images":      [img.image_url for img in sorted(product.images, key=lambda img: img.order)],
+                "colors":      [c.color for c in product.colors],
+            }
+        else:
+            product_data = None
+
         result.append({
-            "id": item.id,
+            "id":         item.id,
             "product_id": item.product_id,
-            "quantity": item.quantity,
-            "product": {
-                "id": product.id,
-                "name": product.name,
-                "price": product.price,
-                "image_url": product.image_url,
-            } if product else None,
+            "quantity":   item.quantity,
+            "product":    product_data,
         })
+
     return result
 
 

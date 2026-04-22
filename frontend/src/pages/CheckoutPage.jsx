@@ -13,10 +13,7 @@ const PAYMENT_METHODS = {
     { id: "cod", icon: "local_shipping", label: "Cash on Delivery", sub: "Local Only", hasForm: false },
     { id: "cib", icon: "credit_card", label: "CIB / Card", sub: "Visa/Mastercard", hasForm: true },
     { id: "pickup", icon: "storefront", label: "Self Pickup", sub: "Algiers Showroom", hasForm: false },
-  ],
-  international: [
-    { id: "cib", icon: "credit_card", label: "CIB / Card", sub: "Visa/Mastercard", hasForm: true },
-  ],
+  ]
 };
 
 const CSS = `

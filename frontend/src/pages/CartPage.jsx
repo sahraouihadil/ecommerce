@@ -30,6 +30,7 @@ export function CartPage() {
     }
   };
 
+  
   const removeItem = async (itemId) => {
     try {
       await api.delete(`/api/cart/${itemId}`);
@@ -38,6 +39,8 @@ export function CartPage() {
       console.error(err);
     }
   };
+  const BASE = "http://127.0.0.1:8000";
+  const img  = (path) => (path ? `${BASE}/${path}` : null);
 
   const subtotal = items.reduce((sum, i) => sum + (i.product?.price || 0) * i.quantity, 0);
   const shipping = 0;
@@ -87,9 +90,12 @@ export function CartPage() {
 
                     {/* Image */}
                     <div className="w-24 h-24 bg-surface rounded-lg flex-shrink-0 overflow-hidden">
-                      {item.product?.image ? (
-                        <img src={item.product.image} alt={item.product?.name}
-                          className="w-full h-full object-cover" />
+                      {item.product?.image_url ? (
+                            <img
+                      src={img(item.product.image_url)}
+                      alt={item.product.name}
+                      className="w-full h-full object-cover"
+                    />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <span className="material-symbols-outlined text-[24px] text-muted/20">image</span>
