@@ -26,7 +26,7 @@ import logging
 from typing import Annotated
 
 # ── FastAPI imports ──
-from fastapi import FastAPI, status, HTTPException, Depends
+from fastapi import FastAPI, status, HTTPException, Depends,File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 
 # ── SQLAlchemy imports ──
@@ -44,7 +44,13 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 # ── Router imports (each router handles a group of related endpoints) ──
 from route import user_router                     # Auth: /register, /login, /admin-dash, etc.
-from routers import chat, cart, orders, favorites  # Feature routers
+from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product  # Feature routers
+import shutil
+import os
+import uuid
+from fastapi.staticfiles import StaticFiles
+
+
 
 # ── Logging setup ──
 logger = logging.getLogger(__name__)
@@ -56,6 +62,9 @@ logger = logging.getLogger(__name__)
 
 # Create the FastAPI application instance
 app = FastAPI(title="ARoom API")
+
+# for pictures 
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── CORS Configuration ──
 # CORS (Cross-Origin Resource Sharing) allows the frontend (localhost:5173)
@@ -88,7 +97,12 @@ app.include_router(chat.router, prefix="/api")    # AI chatbot: /api/chat
 app.include_router(cart.router)                   # Shopping cart: /api/cart
 app.include_router(orders.router)                 # Orders: /api/orders
 app.include_router(favorites.router)              # Favorites: /api/favorites
-
+app.include_router(complaints.router) 
+app.include_router(product.router) 
+app.include_router(campaign.router, prefix="/api")
+app.include_router(promotion.router, prefix="/api")
+app.include_router(newsletter.router, prefix="/api")
+app.include_router(blog.router, prefix="/api")
 # ── Type alias for protected endpoints ──
 # Any endpoint that uses "user: user_dependency" will require a valid JWT token.
 # The get_current_user function extracts {username, id} from the token.
@@ -328,36 +342,10 @@ async def user_history(user: user_dependency, db: db_dependency):
 # DATA ENDPOINTS (Public — used by admin dashboard)
 # ======================================================================
 
-@app.get("/api/products")
-def get_products(db: Session = Depends(database.get_db)):
-    """Returns all products. Used by FurniturePage and the admin dashboard."""
-    return db.query(models.Products).all()
-
 @app.get("/api/order-items")
 def get_order_items(db: Session = Depends(database.get_db)):
     """Returns all order items. Used by the admin dashboard for revenue calculations."""
     return db.query(models.OrderItems).all()
-
-
-@app.get("/api/complaints")
-def get_complaints(db: Session = Depends(database.get_db)):
-    complaints = db.query(models.Complaints, models.Users.username)\
-        .join(models.Users, models.Complaints.user_id == models.Users.id)\
-        .all()
-
-    result = []
-    for complaint, username in complaints:
-        result.append({
-            "id": complaint.id,
-            "title": complaint.title,
-            "description": complaint.description,
-            "date": complaint.date,
-            "priority": complaint.priority,
-            "status": complaint.status,
-            "username": username  
-        })
-
-    return result
 
 @app.get("/stats")
 def get_stats(db: Session = Depends(database.get_db)):
@@ -397,4 +385,153 @@ def get_stats(db: Session = Depends(database.get_db)):
     return {
         "orders": orders_data,
         "users": users_data
+    }
+
+
+
+@app.get("/api/returns")
+def get_returns(db: Session = Depends(database.get_db)):
+
+    results = (
+        db.query(
+            models.Orders.id.label("id"),
+            models.Products.name.label("product_name"),
+            models.Products.image_url.label("image"),
+            models.OrderItems.quantity.label("quantity"),
+            models.OrderItems.price.label("price"),
+            models.Orders.orderdate.label("date"),
+            models.Orders.status.label("status"),
+        )
+        .join(models.OrderItems, models.OrderItems.order_id == models.Orders.id)
+        .join(models.Products, models.Products.id == models.OrderItems.product_id)
+        .filter(models.Orders.status.ilike("canceled"))
+        .all()
+    )
+
+    # format response
+    return [
+        {
+            "id": r.id,
+            "product_name": r.product_name,
+            "image": r.image,
+            "quantity": r.quantity,
+            "amount": r.quantity * r.price,
+            "date": r.date,
+            "status": r.status,
+        }
+        for r in results
+    ]
+
+@app.get("/api/deliveries")
+def get_deliveries(db: Session = Depends(database.get_db)):
+
+    deliveries = (
+        db.query(
+            models.Orders.id.label("order_id"),
+            models.Orders.orderdate,
+            models.Orders.deliverydate,
+            models.Orders.totalamount,
+            models.Orders.status,
+
+            models.Users.username.label("customer_name"),
+            models.Users.phone_num.label("customer_phone"),
+            models.Users.email.label("customer_email"),
+        )
+        .join(models.Users, models.Users.id == models.Orders.user_id)
+        .all()
+    )
+
+    return [
+        {
+            "order_id": d.order_id,
+            "orderdate": d.orderdate,
+            "deliverydate": d.deliverydate,
+            "totalamount": d.totalamount,
+            "status": d.status,
+            "delivery_type": "Any Time",
+            "deliveryman" :"deliveryman",
+            "wilaya":"constantine",
+            "commune":"commune",
+            "items_count":15,
+
+
+            "customer_name": d.customer_name,
+            "customer_phone": d.customer_phone,
+            "customer_email": d.customer_email,
+        }
+        for d in deliveries
+    ]
+
+
+@app.get("/api/deliverymen")
+def get_deliverymen(db: Session = Depends(database.get_db)):
+    deliverymen = (
+        db.query(models.Users)
+        .filter(models.Users.role == "deliveryman")
+        .all()
+    )
+
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "phone_num": u.phone_num,
+            "active": u.active,
+            "activeCount": 14
+        }
+        for u in deliverymen
+    ]
+
+@app.get("/api/overview", tags=["Overview"])
+def get_overview(db: Session = Depends(database.get_db)):
+
+    all_campaigns = db.query(models.Campaigns).all()
+    all_newsletters = db.query(models.Newsletters).all()
+    all_ar = db.query(models.Products).filter(models.Products.able_ar == True).all()
+
+    return {
+        "total_revenue":    248400,
+        "revenue_change":   "+12.5%",
+        "active_campaigns": len([c for c in all_campaigns if c.status == "active"]),
+        "campaigns_change": "+3",
+        "newsletter_subs":  len(all_newsletters),
+        "subs_change":      "+8.2%",
+        "ar_experiences":   len(all_ar),
+        "ar_change":        "-1",
+        "performance": [
+            {"month": "Jan", "revenue": 3900, "engagement": 2100},
+            {"month": "Feb", "revenue": 3200, "engagement": 1500},
+            {"month": "Mar", "revenue": 4500, "engagement": 3800},
+            {"month": "Apr", "revenue": 5100, "engagement": 4200},
+            {"month": "May", "revenue": 5800, "engagement": 3900},
+            {"month": "Jun", "revenue": 5400, "engagement": 4000},
+            {"month": "Jul", "revenue": 6200, "engagement": 4100},
+        ],
+        "campaign_status": {
+            "active":    len([c for c in all_campaigns if c.status == "active"]),
+            "draft":     len([c for c in all_campaigns if c.status == "draft"]),
+            "paused":    len([c for c in all_campaigns if c.status == "paused"]),
+            "completed": len([c for c in all_campaigns if c.status == "completed"]),
+        },
+        "channel_engagement": [
+            {"channel": "AR",      "value": 4200},
+            {"channel": "Email",   "value": 3600},
+            {"channel": "Social",  "value": 5100},
+            {"channel": "Search",  "value": 2800},
+            {"channel": "Display", "value": 3200},
+        ],
+    }
+
+@app.get("/api/health", tags=["System"])
+def health():
+    return {
+        "status": "ok",
+        "counts": {
+            "ar":          len(ar_db),
+            "campaigns":   len(campaign_db),
+            "promotions":  len(promotion_db),
+            "subscribers": len(subscriber_db),
+            "blogs":       len(blog_db),
+        },
     }

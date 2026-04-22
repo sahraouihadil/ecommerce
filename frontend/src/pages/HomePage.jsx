@@ -1,75 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Section, Divider } from '../components/ui';
-
-const products = [
-  {
-    id: 1,
-    name: 'The Cloud Lounger',
-    category: 'seating',
-    description: 'Floating comfort for the bold dreamer.',
-    price: 1850,
-    badge: 'New Arrival',
-    featured: true,
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBVfrvbRRQIUNPpLjfF8-420RxORkmtRI22XCeDt_SN-l0OjcoJBTJSu-XCF83LaVvq4aeVQQjk-c4JIX8LL8K819-cnBWRf8U90Th9i_8YGCrSYGJ3nIM7Ll5VPI3z2pdmT0fMpDwxo9GO7HIiiva9umMzSeg1pC2nd4SIckUdB0xtbFGTdHFRYAJVquq1qiXggY71bQcfjrJTBOkVjH1waJdV_1MMc4zC2Woi5WvgIyW603ZX-326-3AXdCBEv-6V0oiQdvkpsnQ',
-    variants: [{ color: '#e8e8ea' }, { color: '#f7f0ff' }, { color: '#d3d4d7' }],
-  },
-  {
-    id: 2,
-    name: 'Jellyfish Glow Lamp',
-    category: 'lighting',
-    description: 'Soft, ambient, and slightly weird.',
-    price: 290,
-    badge: null,
-    featured: false,
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBwvePOCZ8H454R4zKa7exI7F-NgMxyuiPnSeX4m0IqQgJwkZmqxrCLYS2QhMdp7XF8FezGBEwqYyg4yc-A-aA4Sia0d8PwZS2ecpTP2fExncKDdMrS-zacXyGsqlFeqTJEKASNluAv1DQRlUtE7dQx9bv8OyToZulRPdCe1Zt2kPMaBQ5qvfvDG8nVEdP-tQ4kUnT--sLknVudkPHdlD87pl695swo-gz596mq6RkB07kQT6JMrhqklLY7w264AdySkHE3e0tQK-g',
-    variants: [{ color: '#ab8ffe' }, { color: '#65fde6' }],
-  },
-  {
-    id: 3,
-    name: 'The Hug Chair',
-    category: 'seating',
-    description: 'Like a warm embrace in velvet.',
-    price: 520,
-    badge: null,
-    featured: false,
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAztZLtscB3S4bj5n9TPVIOM4O4yysW8lhBl73R37huhbMkyKQzcrGvYWBbX2jFO020xP1W2wYASY7sDKPsi0TheFJAd3Csq1CmBK2m7buB-qtjNRMhl25dU9GJzvWiMixADaKVn9dJW2kUjNUQM90AiwFNvSv3Cix9nbqnh7cIbnpfD2qi1W48vXQkLSlcqNuQcZKTFJs0sv_sXBnXZ09IhMQ7moH927r6vXW1tC1VFxyUsCxmdAZadgAFWSapUAWXKqqeo-1fpZY',
-    variants: [{ color: '#ab8ffe' }, { color: '#fed01b' }],
-  },
-  {
-    id: 4,
-    name: 'Mushroom Side Table',
-    category: 'tables',
-    description: 'Compact organic geometry.',
-    price: 410,
-    badge: null,
-    featured: true,
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCV_a7Hf-uTNJwz0UIUMytXliCvPYmUDpcNg1YZWOZrtpVS1t-i42pphJV8bjX60zj_i8Y3V0X4WTWewRIgOfRb0hTOzisnTT4jEvE4s--TcIYM15GzR1HcDkMMoVUFHJZYphEpo_C5cHdPeAjwkn2rCcblMncZyUb07iQy2gsamx0PmSs6jPThX2GYwDkX4CAh7-FKD0LQjEQXGpU-1Qv2oK5OcGXm8PeWT7H46tGK8s7trFU7zBXEhC_ZC65YoHmlkYQc5qPYGzc',
-    variants: [{ color: '#d3d4d7' }, { color: '#2d2f30' }],
-  },
-  {
-    id: 5,
-    name: 'Melted Velvet Armchair',
-    category: 'seating',
-    description: 'Deep Moss Green.',
-    price: 1299,
-    badge: null,
-    featured: false,
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDsKnhCKINOmqAnpMwjedvnelwbJBtxYDzzr4AK7Zlp25aZBC02rZSyn_oph2BoZGoLVwOIjSO-8nDjmE1pZsk4wVG5h_nTLxdOoJniEkcGT7VI04AaKi6q_cAqguqV1PdAMCA1WYDEkE7NcNAMALPCXcqvXrCC1m97sMZsc7KzvPzfM6UXwqxP9kwSaXQb1vFONqin3pSnxkLuqyYDaZtRe64pNhUPa9hiYzI0nArNeorP_4dR1U6MYjfNigECVInCKS5Ak1OmH7w',
-    variants: [{ color: '#005a50' }, { color: '#2d2f30' }],
-  },
-  {
-    id: 6,
-    name: 'Orbital Floor Light',
-    category: 'lighting',
-    description: 'Smoked Glass.',
-    price: 425,
-    badge: null,
-    featured: false,
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD9sG3Y08BdBcH-TFQPdIeo8-ETnnGHbWFMaH4zmCSqW5-umOrqFM0VUJzvuwPzrGXnT-C96yFbL3SQS7huEd_bsh4J3ePZYbTXctHTtHo6Dao1QkzTKQdgOGnaBMVtT0P3akKp02uZuNkS95CtzV5hF8vAdv61jQSwwXpSWzjB6hsh6PWnZvmidMd935GgR2jghBA_ENJp14eEkdlNyt2TShIQJDxYNHOHI0kfvFF-G_EGHBtl8XQP3A8QiLXAeHsDRqiizjllMzo',
-    variants: [{ color: '#5b5b5d' }, { color: '#dcdddf' }],
-  },
-];
+import api from '../services/api';
 
 const steps = [
   { num: '01', title: 'Browse', desc: 'Explore the full furniture catalog — filter by category, style, or room.' },
@@ -78,15 +10,47 @@ const steps = [
 ];
 
 export function HomePage() {
-  const [activeCategory, setActiveCategory] = useState('all');
+
+    const [activeCategory, setActiveCategory] = useState('all');
   const navigate = useNavigate();
+  const [products, setProducts] = useState([]);
 
-  const categories = ['all', ...new Set(products.map((p) => p.category))];
-  const filtered = activeCategory === 'all'
-    ? products
-    : products.filter((p) => p.category === activeCategory);
+  useEffect(() => {
+    console.log("useEffect running");
+    api.get("/api/products").then((res) => {
+      setProducts(res.data);
+      console.log(res.data);
+    }).catch((err) => {
+      console.error("FAILED:", err);
+    });
+  }, []);
 
-  const featuredProduct = products.find((p) => p.featured);
+  const categories = ['all', ...new Set(products.map(p => p.category))];
+  const filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
+
+if (!products || products.length === 0) {
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
+      <div className="animate-pulse">
+        <div className="w-24 h-24 rounded-full bg-gray-200 mb-6"></div>
+      </div>
+
+      <h2 className="text-xl font-semibold text-charcoal mb-2">
+        Loading furniture...
+      </h2>
+
+      <p className="text-muted text-sm max-w-xs">
+        We're bringing beautiful pieces to your space ✨
+      </p>
+    </div>
+  );
+}
+
+  const featuredProduct = products[0] || null;
+  console.log(products)
+
+  // ↓ THIS is the fix — don't render until data is ready
+  if (!featuredProduct) return null;
 
   return (
     <div className="bg-cream text-charcoal min-h-screen">
@@ -124,10 +88,13 @@ export function HomePage() {
               <div className="relative w-full max-w-[480px]">
                 <div className="rounded-3xl overflow-hidden aspect-[3/4] bg-surface shadow-[0_8px_40px_rgba(26,26,26,0.06)]">
                   <img
-                    className="w-full h-full object-cover"
-                    src={featuredProduct.img}
-                    alt={featuredProduct.name}
-                  />
+                     src={
+                         featuredProduct.image_url?.startsWith("http")
+                         ? featuredProduct.image_url
+                         : `http://127.0.0.1:8000/${featuredProduct.image_url}`
+                           }
+                           alt={featuredProduct.name}
+                          />
                 </div>
                 {featuredProduct.badge && (
                   <span className="absolute top-6 right-6 bg-white text-charcoal text-[0.6875rem] uppercase tracking-[0.1em] font-semibold px-4 py-2 rounded-full shadow-sm">
@@ -178,12 +145,14 @@ export function HomePage() {
 
               <div className="relative mb-8">
                 <div className="w-[220px] h-[220px] md:w-[260px] md:h-[260px] rounded-full overflow-hidden bg-surface shadow-[0_4px_24px_rgba(26,26,26,0.05)] transition-transform duration-500 ease-out group-hover:scale-[1.03]">
-                  <img
-                    className="w-full h-full object-cover"
-                    src={product.img}
-                    alt={product.name}
-                    loading="lazy"
-                  />
+                 <img
+                  src={
+                      product.image_url?.startsWith("http")
+                       ? product.image_url
+                       : `http://127.0.0.1:8000/${product.image_url}`
+                          }
+                       alt={product.name}
+                       />
                 </div>
                 <span className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 bg-charcoal text-cream text-[0.75rem] font-semibold tracking-wide px-5 py-2 rounded-full shadow-md whitespace-nowrap">
                   ${product.price.toLocaleString()}
