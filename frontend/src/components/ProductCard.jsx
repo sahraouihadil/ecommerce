@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CircularImage } from './ui';
 
 export default function ProductCard({ product }) {
-
-  console.log(product)
+  
   return (
     <Link to={`/product/${product.id}`} className="group block">
       <Card

@@ -103,6 +103,11 @@ class UpdateUser(BaseModel):
     email: str
     role: UserRole
 
+class ProfileUpdate(BaseModel):
+    username: str | None = None
+    email: str | None = None
+    avatar_url: str | None = None
+
 
 # ── Campaigns ───────────────────────────────
 
