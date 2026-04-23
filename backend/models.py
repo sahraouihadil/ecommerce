@@ -43,6 +43,7 @@ class Users(Base):
     verification_code = Column(String, nullable=True)  # 6-digit email verification code
     is_verified = Column(Boolean, default=False)     # True after email verification
     created_at = Column(DateTime, default=datetime.utcnow) 
+    avatar_url = Column(String, nullable=True)
 
 
 class Products(Base):
@@ -110,6 +111,8 @@ class Orders(Base):
     totalamount = Column(Float)                           # Total price of all items
     status = Column(String, default="pending")            # "pending", "confirmed", "shipped", "delivered"
 
+    items = relationship("OrderItems", back_populates="order")
+
 
 class CartItems(Base):
     """
@@ -133,6 +136,8 @@ class Favorites(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
+    
+    product = relationship("Products")
 
 
 class OrderItems(Base):
@@ -148,6 +153,10 @@ class OrderItems(Base):
     quantity = Column(Integer)   # How many of this product in this order
     order_id = Column(Integer, ForeignKey("orders.id"))      # Which order this belongs to
     product_id = Column(Integer, ForeignKey("products.id"))  # Which product
+
+    order = relationship("Orders", back_populates="items")
+
+    product = relationship("Products")
 
 
 class Complaints(Base):

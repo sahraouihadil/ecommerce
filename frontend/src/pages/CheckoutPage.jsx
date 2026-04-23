@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const WILAYAS = [
-  "Mila", "Guelma", "Oum El Bouaghi", "Skikda", "Batna", "Sétif",
+  "Constantine","Mila", "Guelma", "Oum El Bouaghi", "Skikda", "Batna", "Sétif",
   "Jijel", "Annaba", "Bordj Bou Arréridj", "Khenchela", "Souk Ahras",
   "Béjaïa", "Tébessa",
 ];

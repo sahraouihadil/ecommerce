@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation,useNavigate } from 'react-router-dom';
+import { logout } from '../services/auth';
 
 function decodeToken(token) {
   try {
@@ -13,8 +14,8 @@ function decodeToken(token) {
 export function Header() {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -47,11 +48,11 @@ export function Header() {
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
-  function handleLogout() {
-    localStorage.removeItem('token');
-    setUser(null);
-    navigate('/login');
-  }
+  const handleLogout = () => {
+  logout();        // removes token + role
+  setUser(null);   // resets header UI immediately
+  navigate('/');   // triggers the useEffect as a bonus safety net
+};
 
   const navLinks = [
     { to: '/furniture', label: 'Shop' },
