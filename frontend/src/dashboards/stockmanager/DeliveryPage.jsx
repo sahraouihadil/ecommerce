@@ -821,7 +821,7 @@ export function DeliveryPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={stockManagerLinks}
-        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" />
+        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" profilePath="/stock-manager-dash/profile" />
 
       <main className="flex-1 min-w-0">
         <Header concept="Delivery Dashboard" />

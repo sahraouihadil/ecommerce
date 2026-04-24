@@ -196,7 +196,7 @@ const saveNote = async () => {
         }
       `}</style>
       <div className="cmp-page">
-        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" />
+        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" profilePath="/admin-dash/profile" />
         <main className="cmp-main">
           <Header concept="Complaints" setOpenBar={setOpenBar} openBar={openBar} />
           <div className="cmp-inner">

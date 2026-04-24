@@ -48,6 +48,7 @@ export default function ARPage() {
         title="StockManagerCore"
         subtitle="Enterprise Suite"
         role="Stock Manager"
+        profilePath="/stock-manager-dash/profile"
       />
 
       <main style={{ flex: 1, overflowY: "auto" }}>

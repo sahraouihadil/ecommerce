@@ -202,7 +202,7 @@ export default function AccountsPage() {
       `}</style>
 
       <div className="acct-page">
-        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" />
+        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" profilePath="/admin-dash/profile" />
 
         <main className="acct-main">
           <Header concept="Accounts" setOpenBar={setOpenBar} openBar={openBar} />

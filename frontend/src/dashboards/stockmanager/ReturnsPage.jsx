@@ -94,6 +94,7 @@ export function ReturnsPage() {
         title="StockManagerCore"
         subtitle="Returns System"
         role="Manager"
+        profilePath="/stock-manager-dash/profile"
       />
 
       {/* MAIN */}

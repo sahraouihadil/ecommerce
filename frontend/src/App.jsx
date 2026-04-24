@@ -1,6 +1,6 @@
 import { Footer } from './components/Footer'
 import { Header } from './components/Header'
-import { BrowserRouter, Route, Routes, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, Navigate, useLocation, Outlet } from 'react-router-dom'
 import ChatWidget from './components/ChatWidget/ChatWidget'
 
 import { HomePage } from './pages/HomePage'
@@ -55,14 +55,14 @@ const ProtectedRoute = ({ children }) => {
   return children
 }
 
-const RoleProtectedRoute = ({ children, role }) => {
+const RoleProtectedRoute = ({ role }) => {
   const token = localStorage.getItem("token")
   const userRole = localStorage.getItem("role")
 
   if (!token) return <Navigate to="/login" replace />
   if (role && userRole !== role) return <Navigate to="/" replace />
 
-  return children
+  return <Outlet />
 }
 
 // ===================== LAYOUT =====================
@@ -85,20 +85,17 @@ function CustomerChat() {
   return <ChatWidget />
 }
 
-function CustomerLayout({ children }) {
+function CustomerLayout() {
   const location = useLocation()
-
-  const isDash =
-    location.pathname.includes('-dash')
+  const isDash = location.pathname.includes('-dash')
 
   return (
     <div className="flex flex-col min-h-screen">
       {!isDash && <Header />}
-
-      <main className="flex-1">{children}</main>
-
+      <main className="flex-1">
+        <Outlet />
+      </main>
       {!isDash && <Footer />}
-
       <CustomerChat />
     </div>
   )
@@ -109,8 +106,8 @@ function CustomerLayout({ children }) {
 function App() {
   return (
     <BrowserRouter>
-      <CustomerLayout>
-        <Routes>
+      <Routes>
+        <Route element={<CustomerLayout />}>
 
           {/* ===== PUBLIC ROUTES ===== */}
           <Route index element={<HomePage />} />
@@ -128,74 +125,65 @@ function App() {
           <Route path='/cart' element={
             <ProtectedRoute><CartPage /></ProtectedRoute>
           } />
-
           <Route path='/checkout' element={
             <ProtectedRoute><CheckoutPage /></ProtectedRoute>
           } />
-
           <Route path='/profile' element={
             <ProtectedRoute><ProfilePage /></ProtectedRoute>
           } />
-
           <Route path='/profile/history' element={
             <ProtectedRoute><HistoryPage /></ProtectedRoute>
           } />
-
           <Route path='/favorite' element={
             <ProtectedRoute><FavoritePage /></ProtectedRoute>
           } />
-
           <Route path='/order' element={
             <ProtectedRoute><OrderPage /></ProtectedRoute>
           } />
-
           <Route path='/order/tracking/:orderId/:productId' element={
             <ProtectedRoute><TrackingPage /></ProtectedRoute>
           } />
 
           {/* ===== ADMIN ===== */}
-          <Route path='/admin-dash' element={
-            <RoleProtectedRoute role="admin">
-              <AdminDashboard />
-            </RoleProtectedRoute>
-          } />
-
-          <Route path='/admin-dash/accounts' element={<AccountsPage />} />
-          <Route path='/admin-dash/complaints' element={<ComplaintsPage />} />
-          <Route path='/admin-dash/configuration' element={<ConfigurationPage />} />
-          <Route path='/admin-dash/engagement' element={<EngagementPage />} />
-          <Route path='/admin-dash/reports' element={<ReportPage />} />
-          <Route path='/admin-dash/validation' element={<ValidationPage />} />
+          <Route path='/admin-dash' element={<RoleProtectedRoute role="admin" />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path='accounts' element={<AccountsPage />} />
+            <Route path='complaints' element={<ComplaintsPage />} />
+            <Route path='configuration' element={<ConfigurationPage />} />
+            <Route path='engagement' element={<EngagementPage />} />
+            <Route path='reports' element={<ReportPage />} />
+            <Route path='validation' element={<ValidationPage />} />
+            <Route path='profile' element={<AProfilePage />} />
+          </Route>
 
           {/* ===== MARKETING ===== */}
-          <Route path='/marketing-manager-dash' element={<MarketingMngrDashboard />} />
-          <Route path='/marketing-manager-dash/blogs' element={<BlogsPage />} />
-          <Route path='/marketing-manager-dash/campaigns' element={<CampaignsPage />} />
-          <Route path='/marketing-manager-dash/newsletters' element={<NewslettersPage />} />
-          <Route path='/marketing-manager-dash/promotions' element={<PromotionsPage />} />
+          <Route path='/marketing-manager-dash' element={<RoleProtectedRoute role="marketing_manager" />}>
+            <Route index element={<MarketingMngrDashboard />} />
+            <Route path='blogs' element={<BlogsPage />} />
+            <Route path='campaigns' element={<CampaignsPage />} />
+            <Route path='newsletters' element={<NewslettersPage />} />
+            <Route path='promotions' element={<PromotionsPage />} />
+            <Route path='profile' element={<AProfilePage />} />
+          </Route>
 
           {/* ===== STOCK ===== */}
-          <Route path='/stock-manager-dash' element={<OverviewPage />} />
-          <Route path='/stock-manager-dash/deliveries' element={<DeliveryPage />} />
-          <Route path='/stock-manager-dash/returns' element={<ReturnsPage />} />
-          <Route path='/stock-manager-dash/inventories' element={<ProductCatalogPage />} />
-          <Route path='/stock-manager-dash/ar' element={<ARPage />} />
+          <Route path='/stock-manager-dash' element={<RoleProtectedRoute role="stock_manager" />}>
+            <Route index element={<OverviewPage />} />
+            <Route path='deliveries' element={<DeliveryPage />} />
+            <Route path='returns' element={<ReturnsPage />} />
+            <Route path='inventories' element={<ProductCatalogPage />} />
+            <Route path='ar' element={<ARPage />} />
+            <Route path='profile' element={<AProfilePage />} />
+          </Route>
 
           {/* ===== DELIVERY ===== */}
-          <Route path='/deliveryman-dash' element={<DeliverymanDashboard />} />
+          <Route path='/deliveryman-dash' element={<RoleProtectedRoute role="deliveryman" />}>
+            <Route index element={<DeliverymanDashboard />} />
+            <Route path='profile' element={<AProfilePage />} />
+          </Route>
 
-          {/* ===== PROFILE (ALL DASHBOARDS) ===== */}
-          {[
-            "/admin-dash/profile",
-            "/marketing-manager-dash/profile",
-            "/stock-manager-dash/profile",
-            "/deliveryman-dash/profile",
-          ].map((path) => (
-            <Route key={path} path={path} element={<AProfilePage />} />
-          ))}
-
-        </Routes>
-      </CustomerLayout>
+        </Route>
+      </Routes>
     </BrowserRouter>
   )
 }
