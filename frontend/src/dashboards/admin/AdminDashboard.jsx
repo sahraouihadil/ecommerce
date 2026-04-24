@@ -176,7 +176,9 @@ export function AdminDashboard() {
           title="AdminCore"
           subtitle="Enterprise Suite"
           role="Super Admin"
+          profilePath="/admin-dash/profile"
         />
+      
         <main className="dash-main">
           <Header concept="Dashboard" setOpenBar={setOpenBar} openBar={openBar} />
           <div className="dash-inner">

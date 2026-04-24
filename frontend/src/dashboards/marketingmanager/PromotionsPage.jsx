@@ -53,6 +53,7 @@ export default function PromotionsPage() {
         title="MarketingCore"
         subtitle="Enterprise Suite"
         role="Marketing Manager"
+        profilePath="/marketing-manager-dash/profile"
       />
 
       <main style={{ flex: 1, overflowY: "auto" }}>

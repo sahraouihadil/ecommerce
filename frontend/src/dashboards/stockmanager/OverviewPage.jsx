@@ -204,6 +204,7 @@ setCategoryList(
         title="StockManagerCore"
         subtitle="Enterprise Suite"
         role="Super Stock Manager"
+        profilePath="/stock-manager-dash/profile"
       />
 
       {/* MAIN */}

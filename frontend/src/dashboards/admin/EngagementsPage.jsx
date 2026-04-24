@@ -96,7 +96,7 @@ export default function EngagementPage() {
         @media (max-width: 640px) { .eng-overview-grid { grid-template-columns: 1fr; } }
       `}</style>
       <div className="eng-page">
-        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" />
+        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" profilePath="/admin-dash/profile"/>
         <main className="eng-main">
           <Header concept="Engagement" setOpenBar={setOpenBar} openBar={openBar} />
           <div className="eng-inner">
