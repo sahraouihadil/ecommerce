@@ -204,3 +204,9 @@ class OrderCreate(BaseModel):
     wilaya: str
     city: str
     streetAddress: str
+
+
+class PatchDeliveryRequest(BaseModel):
+    deliveryman: Optional[str] = None 
+    status: Optional[str] = None
+    deliverydate: Optional[date] = None 

@@ -44,7 +44,7 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 # ── Router imports (each router handles a group of related endpoints) ──
 from route import user_router                     # Auth: /register, /login, /admin-dash, etc.
-from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile  # Feature routers
+from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries  # Feature routers
 import shutil
 import os
 import uuid
@@ -78,7 +78,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,          # Which frontend URLs can make requests
     allow_credentials=True,         # Allow cookies/auth headers
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -98,6 +98,7 @@ app.include_router(favorites.router)              # Favorites: /api/favorites
 app.include_router(complaints.router) 
 app.include_router(product.router) 
 app.include_router(profile.router) 
+app.include_router(deliveries.router) 
 app.include_router(campaign.router, prefix="/api")
 app.include_router(promotion.router, prefix="/api")
 app.include_router(newsletter.router, prefix="/api")
@@ -392,55 +393,6 @@ def get_returns(db: Session = Depends(database.get_db)):
         for r in results
     ]
 
-
-@app.get("/api/deliveries")
-def get_deliveries(db: Session = Depends(database.get_db)):
-
-    deliveries = (
-        db.query(
-            models.Orders.id.label("order_id"),
-            models.Orders.orderdate,
-            models.Orders.deliverydate,
-            models.Orders.totalamount,
-            models.Orders.status,
-            models.Orders.delivery_type,
-            models.Orders.wilaya,
-            models.Orders.city,
-            models.Orders.street_address,
-
-            models.Users.username.label("customer_name"),
-            models.Users.phone_num.label("customer_phone"),
-            models.Users.email.label("customer_email"),
-            
-            func.count(models.OrderItems.id).label("items_count"),
-        )
-        .join(models.Users, models.Users.id == models.Orders.user_id)
-        .outerjoin(models.OrderItems, models.OrderItems.order_id == models.Orders.id)
-        .group_by(models.Orders.id, models.Users.id)
-        .all()
-    )
-
-    return [
-        {
-            "order_id": d.order_id,
-            "orderdate": d.orderdate,
-            "deliverydate": d.deliverydate,
-            "totalamount": d.totalamount,
-            "status": d.status,
-
-            "delivery_type": d.delivery_type,
-            "wilaya": d.wilaya,
-            "city": d.city,
-            "street_address": d.street_address,
-
-            "items_count": d.items_count,
-
-            "customer_name": d.customer_name,
-            "customer_phone": d.customer_phone,
-            "customer_email": d.customer_email,
-        }
-        for d in deliveries
-    ]
 @app.get("/api/deliverymen")
 def get_deliverymen(db: Session = Depends(database.get_db)):
     deliverymen = (
