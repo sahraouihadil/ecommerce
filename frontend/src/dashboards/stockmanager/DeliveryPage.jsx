@@ -34,7 +34,7 @@ import api from "../../services/api";
 
 // ─── ALLOWED WILAYAS ─────────────────────────────────────────────────────────
 const ALLOWED_WILAYAS = [
-  "Mila", "Guelma", "Oum Bouaghi", "Skikda", "Batna",
+  "Costantine","Mila", "Guelma", "Oum Bouaghi", "Skikda", "Batna",
   "Sétif", "Jijel", "Annaba", "Bordj Bou Arréridj",
   "Khenchla", "Souk Ahras", "Béjaïa", "Tébessa",
 ];

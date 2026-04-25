@@ -22,12 +22,13 @@ from database import get_db
 from models import Orders, OrderItems, CartItems, Products
 from security.jwt_handler import verify_token
 from datetime import datetime
+from schema import OrderCreate
 
 router = APIRouter(prefix="/api/orders", tags=["orders"], redirect_slashes=False)
 
 
 @router.post("")
-def create_order(db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
+def create_order(data: OrderCreate,db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
     """
     Creates a new order from the user's cart items.
     This is the "checkout" endpoint.
@@ -60,7 +61,8 @@ def create_order(db: Session = Depends(get_db), payload: dict = Depends(verify_t
         user_id=user_id,
         totalamount=total,
         status="pending",
-        orderdate=datetime.utcnow()
+        orderdate=datetime.utcnow(),
+        deliverydate=data.deliverydate
     )
     db.add(order)
     db.flush()  # flush() assigns the order.id without committing yet
