@@ -200,3 +200,7 @@ class BlogUpdate(BaseModel):
 
 class OrderCreate(BaseModel):
     deliverydate: date
+    delivery_type :  str
+    wilaya: str
+    city: str
+    streetAddress: str

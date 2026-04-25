@@ -392,6 +392,7 @@ def get_returns(db: Session = Depends(database.get_db)):
         for r in results
     ]
 
+
 @app.get("/api/deliveries")
 def get_deliveries(db: Session = Depends(database.get_db)):
 
@@ -402,12 +403,20 @@ def get_deliveries(db: Session = Depends(database.get_db)):
             models.Orders.deliverydate,
             models.Orders.totalamount,
             models.Orders.status,
+            models.Orders.delivery_type,
+            models.Orders.wilaya,
+            models.Orders.city,
+            models.Orders.street_address,
 
             models.Users.username.label("customer_name"),
             models.Users.phone_num.label("customer_phone"),
             models.Users.email.label("customer_email"),
+            
+            func.count(models.OrderItems.id).label("items_count"),
         )
         .join(models.Users, models.Users.id == models.Orders.user_id)
+        .outerjoin(models.OrderItems, models.OrderItems.order_id == models.Orders.id)
+        .group_by(models.Orders.id, models.Users.id)
         .all()
     )
 
@@ -418,12 +427,13 @@ def get_deliveries(db: Session = Depends(database.get_db)):
             "deliverydate": d.deliverydate,
             "totalamount": d.totalamount,
             "status": d.status,
-            "delivery_type": "Any Time",
-            "deliveryman" :"deliveryman",
-            "wilaya":"constantine",
-            "commune":"commune",
-            "items_count":15,
 
+            "delivery_type": d.delivery_type,
+            "wilaya": d.wilaya,
+            "city": d.city,
+            "street_address": d.street_address,
+
+            "items_count": d.items_count,
 
             "customer_name": d.customer_name,
             "customer_phone": d.customer_phone,
@@ -431,8 +441,6 @@ def get_deliveries(db: Session = Depends(database.get_db)):
         }
         for d in deliveries
     ]
-
-
 @app.get("/api/deliverymen")
 def get_deliverymen(db: Session = Depends(database.get_db)):
     deliverymen = (
