@@ -409,7 +409,7 @@ export function CheckoutPage() {
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
 
-  const [deliveryType, setDeliveryType] = useState("anytime");
+  const [deliveryType, setDeliveryType] = useState("any time");
   const [deliveryDate, setDeliveryDate] = useState(getTomorrow());
   const [selectedDow, setSelectedDow] = useState("");
 
@@ -447,7 +447,7 @@ export function CheckoutPage() {
         notes,
         paymentMethod,
         ...(paymentMethod === "cib" ? { cardNumber, cardExpiry, cardCvv } : {}),
-        deliveryType,
+        delivery_type:deliveryType,
         deliverydate: deliveryDate
       });
       navigate("/order", { state: { orderId: res.data.order_id, total: res.data.total } });
@@ -552,16 +552,16 @@ export function CheckoutPage() {
               </div>
               <div className="sched-tabs">
                 {[
-                  { id: "anytime", icon: "bolt", label: "Any Time", sub: "We'll deliver ASAP" },
-                  { id: "specific_date", icon: "calendar_month", label: "Specific Date", sub: "Pick a date" },
-                  { id: "day_of_week", icon: "date_range", label: "Day of Week", sub: "Pick a weekday" },
+                  { id: "any time", icon: "bolt", label: "Any Time", sub: "We'll deliver ASAP" },
+                  { id: "specific date", icon: "calendar_month", label: "Specific Date", sub: "Pick a date" },
+                  { id: "day of week", icon: "date_range", label: "Day of Week", sub: "Pick a weekday" },
                 ].map((opt) => (
                   <button
                     key={opt.id}
                     className={`sched-tab ${deliveryType === opt.id ? "sched-tab-active" : ""}`}
                     onClick={() => {
                       setDeliveryType(opt.id);
-                      if (opt.id === "anytime") {
+                      if (opt.id === "any time") {
                         setDeliveryDate(getTomorrow());
                         setSelectedDow("");
                       }
@@ -576,8 +576,8 @@ export function CheckoutPage() {
                   </button>
                 ))}
               </div>
-              {deliveryType === "specific_date" && (
-                <div className="sched-detail-panel" key="specific_date">
+              {deliveryType === "specific date" && (
+                <div className="sched-detail-panel" key="specific date">
                   <label className="sched-label">Choose a date</label>
                   <input
                     className="form-input" type="date"
@@ -588,8 +588,8 @@ export function CheckoutPage() {
                   />
                 </div>
               )}
-              {deliveryType === "day_of_week" && (
-                <div className="sched-detail-panel" key="day_of_week">
+              {deliveryType === "day of week" && (
+                <div className="sched-detail-panel" key="day of week">
                   <label className="sched-label">Choose a weekday</label>
                   <div className="dow-grid">
                     {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d) => (
@@ -657,7 +657,7 @@ export function CheckoutPage() {
                 <div className="summary-meta-row">
                   <span>Schedule</span>
                   <span className="summary-payment-label">
-                    {deliveryType === "anytime" ? "ASAP" : deliveryType === "specific_date" ? deliveryDate || "—" : selectedDow || "—"}
+                    {deliveryType === "any time" ? "ASAP" : deliveryType === "specific date" ? deliveryDate || "—" : selectedDow || "—"}
                   </span>
                 </div>
               </div>

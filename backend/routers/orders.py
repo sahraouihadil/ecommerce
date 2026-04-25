@@ -58,11 +58,16 @@ def create_order(data: OrderCreate,db: Session = Depends(get_db), payload: dict 
 
     # Step 3: Create the Order
     order = Orders(
-        user_id=user_id,
-        totalamount=total,
-        status="pending",
-        orderdate=datetime.utcnow(),
-        deliverydate=data.deliverydate
+       user_id=user_id,
+       totalamount=total,
+       status="pending",
+       orderdate=datetime.utcnow(),
+       deliverydate=data.deliverydate,
+       delivery_type=data.delivery_type,
+
+       wilaya=data.wilaya,
+       city=data.city,
+       street_address=data.streetAddress,
     )
     db.add(order)
     db.flush()  # flush() assigns the order.id without committing yet
