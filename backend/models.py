@@ -164,6 +164,8 @@ class OrderItems(Base):
     id         = Column(Integer, primary_key=True, index=True)
     price      = Column(Float)
     quantity   = Column(Integer)
+    status         = Column(String, default="pending")
+    return_reason = Column(String)
     order_id   = Column(Integer, ForeignKey("orders.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
 

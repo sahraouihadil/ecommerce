@@ -14,7 +14,7 @@ import api from "../../services/api";
 const ALLOWED_WILAYAS = [
   "Constantine","Mila","Guelma","Oum Bouaghi","Skikda","Batna",
   "Sétif","Jijel","Annaba","Bordj Bou Arréridj",
-  "Khenchla","Souk Ahras","Béjaïa","Tébessa",
+  "Khenchela","Souk Ahras","Béjaïa","Tébessa",
 ];
 function isAllowedWilaya(wilaya = "") {
   return ALLOWED_WILAYAS.some(w => w.toLowerCase() === wilaya.toLowerCase().trim());
