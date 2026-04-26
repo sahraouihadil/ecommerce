@@ -44,6 +44,8 @@ def _serialize(p: Products) -> dict:
         "image_url":   p.images[0].image_url if p.images else None,
         "images":      [img.image_url for img in p.images],
         "colors":      [c.color for c in p.colors],
+        "created_at": p.created_at
+        
     }
 
 
@@ -130,6 +132,21 @@ def add_product(
     db.refresh(product)
     return _serialize(product)
 
+@router.get("/by-sku/{sku}")
+def get_product_by_sku(sku: str, db: Session = Depends(get_db)):
+    """
+    Look up a single product by its SKU.
+    Used by the AR/3D management page to find a product before patching AR fields.
+    """
+    product = (
+        db.query(Products)
+        .filter(Products.sku == sku)
+        .first()
+    )
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Product with SKU '{sku}' not found")
+
+    return _serialize(product)
 
 # =============================================================================
 # UPDATE
