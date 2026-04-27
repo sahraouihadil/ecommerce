@@ -19,7 +19,7 @@ NAMING CONVENTION:
 from pydantic import BaseModel,Field
 from enums import UserRole
 from fastapi import Form,File
-from datetime import datetime
+from datetime import datetime,date
 from typing import Optional, List
 
 def today():
@@ -102,6 +102,11 @@ class UpdateUser(BaseModel):
     username: str
     email: str
     role: UserRole
+
+class ProfileUpdate(BaseModel):
+    username: str | None = None
+    email: str | None = None
+    avatar_url: str | None = None
 
 
 # ── Campaigns ───────────────────────────────
@@ -193,3 +198,15 @@ class BlogUpdate(BaseModel):
     status:   Optional[str] = None
     date:     Optional[str] = None
 
+class OrderCreate(BaseModel):
+    deliverydate: date
+    delivery_type :  str
+    wilaya: str
+    city: str
+    streetAddress: str
+
+
+class PatchDeliveryRequest(BaseModel):
+    deliveryman: Optional[str] = None 
+    status: Optional[str] = None
+    deliverydate: Optional[date] = None 

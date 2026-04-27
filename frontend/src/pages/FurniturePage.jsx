@@ -16,8 +16,6 @@ export function FurniturePage() {
       try {
         const response = await api.get("/api/products");
 
-        console.log("PRODUCTS:", response.data); 
-
         setProducts(response.data);
       } catch (err) {
         console.error(err);

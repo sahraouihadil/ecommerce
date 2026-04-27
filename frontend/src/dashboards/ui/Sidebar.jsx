@@ -11,7 +11,8 @@ export default function Sidebar({
   links = [],
   title = "Dashboard",
   subtitle = "System Panel",
-  role = "User"
+  role = "User",
+  profilePath = "/profile"
 }) {
   const navigate = useNavigate();
 
@@ -159,7 +160,7 @@ export default function Sidebar({
               />
 
               <div>
-                <NavLink to="/profile" style={{ textDecoration: "none" }}>
+                <NavLink to={profilePath} style={{ textDecoration: "none" }}>
                   <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
                     {role}
                   </p>

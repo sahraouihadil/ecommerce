@@ -1,53 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Boxes,
-  Truck,
-  RotateCcw,
-  Search,
-  X,
-  MapPin,
-  Calendar,
-  Clock,
-  CheckCircle2,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-  Users,
-  Eye,
-  RefreshCw,
-  SendHorizonal,
-  ChevronsUpDown,
-  AlertTriangle,
-  UserCheck,
-  ArrowRight,
-  Package,
-  ChevronLeft,
-  ChevronRight,
-  Bot
+  LayoutDashboard, Boxes, Truck, RotateCcw, Search, X, MapPin, Calendar,
+  Clock, CheckCircle2, Loader2, ChevronDown, ChevronUp, Users, Eye,
+  RefreshCw, SendHorizonal, ChevronsUpDown, AlertTriangle, UserCheck,
+  ArrowRight, Package, ChevronLeft, ChevronRight, Bot, Pencil, Save
 } from "lucide-react";
 
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import api from "../../services/api";
 
-// ─── ALLOWED WILAYAS ─────────────────────────────────────────────────────────
 const ALLOWED_WILAYAS = [
-  "Mila", "Guelma", "Oum Bouaghi", "Skikda", "Batna",
-  "Sétif", "Jijel", "Annaba", "Bordj Bou Arréridj",
-  "Khenchla", "Souk Ahras", "Béjaïa", "Tébessa",
+  "Constantine","Mila","Guelma","Oum Bouaghi","Skikda","Batna",
+  "Sétif","Jijel","Annaba","Bordj Bou Arréridj",
+  "Khenchela","Souk Ahras","Béjaïa","Tébessa",
 ];
 function isAllowedWilaya(wilaya = "") {
   return ALLOWED_WILAYAS.some(w => w.toLowerCase() === wilaya.toLowerCase().trim());
 }
 
-// ─── STATUS CONFIG ────────────────────────────────────────────────────────────
 const STATUSES = [
-  { key: "Pending",    label: "Pending",    color: "bg-amber-100 text-amber-700 border-amber-200",       icon: Clock         },
-  { key: "Processing", label: "Processing", color: "bg-blue-100 text-blue-700 border-blue-200",          icon: RefreshCw     },
-  { key: "Shipped",    label: "Shipped",    color: "bg-indigo-100 text-indigo-700 border-indigo-200",    icon: SendHorizonal },
-  { key: "Delivered",  label: "Delivered",  color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle2  },
+  { key:"Pending",    label:"Pending",    color:"bg-amber-100 text-amber-700 border-amber-200",       icon:Clock         },
+  { key:"Processing", label:"Processing", color:"bg-blue-100 text-blue-700 border-blue-200",          icon:RefreshCw     },
+  { key:"Shipped",    label:"Shipped",    color:"bg-indigo-100 text-indigo-700 border-indigo-200",    icon:SendHorizonal },
+  { key:"Delivered",  label:"Delivered",  color:"bg-emerald-100 text-emerald-700 border-emerald-200", icon:CheckCircle2  },
 ];
 const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.key.toLowerCase(), s]));
 
@@ -57,10 +34,6 @@ const TYPE_COLORS = {
   "Certain Date": "bg-teal-100 text-teal-700 border-teal-200",
 };
 
-// ─── WEEKDAYS ─────────────────────────────────────────────────────────────────
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
 function getInitials(name = "") {
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
 }
@@ -93,21 +66,27 @@ function SortHeader({ label, field, sortField, sortDir, onSort }) {
 }
 function fmtDate(s) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("en-GB", { year:"numeric", month:"2-digit", day:"2-digit" });
+  const [year, month, day] = s.slice(0,10).split("-");
+  return `${day}/${month}/${year}`;
 }
 function fmtDateShort(s) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
+  const [year, month, day] = s.slice(0,10).split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
 }
 function fmtWeekday(s) {
   if (!s) return "";
-  return new Date(s).toLocaleDateString("en-GB", { weekday:"long" });
-}
-function toYMD(date) {
-  return date.toISOString().slice(0, 10);
+  const [year, month, day] = s.slice(0,10).split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-GB", { weekday:"long" });
 }
 
-// ─── ASSIGN BUTTON ────────────────────────────────────────────────────────────
+function toYMD(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function AssignButton({ deliverymanName, onClick }) {
   if (deliverymanName) {
     return (
@@ -131,94 +110,191 @@ function AssignButton({ deliverymanName, onClick }) {
   );
 }
 
-// ─── STATUS DROPDOWN (self-contained, portal-free) ───────────────────────────
+// ─── DELIVERY DATE EDITOR ─────────────────────────────────────────────────────
+function DeliveryDateCell({ orderId, deliverydate, onSave, saving }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue]     = useState(deliverydate ? deliverydate.slice(0,10) : "");
+  const inputRef              = useRef(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  const handleSave = async () => {
+    if (value === (deliverydate ? deliverydate.slice(0,10) : "")) {
+      setEditing(false);
+      return;
+    }
+    await onSave(orderId, value);
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleSave();
+    if (e.key === "Escape") { setValue(deliverydate ? deliverydate.slice(0,10) : ""); setEditing(false); }
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          ref={inputRef}
+          type="date"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="text-xs border border-indigo-300 rounded-lg px-2 py-1 text-gray-700 bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-32"
+        />
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-6 h-6 flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer disabled:opacity-50"
+        >
+          {saving ? <Loader2 size={10} className="animate-spin"/> : <Save size={10}/>}
+        </button>
+        <button
+          onClick={() => { setValue(deliverydate ? deliverydate.slice(0,10) : ""); setEditing(false); }}
+          className="w-6 h-6 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 transition cursor-pointer"
+        >
+          <X size={10}/>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="group flex items-center gap-1.5 text-left hover:bg-indigo-50 rounded-lg px-1 py-0.5 -mx-1 transition"
+    >
+      <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+        <Calendar size={11} className="text-blue-500"/>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-gray-700 group-hover:text-indigo-600 transition">
+          {fmtDate(deliverydate) || <span className="text-gray-300 italic">—</span>}
+        </p>
+        {deliverydate && (
+          <p className="text-xs text-gray-400">{fmtWeekday(deliverydate)}</p>
+        )}
+      </div>
+      <Pencil size={9} className="text-gray-300 group-hover:text-indigo-400 transition ml-0.5 shrink-0"/>
+    </button>
+  );
+}
+
+// ─── STATUS DROPDOWN — portal-based to escape overflow clipping ───────────────
+import { createPortal } from "react-dom";
+
 function StatusDropdown({ orderId, currentStatus, onUpdate, updatingId }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [open, setOpen]       = useState(false);
+  const [pos, setPos]         = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef            = useRef(null);
+  const menuRef               = useRef(null);
   const st     = STATUS_MAP[currentStatus?.toLowerCase()];
   const StIcon = st?.icon || Clock;
   const busy   = updatingId === orderId;
 
-  // Close on outside click
+  const openMenu = (e) => {
+    e.stopPropagation();
+    if (!triggerRef.current) return;
+    const rect       = triggerRef.current.getBoundingClientRect();
+    const menuH      = 180;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const up         = spaceBelow < menuH + 8;
+    setPos({
+      top:   up ? rect.top - menuH - 4 : rect.bottom + 4,
+      left:  rect.left,
+      width: rect.width,
+    });
+    setOpen(o => !o);
+  };
+
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        menuRef.current    && !menuRef.current.contains(e.target)
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  const menu = open ? createPortal(
+    <div
+      ref={menuRef}
+      style={{ position:"fixed", top: pos.top, left: pos.left, minWidth: 176, zIndex: 9999 }}
+      className="bg-white border border-gray-200 rounded-xl shadow-xl py-1"
+    >
+      {STATUSES.map(s => {
+        const SIcon     = s.icon;
+        const isCurrent = currentStatus?.toLowerCase() === s.key.toLowerCase();
+        return (
+          <button
+            key={s.key}
+            onClick={(e) => { e.stopPropagation(); setOpen(false); onUpdate(orderId, s.key); }}
+            className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 transition cursor-pointer text-left ${
+              isCurrent ? "font-semibold text-indigo-600" : "text-gray-700"
+            }`}
+          >
+            <SIcon size={12}/>
+            {s.label}
+            {isCurrent && <CheckCircle2 size={11} className="ml-auto text-indigo-400"/>}
+          </button>
+        );
+      })}
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div className="relative" ref={ref}>
+    <>
       <button
+        ref={triggerRef}
         disabled={busy}
-        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
-        className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium border cursor-pointer hover:opacity-80 transition ${st?.color || "bg-gray-100 text-gray-600 border-gray-200"} ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
+        onClick={openMenu}
+        className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 m-2 rounded-full font-medium border cursor-pointer hover:opacity-80 transition ${
+          st?.color || "bg-gray-100 text-gray-600 border-gray-200"
+        } ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
       >
-        {busy
-          ? <Loader2 size={11} className="animate-spin"/>
-          : <StIcon size={11}/>
-        }
+        {busy ? <Loader2 size={11} className="animate-spin"/> : <StIcon size={11}/>}
         {currentStatus}
         {!busy && <ChevronDown size={10}/>}
       </button>
-
-      {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 w-44">
-          {STATUSES.map(s => {
-            const SIcon = s.icon;
-            const isCurrent = currentStatus?.toLowerCase() === s.key.toLowerCase();
-            return (
-              <button
-                key={s.key}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                  onUpdate(orderId, s.key);
-                }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 transition cursor-pointer text-left ${
-                  isCurrent ? "font-semibold text-indigo-600" : "text-gray-700"
-                }`}
-              >
-                <SIcon size={12}/>
-                {s.label}
-                {isCurrent && <CheckCircle2 size={11} className="ml-auto text-indigo-400"/>}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+      {menu}
+    </>
   );
 }
 
-// ─── CALENDAR TAB ────────────────────────────────────────────────────────────
+// ─── CALENDAR TAB ─────────────────────────────────────────────────────────────
 function DeliveryCalendar({ dmOrders }) {
-  const today = new Date();
+  const today    = new Date();
   const todayYMD = toYMD(today);
-
-  const [calYear,  setCalYear]  = useState(today.getFullYear());
-  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [calYear,     setCalYear]     = useState(today.getFullYear());
+  const [calMonth,    setCalMonth]    = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
 
   const orderByDate = useMemo(() => {
     const m = {};
     dmOrders.forEach(o => {
-      if (o.deliverydate) m[o.deliverydate.slice(0, 10)] = o;
+      if (o.deliverydate) {
+        const key = o.deliverydate.slice(0, 10);
+        m[key] = o;
+      }
     });
     return m;
   }, [dmOrders]);
 
   const monthLabel = new Date(calYear, calMonth, 1)
     .toLocaleDateString("en-GB", { month:"long", year:"numeric" });
-
   const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth    = new Date(calYear, calMonth + 1, 0).getDate();
 
   const deliveriesThisMonth = Object.keys(orderByDate).filter(k => {
-    const d = new Date(k);
-    return d.getFullYear() === calYear && d.getMonth() === calMonth;
+    const [y, mo] = k.split("-").map(Number);
+    return y === calYear && mo - 1 === calMonth;
   }).length;
 
   const freeDaysRemaining = useMemo(() => {
@@ -232,13 +308,13 @@ function DeliveryCalendar({ dmOrders }) {
 
   const prevMonth = () => {
     setSelectedDay(null);
-    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); }
-    else setCalMonth(m => m - 1);
+    if (calMonth === 0) { setCalYear(y => y-1); setCalMonth(11); }
+    else setCalMonth(m => m-1);
   };
   const nextMonth = () => {
     setSelectedDay(null);
-    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0); }
-    else setCalMonth(m => m + 1);
+    if (calMonth === 11) { setCalYear(y => y+1); setCalMonth(0); }
+    else setCalMonth(m => m+1);
   };
 
   const cells = [];
@@ -250,20 +326,27 @@ function DeliveryCalendar({ dmOrders }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-bold text-gray-900">{monthLabel}</p>
           <p className="text-xs text-gray-400 mt-0.5">
-            <span className="font-semibold text-gray-600">{deliveriesThisMonth}</span> {deliveriesThisMonth === 1 ? "delivery" : "deliveries"}
+            <span className="font-semibold text-gray-600">{deliveriesThisMonth}</span>{" "}
+            {deliveriesThisMonth === 1 ? "delivery" : "deliveries"}
             {freeDaysRemaining !== null && (
-              <> · <span className="font-semibold text-gray-600">{freeDaysRemaining}</span> free days remaining</>
+              <> · <span className="font-semibold text-gray-600">{freeDaysRemaining}</span> free days left</>
             )}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"/> Order</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-200 inline-block"/> Free</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"/>
+              Order
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-gray-200 inline-block"/>
+              Free
+            </span>
           </div>
           <div className="flex items-center gap-0.5">
             <button onClick={prevMonth} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition cursor-pointer text-gray-400">
@@ -282,7 +365,7 @@ function DeliveryCalendar({ dmOrders }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-px">
+      <div className="grid grid-cols-7 gap-1">
         {cells.map((day, i) => {
           if (!day) return <div key={`e-${i}`} className="aspect-square"/>;
           const ymd      = toYMD(new Date(calYear, calMonth, day));
@@ -301,19 +384,22 @@ function DeliveryCalendar({ dmOrders }) {
             <button
               key={day}
               onClick={() => setSelectedDay(isSel ? null : day)}
-              className={`relative aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-medium transition cursor-pointer
-                ${isSel    ? "bg-indigo-600 text-white shadow-sm"
-                : isToday  ? "border-2 border-indigo-400 text-indigo-700 bg-indigo-50"
-                : hasOrder ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                           : "text-gray-500 hover:bg-gray-100"}
-              `}
+              className={`relative aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-medium transition-all cursor-pointer
+                ${isSel
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-[1.05]"
+                  : isToday
+                    ? "ring-2 ring-indigo-400 ring-offset-1 text-indigo-700 bg-indigo-50 font-bold"
+                    : hasOrder
+                      ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      : "text-gray-500 hover:bg-gray-100"
+                }`}
             >
               <span>{day}</span>
               {isToday && !isSel && (
-                <span className="text-[7px] font-bold text-indigo-500 leading-none">TODAY</span>
+                <span className="text-[7px] font-bold text-indigo-500 leading-none tracking-tight">TODAY</span>
               )}
               {hasOrder && !isSel && (
-                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${dotColor}`}/>
+                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${dotColor}`}/>
               )}
             </button>
           );
@@ -321,23 +407,23 @@ function DeliveryCalendar({ dmOrders }) {
       </div>
 
       {selectedDay && (
-        <div className="mt-3 rounded-xl border border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-sm font-bold text-gray-700">
+        <div className="mt-3 rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-white border-2 border-indigo-200 rounded-xl flex items-center justify-center text-sm font-bold text-indigo-700 shadow-sm">
                 {selectedDay}
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">
-                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB",{weekday:"long"})}
+                <p className="text-sm font-bold text-gray-800">
+                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB", { weekday:"long" })}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}
+                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" })}
                 </p>
               </div>
             </div>
-            <button onClick={() => setSelectedDay(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
-              <X size={14}/>
+            <button onClick={() => setSelectedDay(null)} className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer">
+              <X size={13}/>
             </button>
           </div>
 
@@ -346,17 +432,17 @@ function DeliveryCalendar({ dmOrders }) {
             const SIcon = s?.icon || Clock;
             return (
               <div className="px-4 py-3 flex items-center gap-3">
-                <Avatar name={selectedOrder.customer_name} size="w-9 h-9"/>
+                <Avatar name={selectedOrder.customer_name} size="w-10 h-10"/>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{selectedOrder.customer_name}</p>
-                  <p className="text-xs text-indigo-500 font-medium flex items-center gap-1">
+                  <p className="text-sm font-bold text-gray-800 truncate">{selectedOrder.customer_name}</p>
+                  <p className="text-xs text-indigo-500 font-medium flex items-center gap-1 mt-0.5">
                     {selectedOrder.order_id}
                     <span className="text-gray-300">·</span>
                     <MapPin size={10} className="text-gray-400"/>
                     <span className="text-gray-500">{selectedOrder.wilaya}</span>
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium border ${s?.color||"bg-gray-100 text-gray-600 border-gray-200"}`}>
                     <SIcon size={10}/> {selectedOrder.status}
                   </span>
@@ -367,40 +453,54 @@ function DeliveryCalendar({ dmOrders }) {
               </div>
             );
           })() : (
-            <div className="px-4 py-6 flex flex-col items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                <Calendar size={16} className="text-gray-400"/>
+            <div className="px-4 py-7 flex flex-col items-center gap-2">
+              <div className="w-11 h-11 rounded-2xl bg-gray-100 flex items-center justify-center">
+                <Calendar size={18} className="text-gray-300"/>
               </div>
-              <p className="text-sm font-semibold text-gray-500">Free day</p>
-              <p className="text-xs text-gray-400">No delivery scheduled for this date</p>
+              <p className="text-sm font-semibold text-gray-400">Free day</p>
+              <p className="text-xs text-gray-300">No delivery scheduled</p>
             </div>
           )}
         </div>
       )}
 
       {dmOrders.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Scheduled Deliveries</p>
+        <div className="mt-5">
+          <div className="flex items-center gap-2 mb-3">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Scheduled Deliveries</p>
+            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+              {dmOrders.filter(o => o.deliverydate).length}
+            </span>
+          </div>
           <div className="space-y-2">
             {[...dmOrders]
               .filter(o => o.deliverydate)
-              .sort((a, b) => new Date(a.deliverydate) - new Date(b.deliverydate))
+              .sort((a,b) => new Date(a.deliverydate) - new Date(b.deliverydate))
               .map((order, idx) => {
                 const s     = STATUS_MAP[order.status?.toLowerCase()];
                 const SIcon = s?.icon || Clock;
-                const dd    = new Date(order.deliverydate);
+                const [y, mo, dd] = order.deliverydate.slice(0,10).split("-").map(Number);
+                const localDate   = new Date(y, mo - 1, dd);
                 return (
-                  <div key={order.order_id} className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
-                    <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">{idx+1}</span>
+                  <div key={order.order_id}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition group"
+                  >
+                    <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition">
+                      {idx + 1}
+                    </span>
                     <div className="text-center shrink-0 w-9">
-                      <p className="text-sm font-bold text-indigo-600 leading-none">{dd.getDate()}</p>
-                      <p className="text-[10px] text-gray-400">{dd.toLocaleDateString("en-GB",{weekday:"short"})}</p>
+                      <p className="text-sm font-bold text-indigo-600 leading-none">{localDate.getDate()}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {localDate.toLocaleDateString("en-GB", { weekday:"short" })}
+                      </p>
                     </div>
                     <Avatar name={order.customer_name} size="w-7 h-7"/>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-800 truncate">{order.customer_name}</p>
                       <p className="text-[10px] text-indigo-500 flex items-center gap-1">
-                        {order.order_id}<span className="text-gray-300">·</span><span className="text-gray-400">{order.wilaya}</span>
+                        {order.order_id}
+                        <span className="text-gray-300">·</span>
+                        <span className="text-gray-400">{order.wilaya}</span>
                       </p>
                     </div>
                     <p className="text-xs font-bold text-gray-700 whitespace-nowrap">
@@ -419,22 +519,16 @@ function DeliveryCalendar({ dmOrders }) {
   );
 }
 
-// ─── DM MODAL ────────────────────────────────────────────────────────────────
+// ─── DM MODAL ─────────────────────────────────────────────────────────────────
 function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
   const [tab, setTab] = useState("overview");
-
   const todayYMD = toYMD(new Date());
-
   const dmOrders    = deliveries.filter(d => d.deliveryman === dm.username);
   const delivered   = dmOrders.filter(d => d.status?.toLowerCase() === "delivered").length;
   const canceled    = dmOrders.filter(d => d.status?.toLowerCase() === "canceled").length;
   const active      = dmOrders.filter(d => !["delivered","canceled"].includes(d.status?.toLowerCase())).length;
-  const successRate = dmOrders.length > 0 ? Math.round((delivered / dmOrders.length) * 100) : 0;
-
-  const todayOrders = dmOrders.filter(
-    o => o.deliverydate && o.deliverydate.slice(0, 10) === todayYMD
-  );
-
+  const successRate = dmOrders.length > 0 ? Math.round((delivered/dmOrders.length)*100) : 0;
+  const todayOrders = dmOrders.filter(o => o.deliverydate && o.deliverydate.slice(0,10) === todayYMD);
   const canRequestNext = nextPendingOrder && !deliveries.some(
     d => d.deliveryman === dm.username &&
          d.deliverydate === nextPendingOrder.deliverydate &&
@@ -445,7 +539,6 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
     <div className="fixed inset-0 z-[1001] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}/>
       <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-
         <div className="px-6 pt-6 pb-4 shrink-0">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -476,8 +569,10 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
                   <Calendar size={12}/> Month
                 </button>
               </div>
-              <button onClick={onClose}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer">
+              <button
+                onClick={onClose}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer"
+              >
                 <X size={15}/>
               </button>
             </div>
@@ -486,9 +581,9 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
           <div className="grid grid-cols-4 gap-2">
             {[
               { label:"Total",     value:dmOrders.length, cls:"bg-gray-50 text-gray-800"       },
-              { label:"Active",    value:active,           cls:"bg-blue-50 text-blue-700"       },
-              { label:"Delivered", value:delivered,        cls:"bg-emerald-50 text-emerald-700" },
-              { label:"Canceled",  value:canceled,         cls:"bg-red-50 text-red-500"         },
+              { label:"Active",    value:active,          cls:"bg-blue-50 text-blue-700"       },
+              { label:"Delivered", value:delivered,       cls:"bg-emerald-50 text-emerald-700" },
+              { label:"Canceled",  value:canceled,        cls:"bg-red-50 text-red-500"         },
             ].map(({ label, value, cls }) => (
               <div key={label} className={`${cls} rounded-xl p-3 text-center`}>
                 <p className="text-xl font-bold">{value}</p>
@@ -507,8 +602,10 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
                   <span className="text-sm font-bold text-emerald-600">{successRate}%</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                    style={{width:`${successRate}%`}}/>
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+                    style={{ width:`${successRate}%` }}
+                  />
                 </div>
               </div>
 
@@ -545,14 +642,11 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                    Today's Deliveries
-                  </p>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Today's Deliveries</p>
                   <span className="text-[10px] font-semibold text-indigo-500 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
-                    {new Date().toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" })}
+                    {new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}
                   </span>
                 </div>
-
                 {todayOrders.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-6 text-center">
                     <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
@@ -567,19 +661,14 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
                       const s     = STATUS_MAP[order.status?.toLowerCase()];
                       const OIcon = s?.icon || Clock;
                       return (
-                        <div key={order.order_id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
-                          <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
-                            {idx + 1}
-                          </div>
+                        <div key={order.order_id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
+                          <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">{idx+1}</div>
                           <Avatar name={order.customer_name} size="w-8 h-8"/>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">{order.customer_name}</p>
                             <p className="text-xs text-indigo-500 font-medium flex items-center gap-1">
-                              {order.order_id}
-                              <span className="text-gray-300">·</span>
-                              <MapPin size={10} className="text-gray-400"/>
-                              <span className="text-gray-500 font-normal">{order.wilaya}</span>
+                              {order.order_id}<span className="text-gray-300">·</span>
+                              <MapPin size={10} className="text-gray-400"/><span className="text-gray-500 font-normal">{order.wilaya}</span>
                             </p>
                           </div>
                           <p className="text-xs font-bold text-gray-700 whitespace-nowrap shrink-0">
@@ -596,7 +685,6 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
               </div>
             </div>
           )}
-
           {tab === "month" && <DeliveryCalendar dmOrders={dmOrders}/>}
         </div>
       </div>
@@ -604,41 +692,27 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
   );
 }
 
-// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
+// ─── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export function DeliveryPage() {
   const navigate = useNavigate();
-
-  const [deliveries,   setDeliveries]   = useState([]);
-  const [deliverymen,  setDeliverymen]  = useState([]);
-  const [loading,      setLoading]      = useState(true);
-
-  const [activeStatus, setActiveStatus] = useState("pending");
-
-  const [dateFilter,           setDateFilter]           = useState("All");
-  const [selectedWeekday,      setSelectedWeekday]      = useState(null);
-  const [selectedSpecificDate, setSelectedSpecificDate] = useState(null);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [openBar,     setOpenBar]     = useState(window.innerWidth >= 600);
-
-  const [sortField, setSortField] = useState("orderdate");
-  const [sortDir,   setSortDir]   = useState("asc");
-
-  // ── Assign modal state ────────────────────────────────────────────────────
-  const [showAssignModal,   setShowAssignModal]   = useState(false);
-  const [assignOrder,       setAssignOrder]       = useState(null);
-  const [assignDeliveryman, setAssignDeliveryman] = useState("");
-  const [assigning,         setAssigning]         = useState(false);
-
-  // ── DM modal state ────────────────────────────────────────────────────────
+  const [deliveries,          setDeliveries]          = useState([]);
+  const [deliverymen,         setDeliverymen]         = useState([]);
+  const [loading,             setLoading]             = useState(true);
+  const [activeStatus,        setActiveStatus]        = useState("pending");
+  const [searchQuery,         setSearchQuery]         = useState("");
+  const [openBar,             setOpenBar]             = useState(window.innerWidth >= 600);
+  const [sortField,           setSortField]           = useState("orderdate");
+  const [sortDir,             setSortDir]             = useState("asc");
+  const [showAssignModal,     setShowAssignModal]     = useState(false);
+  const [assignOrder,         setAssignOrder]         = useState(null);
+  const [assignDeliveryman,   setAssignDeliveryman]   = useState("");
+  const [assigning,           setAssigning]           = useState(false);
   const [showDmModal,         setShowDmModal]         = useState(false);
   const [selectedDeliveryman, setSelectedDeliveryman] = useState(null);
-
-  // ── Status update loading indicator ──────────────────────────────────────
-  const [updatingStatusId, setUpdatingStatusId] = useState(null);
-
-  const [message,     setMessage]     = useState("");
-  const [messageType, setMessageType] = useState("");
+  const [updatingStatusId,    setUpdatingStatusId]    = useState(null);
+  const [updatingDateId,      setUpdatingDateId]      = useState(null);
+  const [message,             setMessage]             = useState("");
+  const [messageType,         setMessageType]         = useState("");
 
   useEffect(() => {
     const verify = async () => {
@@ -667,12 +741,6 @@ export function DeliveryPage() {
   const showFlash = (msg, type) => {
     setMessage(msg); setMessageType(type);
     setTimeout(() => { setMessage(""); setMessageType(""); }, 3500);
-  };
-
-  const handleDateFilterChange = (opt) => {
-    setDateFilter(opt);
-    setSelectedWeekday(null);
-    setSelectedSpecificDate(null);
   };
 
   const statusCounts = useMemo(() => {
@@ -715,7 +783,7 @@ export function DeliveryPage() {
   const nextPendingOrder = useMemo(() => {
     return [...deliveries]
       .filter(d => !d.deliveryman && d.status?.toLowerCase()==="pending" && isAllowedWilaya(d.wilaya))
-      .sort((a, b) => new Date(a.orderdate) - new Date(b.orderdate))[0] || null;
+      .sort((a,b) => new Date(a.orderdate)-new Date(b.orderdate))[0] || null;
   }, [deliveries]);
 
   const handleSort = field => {
@@ -730,21 +798,9 @@ export function DeliveryPage() {
       if (q && !d.order_id?.toString().toLowerCase().includes(q) &&
                !d.customer_name?.toLowerCase().includes(q) &&
                !d.wilaya?.toLowerCase().includes(q)) return false;
-      if (dateFilter === "Any Time" && d.delivery_type !== "Any Time") return false;
-      if (dateFilter === "Day of Week") {
-        if (d.delivery_type !== "Day of Week") return false;
-        if (selectedWeekday !== null && d.deliverydate) {
-          if (new Date(d.deliverydate).getDay() !== selectedWeekday) return false;
-        }
-      }
-      if (dateFilter === "Specific Date") {
-        if (d.delivery_type !== "Specific Date") return false;
-        if (selectedSpecificDate && d.deliverydate?.slice(0, 10) !== selectedSpecificDate) return false;
-      }
       return true;
     });
-
-    return [...list].sort((a, b) => {
+    return [...list].sort((a,b) => {
       let va=a[sortField]??"", vb=b[sortField]??"";
       if (sortField==="totalamount") { va=Number(a.totalamount||0); vb=Number(b.totalamount||0); }
       if (sortField==="deliverydate"||sortField==="orderdate") { va=new Date(va||0); vb=new Date(vb||0); }
@@ -752,7 +808,7 @@ export function DeliveryPage() {
       if (va>vb) return sortDir==="asc"?1:-1;
       return 0;
     });
-  }, [deliveries, activeStatus, searchQuery, dateFilter, selectedWeekday, selectedSpecificDate, sortField, sortDir]);
+  }, [deliveries, activeStatus, searchQuery, sortField, sortDir]);
 
   const openAssignModal = (order) => {
     setAssignOrder(order);
@@ -760,18 +816,21 @@ export function DeliveryPage() {
     setShowAssignModal(true);
   };
 
-  // ── Confirm assignment ────────────────────────────────────────────────────
   const handleAssign = async () => {
     if (!assignOrder || !assignDeliveryman) return;
     setAssigning(true);
     try {
-      const newValue = assignDeliveryman === "__unassign__" ? "" : assignDeliveryman;
-      await api.patch(`/api/deliveries/${assignOrder.order_id}`, { deliveryman: newValue });
+      const isUnassign     = assignDeliveryman === "__unassign__";
+      const newDeliveryman = isUnassign ? "" : assignDeliveryman;
+      const isPending      = assignOrder.status?.toLowerCase() === "pending";
+      const patch          = { deliveryman: newDeliveryman };
+      if (!isUnassign && isPending) patch.status = "processing";
+      await api.patch(`/api/deliveries/${assignOrder.order_id}`, patch);
       await fetchAll();
       showFlash(
-        assignDeliveryman === "__unassign__"
+        isUnassign
           ? "Deliveryman unassigned successfully"
-          : `Order assigned to ${assignDeliveryman}`,
+          : `Order assigned to ${assignDeliveryman}${isPending?" · Status set to Processing":""}`,
         "success"
       );
       setShowAssignModal(false);
@@ -780,22 +839,22 @@ export function DeliveryPage() {
     } catch (err) {
       console.error("Assign error:", err);
       showFlash("Failed to assign deliveryman. Please try again.", "error");
-    } finally {
-      setAssigning(false);
-    }
+    } finally { setAssigning(false); }
   };
 
   const handleRequestNext = async (dm) => {
     if (!nextPendingOrder) return;
     try {
-      await api.patch(`/api/deliveries/${nextPendingOrder.order_id}`, { deliveryman: dm.username });
+      await api.patch(`/api/deliveries/${nextPendingOrder.order_id}`, {
+        deliveryman: dm.username,
+        status: "processing",
+      });
       await fetchAll();
-      showFlash(`Order ${nextPendingOrder.order_id} assigned to ${dm.username}`, "success");
+      showFlash(`Order ${nextPendingOrder.order_id} assigned to ${dm.username} · Status set to Processing`, "success");
       setShowDmModal(false);
     } catch { showFlash("Failed to assign next order", "error"); }
   };
 
-  // ── Update status ─────────────────────────────────────────────────────────
   const handleUpdateStatus = async (orderId, status) => {
     setUpdatingStatusId(orderId);
     try {
@@ -805,34 +864,49 @@ export function DeliveryPage() {
     } catch (err) {
       console.error("Status update error:", err);
       showFlash("Failed to update status. Please try again.", "error");
-    } finally {
-      setUpdatingStatusId(null);
-    }
+    } finally { setUpdatingStatusId(null); }
+  };
+
+  // ─── NEW: update delivery date ─────────────────────────────────────────────
+  const handleUpdateDeliveryDate = async (orderId, newDate) => {
+    setUpdatingDateId(orderId);
+    try {
+      await api.patch(`/api/deliveries/${orderId}`, { deliverydate: newDate || null });
+      await fetchAll();
+      showFlash(
+        newDate ? `Delivery date updated to ${fmtDate(newDate)}` : "Delivery date cleared",
+        "success"
+      );
+    } catch (err) {
+      console.error("Date update error:", err);
+      showFlash("Failed to update delivery date. Please try again.", "error");
+    } finally { setUpdatingDateId(null); }
   };
 
   const stockManagerLinks = [
-    { to: "/stock-manager-dash", label: "Dashboard", icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes /> },
-    { to: "/stock-manager-dash/ar",          label: "AR/3D Management", icon: <Bot size={18} /> },
-    { to: "/stock-manager-dash/deliveries", label: "Delivery", icon: <Truck /> },
-    { to: "/stock-manager-dash/returns", label: "Returns", icon: <RotateCcw /> }
+    { to:"/stock-manager-dash",             label:"Dashboard",        icon:<LayoutDashboard />, end:true },
+    { to:"/stock-manager-dash/inventories", label:"Product's Catalog", icon:<Boxes />           },
+    { to:"/stock-manager-dash/ar",          label:"AR/3D Management", icon:<Bot size={18}/>     },
+    { to:"/stock-manager-dash/deliveries",  label:"Delivery",         icon:<Truck />            },
+    { to:"/stock-manager-dash/returns",     label:"Returns",          icon:<RotateCcw />        },
   ];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={stockManagerLinks}
-        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" />
+        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" profilePath="/stock-manager-dash/profile"/>
 
       <main className="flex-1 min-w-0">
-        <Header concept="Delivery Dashboard" />
+        <Header concept="Delivery Dashboard"/>
 
         <div className="p-6 space-y-5">
-
           {message && (
             <div className={`p-3 rounded-lg border-l-4 text-sm font-medium flex items-center gap-2 ${
               messageType==="success" ? "bg-green-50 text-green-800 border-green-500" : "bg-red-50 text-red-800 border-red-500"
             }`}>
-              {messageType==="success" ? <CheckCircle2 size={15} className="shrink-0"/> : <AlertTriangle size={15} className="shrink-0"/>}
+              {messageType==="success"
+                ? <CheckCircle2 size={15} className="shrink-0"/>
+                : <AlertTriangle size={15} className="shrink-0"/>}
               {message}
             </div>
           )}
@@ -848,21 +922,24 @@ export function DeliveryPage() {
               </div>
               <button className="flex items-center gap-2 border border-gray-200 bg-gray-50 px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition cursor-pointer">
                 <Users size={15} className="text-gray-400"/>Deliverymen
-                <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">{deliverymen.length}</span>
+                <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  {deliverymen.length}
+                </span>
               </button>
             </div>
 
             {deliverymen.length > 0 && (
               <div className="flex items-center gap-2.5 flex-wrap mb-5">
                 {deliverymen.map(dm => {
-                  const todayStr = new Date().toISOString().slice(0, 10);
+                  const todayStr = toYMD(new Date());
                   const isBusy   = deliveries.some(
                     d => d.deliveryman===dm.username &&
                          d.deliverydate?.slice(0,10)===todayStr &&
                          !["delivered","canceled"].includes(d.status?.toLowerCase())
                   );
                   return (
-                    <div key={dm.id}
+                    <div
+                      key={dm.id}
                       onClick={() => { setSelectedDeliveryman(dm); setShowDmModal(true); }}
                       className="flex items-center gap-2.5 border border-gray-200 rounded-full px-3 py-1.5 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40 transition cursor-pointer"
                     >
@@ -881,7 +958,6 @@ export function DeliveryPage() {
               </div>
             )}
 
-            {/* Status tabs */}
             <div className="flex items-center gap-2 flex-wrap">
               {STATUSES.map(s => {
                 const Icon  = s.icon;
@@ -910,89 +986,23 @@ export function DeliveryPage() {
             </div>
           </div>
 
-          {/* Search + Filters */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 space-y-3">
+          {/* Search */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
             <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-indigo-400 bg-gray-50">
               <Search size={16} className="text-gray-400 shrink-0"/>
               <input
                 className="flex-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
                 placeholder="Search by order ID, customer or wilaya…"
-                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
               <span className="text-xs text-gray-400">{filtered.length} orders</span>
             </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Calendar size={13} className="text-gray-400"/> Delivery type:
-              </div>
-              {["All", "Any Time", "Day of Week", "Specific Date"].map(opt => (
-                <button
-                  key={opt}
-                  onClick={() => handleDateFilterChange(opt)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                    dateFilter===opt ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-
-            {dateFilter === "Day of Week" && (
-              <div className="flex items-center gap-2 flex-wrap pt-1">
-                <span className="text-xs text-gray-400 font-medium">Weekday:</span>
-                {WEEKDAYS.map((day, i) => (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedWeekday(selectedWeekday === i ? null : i)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
-                      selectedWeekday === i
-                        ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                        : "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100"
-                    }`}
-                  >
-                    {day}
-                  </button>
-                ))}
-                {selectedWeekday !== null && (
-                  <button onClick={() => setSelectedWeekday(null)}
-                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition cursor-pointer ml-1">
-                    <X size={12}/> Clear
-                  </button>
-                )}
-              </div>
-            )}
-
-            {dateFilter === "Specific Date" && (
-              <div className="flex items-center gap-3 pt-1">
-                <span className="text-xs text-gray-400 font-medium">Date:</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={selectedSpecificDate || ""}
-                    onChange={e => setSelectedSpecificDate(e.target.value || null)}
-                    className="border border-teal-200 bg-teal-50 text-teal-800 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
-                  />
-                  {selectedSpecificDate && (
-                    <button onClick={() => setSelectedSpecificDate(null)}
-                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition cursor-pointer">
-                      <X size={12}/> Clear
-                    </button>
-                  )}
-                </div>
-                {selectedSpecificDate && (
-                  <span className="text-xs text-teal-600 font-medium">
-                    Showing orders for {new Date(selectedSpecificDate).toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-9 px-6 py-3.5 border-b border-gray-100 bg-gray-50/80">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible">
+            <div className="grid grid-cols-9 px-6 py-3.5 border-b border-gray-100 bg-gray-50/80 rounded-t-2xl">
               {[
                 {label:"Order",         field:"order_id"     },
                 {label:"Order Date",    field:"orderdate"    },
@@ -1029,7 +1039,6 @@ export function DeliveryPage() {
                     !allowed ? "bg-red-50/40 hover:bg-red-50/60" : "hover:bg-blue-50/20"
                   }`}
                 >
-                  {/* Order ID */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">{d.order_id}</span>
                     {idx===0 && activeStatus==="pending" && (
@@ -1037,7 +1046,6 @@ export function DeliveryPage() {
                     )}
                   </div>
 
-                  {/* Order Date */}
                   <div className="flex items-center gap-1.5">
                     <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                       <Package size={11} className="text-gray-500"/>
@@ -1048,16 +1056,13 @@ export function DeliveryPage() {
                     </div>
                   </div>
 
-                  {/* Customer */}
                   <div className="flex items-center gap-2 min-w-0">
-                    <Avatar name={d.customer_name} size="w-8 h-8"/>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-800 truncate">{d.customer_name}</p>
                       <p className="text-xs text-gray-400">{d.customer_phone}</p>
                     </div>
                   </div>
 
-                  {/* Location */}
                   <div className="flex items-start gap-1.5 min-w-0">
                     <MapPin size={13} className={`mt-0.5 shrink-0 ${allowed?"text-gray-300":"text-red-400"}`}/>
                     <div className="min-w-0">
@@ -1069,31 +1074,25 @@ export function DeliveryPage() {
                     </div>
                   </div>
 
-                  {/* Amount */}
                   <div>
                     <p className="text-sm font-bold text-gray-900">{Number(d.totalamount||0).toLocaleString("fr-DZ")} DA</p>
                     <p className="text-xs text-gray-400">{d.items_count} items</p>
                   </div>
 
-                  {/* Delivery Type */}
                   <div>
                     <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium border ${TYPE_COLORS[d.delivery_type]||"bg-gray-100 text-gray-600 border-gray-200"}`}>
                       <Calendar size={11}/> {d.delivery_type}
                     </span>
                   </div>
 
-                  {/* Delivery Date */}
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                      <Calendar size={11} className="text-blue-500"/>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-gray-700">{fmtDate(d.deliverydate)||"—"}</p>
-                      <p className="text-xs text-gray-400">{fmtWeekday(d.deliverydate)}</p>
-                    </div>
-                  </div>
+                  {/* ─── EDITABLE DELIVERY DATE ─── */}
+                  <DeliveryDateCell
+                    orderId={d.order_id}
+                    deliverydate={d.deliverydate}
+                    onSave={handleUpdateDeliveryDate}
+                    saving={updatingDateId === d.order_id}
+                  />
 
-                  {/* Status — self-contained dropdown */}
                   <StatusDropdown
                     orderId={d.order_id}
                     currentStatus={d.status}
@@ -1101,19 +1100,15 @@ export function DeliveryPage() {
                     updatingId={updatingStatusId}
                   />
 
-                  {/* Deliveryman */}
                   <div className="flex items-center gap-2">
-                    <AssignButton
-                      deliverymanName={d.deliveryman}
-                      onClick={() => openAssignModal(d)}
-                    />
+                    <AssignButton deliverymanName={d.deliveryman} onClick={() => openAssignModal(d)}/>
                   </div>
                 </div>
               );
             })}
 
             {!loading && filtered.length>0 && (
-              <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/60 flex items-center justify-between">
+              <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/60 rounded-b-2xl flex items-center justify-between">
                 <p className="text-xs text-gray-400">
                   Showing <span className="font-semibold text-gray-600">{filtered.length}</span> of{" "}
                   <span className="font-semibold text-gray-600">{deliveries.length}</span> deliveries
@@ -1140,11 +1135,8 @@ export function DeliveryPage() {
                   <h2 className="text-base font-bold text-gray-900">Assign Deliveryman</h2>
                   <p className="text-sm text-gray-400 mt-0.5">{assignOrder.order_id} — {assignOrder.customer_name}</p>
                 </div>
-                <button
-                  onClick={() => !assigning && setShowAssignModal(false)}
-                  disabled={assigning}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer disabled:opacity-40"
-                >
+                <button onClick={() => !assigning && setShowAssignModal(false)} disabled={assigning}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer disabled:opacity-40">
                   <X size={15}/>
                 </button>
               </div>
@@ -1161,6 +1153,12 @@ export function DeliveryPage() {
                   </span>
                 )}
               </div>
+              {assignOrder.status?.toLowerCase() === "pending" && (
+                <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-xs text-blue-700 font-medium mb-3">
+                  <RefreshCw size={12} className="shrink-0"/>
+                  Assigning a deliveryman will automatically set the status to <strong>Processing</strong>.
+                </div>
+              )}
               <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-700 font-medium">
                 <Clock size={12} className="shrink-0"/>
                 Each deliveryman handles <strong>1 order per day</strong> (8h shift).
@@ -1169,14 +1167,12 @@ export function DeliveryPage() {
             </div>
 
             <div className="px-6 pb-2 max-h-80 overflow-y-auto space-y-4">
-              {/* Unassign option */}
               {assignOrder.deliveryman && (
                 <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
-                  assignDeliveryman==="__unassign__"?"border-red-300 bg-red-50":"border-gray-200 hover:bg-gray-50"
+                  assignDeliveryman==="__unassign__" ? "border-red-300 bg-red-50" : "border-gray-200 hover:bg-gray-50"
                 }`}>
                   <input type="radio" className="hidden" value="__unassign__"
-                    checked={assignDeliveryman==="__unassign__"}
-                    onChange={() => setAssignDeliveryman("__unassign__")}/>
+                    checked={assignDeliveryman==="__unassign__"} onChange={() => setAssignDeliveryman("__unassign__")}/>
                   <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
                     <X size={14} className="text-gray-500"/>
                   </div>
@@ -1188,25 +1184,28 @@ export function DeliveryPage() {
                 </label>
               )}
 
-              {/* Available deliverymen */}
               {assignGroups.available.length>0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"/>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Free on {fmtDateShort(assignOrder.deliverydate)||"this date"}</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      Free on {fmtDateShort(assignOrder.deliverydate)||"this date"}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     {assignGroups.available.map(dm => (
                       <label key={dm.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
-                        assignDeliveryman===dm.username?"border-indigo-300 bg-indigo-50":"border-gray-200 hover:bg-gray-50"
+                        assignDeliveryman===dm.username ? "border-indigo-300 bg-indigo-50" : "border-gray-200 hover:bg-gray-50"
                       }`}>
                         <input type="radio" className="hidden" value={dm.username}
-                          checked={assignDeliveryman===dm.username}
-                          onChange={() => setAssignDeliveryman(dm.username)}/>
+                          checked={assignDeliveryman===dm.username} onChange={() => setAssignDeliveryman(dm.username)}/>
                         <Avatar name={dm.username} size="w-9 h-9"/>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-800">{dm.username}</p>
-                          <p className="text-xs text-gray-400">{dm.phone_num && <span>{dm.phone_num} · </span>}{dm.activeCount} active order{dm.activeCount!==1?"s":""}</p>
+                          <p className="text-xs text-gray-400">
+                            {dm.phone_num && <span>{dm.phone_num} · </span>}
+                            {dm.activeCount} active order{dm.activeCount!==1?"s":""}
+                          </p>
                         </div>
                         <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">Free</span>
                         {assignDeliveryman===dm.username && <CheckCircle2 size={16} className="text-indigo-500 shrink-0"/>}
@@ -1216,25 +1215,28 @@ export function DeliveryPage() {
                 </div>
               )}
 
-              {/* Busy deliverymen */}
               {assignGroups.busy.length>0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="w-2 h-2 rounded-full bg-red-400 shrink-0"/>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Busy on {fmtDateShort(assignOrder.deliverydate)||"this date"}</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      Busy on {fmtDateShort(assignOrder.deliverydate)||"this date"}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     {assignGroups.busy.map(dm => (
                       <label key={dm.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
-                        assignDeliveryman===dm.username?"border-indigo-300 bg-indigo-50":"border-gray-100 bg-gray-50/50 hover:bg-gray-50"
+                        assignDeliveryman===dm.username ? "border-indigo-300 bg-indigo-50" : "border-gray-100 bg-gray-50/50 hover:bg-gray-50"
                       }`}>
                         <input type="radio" className="hidden" value={dm.username}
-                          checked={assignDeliveryman===dm.username}
-                          onChange={() => setAssignDeliveryman(dm.username)}/>
+                          checked={assignDeliveryman===dm.username} onChange={() => setAssignDeliveryman(dm.username)}/>
                         <Avatar name={dm.username} size="w-9 h-9"/>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-600">{dm.username}</p>
-                          <p className="text-xs text-gray-400">{dm.phone_num && <span>{dm.phone_num} · </span>}{dm.activeCount} active order{dm.activeCount!==1?"s":""}</p>
+                          <p className="text-xs text-gray-400">
+                            {dm.phone_num && <span>{dm.phone_num} · </span>}
+                            {dm.activeCount} active order{dm.activeCount!==1?"s":""}
+                          </p>
                         </div>
                         <span className="text-xs font-semibold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full shrink-0">Busy</span>
                         {assignDeliveryman===dm.username && <CheckCircle2 size={16} className="text-indigo-500 shrink-0"/>}
@@ -1250,29 +1252,21 @@ export function DeliveryPage() {
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3 mt-2">
-              <button
-                onClick={() => setShowAssignModal(false)}
-                disabled={assigning}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium transition cursor-pointer disabled:opacity-40"
-              >
+              <button onClick={() => setShowAssignModal(false)} disabled={assigning}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium transition cursor-pointer disabled:opacity-40">
                 Cancel
               </button>
-              <button
-                onClick={handleAssign}
-                disabled={!assignDeliveryman || assigning}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
+              <button onClick={handleAssign} disabled={!assignDeliveryman || assigning}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 {assigning
                   ? <><Loader2 size={14} className="animate-spin"/> Assigning…</>
-                  : <><UserCheck size={14}/> Confirm Assignment</>
-                }
+                  : <><UserCheck size={14}/> Confirm Assignment</>}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* DM MODAL */}
       {showDmModal && selectedDeliveryman && (
         <DmModal
           dm={selectedDeliveryman}

@@ -176,7 +176,7 @@ const grossMargin = `${(
         @media (max-width: 480px) { .rpt-stats-grid { grid-template-columns: 1fr; } }
       `}</style>
       <div className="rpt-page">
-        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" />
+        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" profilePath="/admin-dash/profile" />
         <main className="rpt-main">
           <Header concept="Reports" setOpenBar={setOpenBar} openBar={openBar} />
           <div className="rpt-inner">

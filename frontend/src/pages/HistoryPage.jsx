@@ -10,7 +10,7 @@ export function HistoryPage() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await api.get("/api/orders/history");
+        const response = await api.get("/profile/history");
         setHistoryOrders(response.data);
       } catch (error) {
         localStorage.removeItem("token");

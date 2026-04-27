@@ -111,6 +111,7 @@ export default function CampaignsPage() {
         title="MarketingCore"
         subtitle="Enterprise Suite"
         role="Marketing Manager"
+        profilePath="/marketing-manager-dash/profile"
       />
 
       <main style={{ flex: 1, overflowY: "auto" }}>

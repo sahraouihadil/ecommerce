@@ -32,17 +32,21 @@ class Users(Base):
     """
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)  # Unique user ID (auto-incremented)
-    username = Column(String, nullable=False, unique=True, index=True)  # Must be unique
-    email = Column(String, nullable=False, unique=True, index=True)     # Must be unique
-    password = Column(String, nullable=True)         # Hashed with Argon2 (null until set via /set-password)
-    phone_num = Column(String, nullable=True)         # Optional phone number
-    role = Column(SQLAlchemyEnum(UserRole), default=UserRole.customer, nullable=False)  # Default: customer
-    active = Column(Boolean, default=True)           # Whether the account is active
-    last = Column(String, default="Now")             # Last activity timestamp
-    verification_code = Column(String, nullable=True)  # 6-digit email verification code
-    is_verified = Column(Boolean, default=False)     # True after email verification
-    created_at = Column(DateTime, default=datetime.utcnow) 
+    id                = Column(Integer, primary_key=True, index=True)
+    username          = Column(String, nullable=False, unique=True, index=True)
+    email             = Column(String, nullable=False, unique=True, index=True)
+    password          = Column(String, nullable=True)
+    phone_num         = Column(String, nullable=True)
+    role              = Column(SQLAlchemyEnum(UserRole), default=UserRole.customer, nullable=False)
+    active            = Column(Boolean, default=True)
+    last              = Column(String, default="Now")
+    verification_code = Column(String, nullable=True)
+    is_verified       = Column(Boolean, default=False)
+    created_at        = Column(DateTime, default=datetime.utcnow)
+    avatar_url        = Column(String, nullable=True)
+
+    orders     = relationship("Orders", foreign_keys="Orders.user_id")
+    deliveries = relationship("Orders", foreign_keys="Orders.deliveryman_id")
 
 
 class Products(Base):
@@ -65,10 +69,9 @@ class Products(Base):
     is_active   = Column(Boolean, default=True)
     created_at  = Column(DateTime, default=datetime.utcnow)
 
-    # ── relationships ──────────────────────────────────────────────────────────
     colors = relationship("ProductColor", back_populates="product",
                           cascade="all, delete-orphan")
-    images = relationship("ProductImage",  back_populates="product",
+    images = relationship("ProductImage", back_populates="product",
                           cascade="all, delete-orphan",
                           order_by="ProductImage.order")
 
@@ -91,7 +94,7 @@ class ProductImage(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"),
                         nullable=False, index=True)
     image_url  = Column(String, nullable=False)
-    order      = Column(Integer, default=0)   # 0 = primary / cover image
+    order      = Column(Integer, default=0)
 
     product = relationship("Products", back_populates="images")
 
@@ -103,12 +106,26 @@ class Orders(Base):
     """
     __tablename__ = "orders"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))    # Which user placed this order
-    orderdate = Column(DateTime, default=datetime.utcnow)  # When the order was placed
-    deliverydate = Column(DateTime)                       # Expected delivery date (set later)
-    totalamount = Column(Float)                           # Total price of all items
-    status = Column(String, default="pending")            # "pending", "confirmed", "shipped", "delivered"
+    id             = Column(Integer, primary_key=True, index=True)
+    user_id        = Column(Integer, ForeignKey("users.id"))
+    orderdate      = Column(DateTime, default=datetime.utcnow)
+    deliverydate   = Column(DateTime, nullable=True)
+    totalamount    = Column(Float)
+    status         = Column(String, default="pending")  # pending / confirmed / shipped / delivered
+    delivery_type  = Column(String)                     # anytime / specific_date / day_of_week
+    delivery_dow   = Column(String, nullable=True)      # Monday–Sunday (only for day_of_week)
+
+    wilaya         = Column(String)
+    city           = Column(String)
+    street_address = Column(String)
+    notes          = Column(String, nullable=True)
+
+    payment_method = Column(String)                     # cod / cib / pickup
+
+    deliveryman_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id        = Column(Integer, ForeignKey("users.id")) 
+
+    items       = relationship("OrderItems", back_populates="order")
 
 
 class CartItems(Base):
@@ -118,10 +135,10 @@ class CartItems(Base):
     """
     __tablename__ = "cart_items"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))      # Whose cart this belongs to
-    product_id = Column(Integer, ForeignKey("products.id"))  # Which product
-    quantity = Column(Integer, default=1)                    # How many of this product
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    quantity   = Column(Integer, default=1)
 
 
 class Favorites(Base):
@@ -130,24 +147,30 @@ class Favorites(Base):
     """
     __tablename__ = "favorites"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
+
+    product = relationship("Products")
 
 
 class OrderItems(Base):
     """
     The orderitems table - stores individual items within an order.
-    This is a junction table between Orders and Products.
-    One order can have many items, and one product can appear in many orders.
+    Junction table between Orders and Products.
     """
     __tablename__ = "orderitems"
 
-    id = Column(Integer, primary_key=True, index=True)
-    price = Column(Float)        # Price at the time of purchase (may differ from current product price)
-    quantity = Column(Integer)   # How many of this product in this order
-    order_id = Column(Integer, ForeignKey("orders.id"))      # Which order this belongs to
-    product_id = Column(Integer, ForeignKey("products.id"))  # Which product
+    id         = Column(Integer, primary_key=True, index=True)
+    price      = Column(Float)
+    quantity   = Column(Integer)
+    status         = Column(String, default="pending")
+    return_reason = Column(String)
+    order_id   = Column(Integer, ForeignKey("orders.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+
+    order   = relationship("Orders", back_populates="items")
+    product = relationship("Products")
 
 
 class Complaints(Base):
@@ -157,90 +180,71 @@ class Complaints(Base):
     """
     __tablename__ = "complaints"
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)                                # Brief complaint title
-    description = Column(String)                          # Full complaint text
-    date = Column(DateTime, default=datetime.utcnow)      # When filed
-    type_c = Column(String)                               # Complaint type/category
-    priority = Column(String)                             # "HIGH", "MEDIUM", "LOW"
-    status = Column(String, default='pending')            # "Pending", "Resolved", "Rejected"
+    id            = Column(Integer, primary_key=True, index=True)
+    title         = Column(String)
+    description   = Column(String)
+    date          = Column(DateTime, default=datetime.utcnow)
+    type_c        = Column(String)
+    priority      = Column(String)
+    status        = Column(String, default='pending')
     internal_note = Column(String)
-    user_id = Column(Integer, ForeignKey("users.id"))     # Who filed the complaint
+    user_id       = Column(Integer, ForeignKey("users.id"))
 
 
 class Campaigns(Base):
     __tablename__ = "campaigns"
 
-    id = Column(Integer, primary_key=True, index=True)
-
-    name = Column(String, nullable=False)
-    channel = Column(String)  # Email / Social / AR / Search
-
-    status = Column(String, default="draft")  # draft / active / paused / completed
-
-    budget = Column(Float, default=0)
-    spent = Column(Float, default=0)
-
+    id          = Column(Integer, primary_key=True, index=True)
+    name        = Column(String, nullable=False)
+    channel     = Column(String)
+    status      = Column(String, default="draft")
+    budget      = Column(Float, default=0)
+    spent       = Column(Float, default=0)
     impressions = Column(Integer, default=0)
-    clicks = Column(Integer, default=0)
+    clicks      = Column(Integer, default=0)
+    start_date  = Column(DateTime)
+    end_date    = Column(DateTime)
+    created_at  = Column(DateTime, default=datetime.utcnow)
 
-    start_date = Column(DateTime)
-    end_date = Column(DateTime)
-
-    created_at = Column(DateTime, default=datetime.utcnow)
 
 class Promotions(Base):
     __tablename__ = "promotions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id               = Column(Integer, primary_key=True, index=True)
+    title            = Column(String, nullable=False)
+    code             = Column(String, unique=True, index=True)
+    discount         = Column(Float)
+    discount_type    = Column(String)
+    usage_max        = Column(Integer, default=0)
+    usage_current    = Column(Integer, default=0)
+    expiry           = Column(DateTime)
+    status           = Column(String, default="upcoming")
+    created_at       = Column(DateTime, default=datetime.utcnow)
 
-    title = Column(String, nullable=False)
-    code = Column(String, unique=True, index=True)
-
-    discount = Column(Float)  # better than "25%" → 25
-    discount_type = Column(String)  # percentage / fixed
-
-    usage_max = Column(Integer, default=0)
-    usage_current = Column(Integer, default=0)
-
-    expiry = Column(DateTime)
-
-    status = Column(String, default="upcoming")  # active / expired / upcoming
-
-    created_at = Column(DateTime, default=datetime.utcnow)
 
 class Newsletters(Base):
     __tablename__ = "newsletters"
 
-    id = Column(Integer, primary_key=True, index=True)
-
-    name = Column(String)
-    email = Column(String, unique=True, index=True)
-
-    status = Column(String, default="subscribed")  # subscribed / unsubscribed
-
-    tags = Column(String) 
-
+    id         = Column(Integer, primary_key=True, index=True)
+    name       = Column(String)
+    email      = Column(String, unique=True, index=True)
+    status     = Column(String, default="subscribed")
+    tags       = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class Blogs(Base):
     __tablename__ = "blogs"
 
-    id = Column(Integer, primary_key=True, index=True)
-
-    title = Column(String, nullable=False)
-    category = Column(String, index=True)
-    image  = Column(String, nullable=False)
-
-    content = Column(String)  
-    excerpt = Column(String)
-
-    tag = Column(String)
-    author = Column(String)
-
-    views = Column(Integer, default=0)
-
-    status = Column(String, default="draft")  # draft / published / scheduled
-
+    id           = Column(Integer, primary_key=True, index=True)
+    title        = Column(String, nullable=False)
+    category     = Column(String, index=True)
+    image        = Column(String, nullable=False)
+    content      = Column(String)
+    excerpt      = Column(String)
+    tag          = Column(String)
+    author       = Column(String)
+    views        = Column(Integer, default=0)
+    status       = Column(String, default="draft")
     published_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at   = Column(DateTime, default=datetime.utcnow)
