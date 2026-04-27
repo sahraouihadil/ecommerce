@@ -631,7 +631,7 @@ export function DeliverymanDashboard() {
       `}</style>
 
       {/* Desktop sidebar — hidden on mobile */}
-      <Sidebar page={page} setPage={setPage} pendingCount={pendingCount}/>
+      <Sidebar page={page} setPage={setPage} pendingCount={pendingCount} profilePath="/deliveryman-dash/profile"/>
 
       {/* Mobile slide-in drawer — hidden on desktop */}
       <MobileDrawer

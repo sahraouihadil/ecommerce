@@ -429,7 +429,7 @@ export function ProductCatalogPage() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={stockManagerLinks}
-        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" />
+        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" profilePath="/stock-manager-dash/profile" />
 
       <main className="flex-1">
         <Header concept="Product's Catalog" />

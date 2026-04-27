@@ -97,7 +97,7 @@ export default function ValidationPage() {
         @media (max-width: 480px) { .val-stats-grid { grid-template-columns: 1fr; } }
       `}</style>
       <div className="val-page">
-        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" />
+        <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" profilePath="/admin-dash/profile"/>
         <main className="val-main">
           <Header concept="Validation" setOpenBar={setOpenBar} openBar={openBar} />
           <div className="val-inner">

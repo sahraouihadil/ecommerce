@@ -30,7 +30,7 @@ from fastapi import FastAPI, status, HTTPException, Depends,File, UploadFile, Fo
 from fastapi.middleware.cors import CORSMiddleware
 
 # ── SQLAlchemy imports ──
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session,aliased
 from sqlalchemy import or_,func
 
 # ── Our project imports ──
@@ -44,13 +44,11 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 # ── Router imports (each router handles a group of related endpoints) ──
 from route import user_router                     # Auth: /register, /login, /admin-dash, etc.
-from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product  # Feature routers
+from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries  # Feature routers
 import shutil
 import os
 import uuid
 from fastapi.staticfiles import StaticFiles
-
-
 
 # ── Logging setup ──
 logger = logging.getLogger(__name__)
@@ -80,7 +78,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,          # Which frontend URLs can make requests
     allow_credentials=True,         # Allow cookies/auth headers
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -99,6 +97,8 @@ app.include_router(orders.router)                 # Orders: /api/orders
 app.include_router(favorites.router)              # Favorites: /api/favorites
 app.include_router(complaints.router) 
 app.include_router(product.router) 
+app.include_router(profile.router) 
+app.include_router(deliveries.router) 
 app.include_router(campaign.router, prefix="/api")
 app.include_router(promotion.router, prefix="/api")
 app.include_router(newsletter.router, prefix="/api")
@@ -359,80 +359,61 @@ def get_stats(db: Session = Depends(database.get_db)):
     }
 
 
-
 @app.get("/api/returns")
 def get_returns(db: Session = Depends(database.get_db)):
 
+    CustomerUser = aliased(models.Users)
+
+    # Subquery: ONE image per product
+    first_image = (
+        db.query(
+            models.ProductImage.product_id,
+            func.min(models.ProductImage.image_url).label("image_url"),
+        )
+        .filter(models.ProductImage.order == 0)
+        .group_by(models.ProductImage.product_id)
+        .subquery()
+    )
+
     results = (
         db.query(
-            models.Orders.id.label("id"),
+            models.OrderItems.id.label("item_id"),
+            models.Orders.id.label("order_id_raw"),
             models.Products.name.label("product_name"),
-            models.Products.image_url.label("image"),
+            first_image.c.image_url.label("image"),
             models.OrderItems.quantity.label("quantity"),
             models.OrderItems.price.label("price"),
+            models.OrderItems.status.label("status"),
             models.Orders.orderdate.label("date"),
-            models.Orders.status.label("status"),
+            models.OrderItems.return_reason.label("reason"),
+            CustomerUser.username.label("customer_name"),
         )
-        .join(models.OrderItems, models.OrderItems.order_id == models.Orders.id)
-        .join(models.Products, models.Products.id == models.OrderItems.product_id)
-        .filter(models.Orders.status.ilike("canceled"))
+        # Start from canceled items
+        .join(models.Orders,   models.Orders.id      == models.OrderItems.order_id)
+        .join(models.Products, models.Products.id    == models.OrderItems.product_id)
+        .outerjoin(first_image, first_image.c.product_id == models.Products.id)
+        .join(CustomerUser,    CustomerUser.id        == models.Orders.user_id)
+        .filter(func.lower(models.OrderItems.status) == "canceled")
+        .order_by(models.Orders.orderdate.desc())
         .all()
     )
 
-    # format response
     return [
         {
-            "id": r.id,
-            "product_name": r.product_name,
-            "image": r.image,
-            "quantity": r.quantity,
-            "amount": r.quantity * r.price,
-            "date": r.date,
-            "status": r.status,
+            "id":            r.item_id,
+            "return_id":     f"RET-{str(r.item_id).zfill(3)}",
+            "order_id":      f"ORD-{str(r.order_id_raw).zfill(3)}",
+            "customer_name": r.customer_name or "Unknown",
+            "product_name":  r.product_name,
+            "image":         r.image,
+            "quantity":      int(r.quantity or 0),
+            "amount":        float((r.quantity or 0) * (r.price or 0)),
+            "reason":        r.reason or "No reason provided",
+            "date":          r.date.strftime("%Y-%m-%d") if r.date else None,
+            "status":        r.status.lower() if r.status else "canceled",
         }
         for r in results
     ]
-
-@app.get("/api/deliveries")
-def get_deliveries(db: Session = Depends(database.get_db)):
-
-    deliveries = (
-        db.query(
-            models.Orders.id.label("order_id"),
-            models.Orders.orderdate,
-            models.Orders.deliverydate,
-            models.Orders.totalamount,
-            models.Orders.status,
-
-            models.Users.username.label("customer_name"),
-            models.Users.phone_num.label("customer_phone"),
-            models.Users.email.label("customer_email"),
-        )
-        .join(models.Users, models.Users.id == models.Orders.user_id)
-        .all()
-    )
-
-    return [
-        {
-            "order_id": d.order_id,
-            "orderdate": d.orderdate,
-            "deliverydate": d.deliverydate,
-            "totalamount": d.totalamount,
-            "status": d.status,
-            "delivery_type": "Any Time",
-            "deliveryman" :"deliveryman",
-            "wilaya":"constantine",
-            "commune":"commune",
-            "items_count":15,
-
-
-            "customer_name": d.customer_name,
-            "customer_phone": d.customer_phone,
-            "customer_email": d.customer_email,
-        }
-        for d in deliveries
-    ]
-
 
 @app.get("/api/deliverymen")
 def get_deliverymen(db: Session = Depends(database.get_db)):

@@ -3,18 +3,16 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const WILAYAS = [
-  "Mila", "Guelma", "Oum El Bouaghi", "Skikda", "Batna", "Sétif",
+  "Constantine","Mila", "Guelma", "Oum El Bouaghi", "Skikda", "Batna", "Sétif",
   "Jijel", "Annaba", "Bordj Bou Arréridj", "Khenchela", "Souk Ahras",
   "Béjaïa", "Tébessa",
 ];
 
-const PAYMENT_METHODS = {
-  local: [
+const PAYMENT_METHODS = [
     { id: "cod", icon: "local_shipping", label: "Cash on Delivery", sub: "Local Only", hasForm: false },
     { id: "cib", icon: "credit_card", label: "CIB / Card", sub: "Visa/Mastercard", hasForm: true },
     { id: "pickup", icon: "storefront", label: "Self Pickup", sub: "Algiers Showroom", hasForm: false },
-  ]
-};
+]
 
 const CSS = `
   /* ── Tokens ── */
@@ -266,32 +264,6 @@ const CSS = `
     background: var(--co-primary); border-color: var(--co-primary); color: white;
     box-shadow: var(--co-shadow-md); transform: translateY(-1px);
   }
-  .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
-  @media (max-width: 480px) { .time-grid { grid-template-columns: 1fr; } }
-  .time-btn {
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    padding: var(--space-4) var(--space-2);
-    border-radius: var(--co-radius-md); border: 1.5px solid var(--co-border);
-    background: var(--co-surface); cursor: pointer; font-family: var(--font-sans);
-    box-shadow: var(--co-shadow-sm);
-    transition:
-      border-color var(--co-dur-base) var(--co-ease-out),
-      box-shadow   var(--co-dur-base) var(--co-ease-out),
-      background   var(--co-dur-base) var(--co-ease-out),
-      transform    var(--co-dur-base) var(--co-ease-spring);
-  }
-  .time-btn:hover {
-    border-color: var(--co-accent);
-    box-shadow: var(--co-shadow-md); transform: translateY(-3px);
-  }
-  .time-btn-active {
-    border-color: var(--co-accent); background: rgba(196,169,107,0.08);
-    box-shadow: var(--co-shadow-md), var(--co-shadow-accent); transform: translateY(-2px);
-  }
-  .time-icon { font-size: 1.25rem; color: var(--co-muted); }
-  .time-btn-active .time-icon { color: var(--co-accent); }
-  .time-label { font-size: 0.8125rem; font-weight: 600; color: var(--co-text); }
-  .time-sub   { font-size: 0.6875rem; color: var(--co-muted); }
 
   /* ── Items (mobile) ── */
   .checkout-items-section { display: block; }
@@ -393,18 +365,42 @@ const CSS = `
   .summary-terms a:hover { color: var(--co-accent); }
 `;
 
+const getNextDateOfWeekday = (dayName) => {
+  const daysMap = {
+    Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+    Thursday: 4, Friday: 5, Saturday: 6,
+  };
+  const today = new Date();
+  const todayDay = today.getDay();
+  const targetDay = daysMap[dayName];
+  let diff = targetDay - todayDay;
+  if (diff <= 0) diff += 7;
+  const result = new Date();
+  result.setDate(today.getDate() + diff);
+  const year = result.getFullYear();
+  const month = String(result.getMonth() + 1).padStart(2, "0");
+  const day = String(result.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getTomorrow = () => {
+  const tomorrow = new Date(Date.now() + 86400000);
+  const y = tomorrow.getFullYear();
+  const m = String(tomorrow.getMonth() + 1).padStart(2, "0");
+  const d = String(tomorrow.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 export function CheckoutPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const navigate = useNavigate();
 
-  const [shippingMode, setShippingMode] = useState("local");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [wilaya, setWilaya] = useState("");
   const [city, setCity] = useState("");
-  const [country, setCountry] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -413,10 +409,9 @@ export function CheckoutPage() {
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
 
-  const [deliveryType, setDeliveryType] = useState("anytime");
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [deliveryDow, setDeliveryDow] = useState("");
-  const [deliveryTime, setDeliveryTime] = useState("");
+  const [deliveryType, setDeliveryType] = useState("any time");
+  const [deliveryDate, setDeliveryDate] = useState(getTomorrow());
+  const [selectedDow, setSelectedDow] = useState("");
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -433,18 +428,9 @@ export function CheckoutPage() {
     fetchCart();
   }, [navigate]);
 
-  useEffect(() => {
-    const methods = PAYMENT_METHODS[shippingMode];
-    if (!methods.find((m) => m.id === paymentMethod)) {
-      setPaymentMethod(methods[0].id);
-    }
-  }, [shippingMode]);
-
   const total = items.reduce((sum, i) => sum + (i.product?.price || 0) * i.quantity, 0);
-  const activePayment = PAYMENT_METHODS[shippingMode].find((m) => m.id === paymentMethod);
-  const isLocalValid = fullName && phone && wilaya && city && streetAddress;
-  const isIntlValid = fullName && phone && country && city && streetAddress;
-  const addressValid = shippingMode === "local" ? isLocalValid : isIntlValid;
+  const activePayment = PAYMENT_METHODS.find((m) => m.id === paymentMethod);
+  const addressValid = fullName && phone && wilaya && city && streetAddress;
   const cibValid = paymentMethod !== "cib" || (cardNumber.replace(/\s/g, "").length === 16 && cardExpiry && cardCvv);
   const canSubmit = addressValid && cibValid && !placing;
 
@@ -453,13 +439,16 @@ export function CheckoutPage() {
     setPlacing(true);
     try {
       const res = await api.post("/api/orders", {
-        fullName, phone, wilaya, city, country, streetAddress, notes,
-        paymentMethod, shippingMode,
+        fullName,
+        phone,
+        wilaya,
+        city,
+        streetAddress,
+        notes,
+        paymentMethod,
         ...(paymentMethod === "cib" ? { cardNumber, cardExpiry, cardCvv } : {}),
-        deliveryType,
-        ...(deliveryType === "specific_date" ? { deliveryDate } : {}),
-        ...(deliveryType === "day_of_week" ? { deliveryDow } : {}),
-        ...(deliveryType !== "anytime" ? { deliveryTime } : {}),
+        delivery_type:deliveryType,
+        deliverydate: deliveryDate
       });
       navigate("/order", { state: { orderId: res.data.order_id, total: res.data.total } });
     } catch (err) {
@@ -503,19 +492,15 @@ export function CheckoutPage() {
               </div>
               <div className="form-grid">
                 <input className="form-input" type="text" placeholder="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                <input className="form-input" type="tel" placeholder={shippingMode === "local" ? "Phone (e.g. 0550 123 456)" : "Phone (e.g. +213 550 123 456)"} value={phone} onChange={(e) => setPhone(e.target.value)} />
-                {shippingMode === "local" ? (
-                  <div className="form-select-wrapper">
-                    <select className="form-input form-select" value={wilaya} onChange={(e) => setWilaya(e.target.value)}>
-                      <option value="">Select Wilaya</option>
-                      {WILAYAS.map((w) => <option key={w} value={w}>{w}</option>)}
-                    </select>
-                    <span className="select-chevron material-symbols-outlined">expand_more</span>
-                  </div>
-                ) : (
-                  <input className="form-input" type="text" placeholder="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
-                )}
-                <input className="form-input" type="text" placeholder={shippingMode === "local" ? "City / Municipality (Commune)" : "City / Municipality"} value={city} onChange={(e) => setCity(e.target.value)} />
+                <input className="form-input" type="tel" placeholder="Phone (e.g. 0550 123 456)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <div className="form-select-wrapper">
+                  <select className="form-input form-select" value={wilaya} onChange={(e) => setWilaya(e.target.value)}>
+                    <option value="">Select Wilaya</option>
+                    {WILAYAS.map((w) => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                  <span className="select-chevron material-symbols-outlined">expand_more</span>
+                </div>
+                <input className="form-input" type="text" placeholder="City / Municipality (Commune)" value={city} onChange={(e) => setCity(e.target.value)} />
                 <input className="form-input form-input-full" type="text" placeholder="Street Address" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} />
                 <input className="form-input form-input-full" type="text" placeholder="Additional Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
@@ -528,7 +513,7 @@ export function CheckoutPage() {
                 <h2 className="section-title">Payment Method</h2>
               </div>
               <div className="payment-methods-grid">
-                {PAYMENT_METHODS[shippingMode].map((method) => (
+                {PAYMENT_METHODS.map((method) => (
                   <button
                     key={method.id}
                     className={`payment-card ${paymentMethod === method.id ? "payment-card-active" : ""}`}
@@ -567,14 +552,20 @@ export function CheckoutPage() {
               </div>
               <div className="sched-tabs">
                 {[
-                  { id: "anytime", icon: "bolt", label: "Any Time", sub: "We'll deliver ASAP" },
-                  { id: "specific_date", icon: "calendar_month", label: "Specific Date", sub: "Pick a date" },
-                  { id: "day_of_week", icon: "date_range", label: "Day of Week", sub: "Pick a weekday" },
+                  { id: "any time", icon: "bolt", label: "Any Time", sub: "We'll deliver ASAP" },
+                  { id: "specific date", icon: "calendar_month", label: "Specific Date", sub: "Pick a date" },
+                  { id: "day of week", icon: "date_range", label: "Day of Week", sub: "Pick a weekday" },
                 ].map((opt) => (
                   <button
                     key={opt.id}
                     className={`sched-tab ${deliveryType === opt.id ? "sched-tab-active" : ""}`}
-                    onClick={() => setDeliveryType(opt.id)}
+                    onClick={() => {
+                      setDeliveryType(opt.id);
+                      if (opt.id === "any time") {
+                        setDeliveryDate(getTomorrow());
+                        setSelectedDow("");
+                      }
+                    }}
                   >
                     <span className="material-symbols-outlined sched-tab-icon">{opt.icon}</span>
                     <span className="sched-tab-label">{opt.label}</span>
@@ -585,42 +576,32 @@ export function CheckoutPage() {
                   </button>
                 ))}
               </div>
-              {deliveryType === "specific_date" && (
-                <div className="sched-detail-panel" key="specific_date">
+              {deliveryType === "specific date" && (
+                <div className="sched-detail-panel" key="specific date">
                   <label className="sched-label">Choose a date</label>
                   <input
                     className="form-input" type="date"
                     min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
-                    value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)}
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
                     style={{ maxWidth: 220 }}
                   />
                 </div>
               )}
-              {deliveryType === "day_of_week" && (
-                <div className="sched-detail-panel" key="day_of_week">
+              {deliveryType === "day of week" && (
+                <div className="sched-detail-panel" key="day of week">
                   <label className="sched-label">Choose a weekday</label>
                   <div className="dow-grid">
                     {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d) => (
-                      <button key={d} className={`dow-btn ${deliveryDow === d ? "dow-btn-active" : ""}`} onClick={() => setDeliveryDow(d)}>
+                      <button
+                        key={d}
+                        className={`dow-btn ${selectedDow === d ? "dow-btn-active" : ""}`}
+                        onClick={() => {
+                          setSelectedDow(d);
+                          setDeliveryDate(getNextDateOfWeekday(d));
+                        }}
+                      >
                         {d.slice(0, 3)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {deliveryType !== "anytime" && (
-                <div className="sched-detail-panel" key="time">
-                  <label className="sched-label">Preferred time</label>
-                  <div className="time-grid">
-                    {[
-                      { id: "morning", icon: "wb_sunny", label: "Morning", sub: "8 AM – 12 PM" },
-                      { id: "afternoon", icon: "partly_cloudy_day", label: "Afternoon", sub: "12 PM – 5 PM" },
-                      { id: "evening", icon: "nights_stay", label: "Evening", sub: "5 PM – 9 PM" },
-                    ].map((t) => (
-                      <button key={t.id} className={`time-btn ${deliveryTime === t.id ? "time-btn-active" : ""}`} onClick={() => setDeliveryTime(t.id)}>
-                        <span className="material-symbols-outlined time-icon">{t.icon}</span>
-                        <span className="time-label">{t.label}</span>
-                        <span className="time-sub">{t.sub}</span>
                       </button>
                     ))}
                   </div>
@@ -670,14 +651,13 @@ export function CheckoutPage() {
                 {paymentMethod && (
                   <div className="summary-meta-row">
                     <span>Payment</span>
-                    <span className="summary-payment-label">{PAYMENT_METHODS[shippingMode].find(m => m.id === paymentMethod)?.label}</span>
+                    <span className="summary-payment-label">{PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}</span>
                   </div>
                 )}
                 <div className="summary-meta-row">
                   <span>Schedule</span>
                   <span className="summary-payment-label">
-                    {deliveryType === "anytime" ? "ASAP" : deliveryType === "specific_date" ? deliveryDate || "—" : deliveryDow || "—"}
-                    {deliveryType !== "anytime" && deliveryTime ? `, ${deliveryTime}` : ""}
+                    {deliveryType === "any time" ? "ASAP" : deliveryType === "specific date" ? deliveryDate || "—" : selectedDow || "—"}
                   </span>
                 </div>
               </div>
