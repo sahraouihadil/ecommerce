@@ -102,7 +102,8 @@ app.include_router(deliveries.router)
 app.include_router(campaign.router, prefix="/api")
 app.include_router(promotion.router, prefix="/api")
 app.include_router(newsletter.router, prefix="/api")
-app.include_router(blog.router, prefix="/api")
+app.include_router(blog.router)
+
 # ── Type alias for protected endpoints ──
 # Any endpoint that uses "user: user_dependency" will require a valid JWT token.
 # The get_current_user function extracts {username, id} from the token.
