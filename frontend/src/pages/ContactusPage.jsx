@@ -1,10 +1,5 @@
 import { useState, useEffect } from "react";
 
-const fadeUp = {
-  hidden: { opacity: 0, transform: "translateY(28px)" },
-  visible: { opacity: 1, transform: "translateY(0)" },
-};
-
 function AnimatedItem({ children, delay = 0, style = {} }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -14,8 +9,9 @@ function AnimatedItem({ children, delay = 0, style = {} }) {
   return (
     <div
       style={{
-        transition: "opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)",
-        ...(visible ? fadeUp.visible : fadeUp.hidden),
+        transition: "opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1)",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(24px)",
         ...style,
       }}
     >
@@ -23,6 +19,11 @@ function AnimatedItem({ children, delay = 0, style = {} }) {
     </div>
   );
 }
+
+const GOLD = "#C8A96A";
+const CHARCOAL = "#1C1916";
+const MUTED = "#9E8E7A";
+const CREAM = "#FAF8F4";
 
 export function ContactusPage() {
   const [name, setName] = useState("");
@@ -36,400 +37,370 @@ export function ContactusPage() {
     setSent(true);
   };
 
+  const inputStyle = (key) => ({
+    width: "100%",
+    background: "transparent",
+    border: "none",
+    borderBottom: `1px solid ${focused === key ? GOLD : "rgba(200,169,106,0.3)"}`,
+    padding: "12px 0",
+    fontSize: "0.9375rem",
+    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    color: CHARCOAL,
+    outline: "none",
+    transition: "border-color 0.25s ease",
+    boxSizing: "border-box",
+  });
+
+  const labelStyle = (key) => ({
+    display: "block",
+    fontFamily: "sans-serif",
+    fontSize: "0.5875rem",
+    letterSpacing: "0.3em",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    color: focused === key ? GOLD : MUTED,
+    marginBottom: "6px",
+    transition: "color 0.25s ease",
+  });
+
   return (
-    <div
-      style={{
-        fontFamily: "'Georgia', 'Times New Roman', serif",
+    <div style={{
+      fontFamily: "'Cormorant Garamond', Georgia, serif",
+      minHeight: "100vh",
+      background: CREAM,
+      color: CHARCOAL,
+    }}>
+
+      {/* ── Load Google Fonts ── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
+        ::placeholder { color: rgba(158,142,122,0.45); font-style: italic; }
+        @keyframes popIn {
+          from { transform: scale(0.5); opacity: 0; }
+          to   { transform: scale(1);   opacity: 1; }
+        }
+        @keyframes checkDraw {
+          from { stroke-dashoffset: 40; }
+          to   { stroke-dashoffset: 0; }
+        }
+      `}</style>
+
+      <div style={{
+        maxWidth: "1100px",
+        margin: "0 auto",
+        padding: "0 2rem",
         minHeight: "100vh",
-        background: "linear-gradient(160deg, #faf8f4 0%, #f2ece3 60%, #ede4d8 100%)",
-        color: "#1a1a1a",
-        position: "relative",
-        overflow: "hidden",
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "0",
+        alignItems: "stretch",
       }}
-    >
-      {/* ── AMBIENT BLOBS ── */}
-      <div
-        style={{
-          position: "fixed",
-          top: "-120px",
-          right: "-80px",
-          width: "480px",
-          height: "480px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(139,111,94,0.12) 0%, transparent 70%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-      <div
-        style={{
-          position: "fixed",
-          bottom: "-100px",
-          left: "-60px",
-          width: "360px",
-          height: "360px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(92,74,58,0.08) 0%, transparent 70%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
-      <main
-        style={{
-          maxWidth: "680px",
-          margin: "0 auto",
-          padding: "96px 28px 80px",
-          position: "relative",
-          zIndex: 1,
-        }}
+        className="contact-grid"
       >
-        {/* EYEBROW */}
-        <AnimatedItem delay={0}>
-          <p
-            style={{
-              fontSize: "0.7rem",
-              letterSpacing: "0.22em",
-              fontWeight: "700",
-              textTransform: "uppercase",
-              color: "#8b6f5e",
-              marginBottom: "14px",
-              fontFamily: "'Georgia', serif",
-            }}
-          >
-            Get in touch
-          </p>
-        </AnimatedItem>
 
-        {/* HEADING */}
-        <AnimatedItem delay={80}>
-          <h1
-            style={{
-              fontSize: "clamp(2.4rem, 6vw, 3.6rem)",
-              fontWeight: "800",
-              letterSpacing: "-0.025em",
+        {/* ── LEFT PANEL ── */}
+        <div style={{
+          padding: "8rem 4rem 6rem 1rem",
+          borderRight: "1px solid rgba(200,169,106,0.2)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}>
+
+          {/* Eyebrow */}
+          <AnimatedItem delay={0}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2rem" }}>
+              <div style={{ height: "1px", width: "2rem", background: GOLD, opacity: 0.6 }} />
+              <span style={{
+                fontFamily: "sans-serif",
+                fontSize: "0.575rem",
+                letterSpacing: "0.45em",
+                textTransform: "uppercase",
+                color: GOLD,
+              }}>
+                Reach out
+              </span>
+            </div>
+          </AnimatedItem>
+
+          {/* Heading */}
+          <AnimatedItem delay={80}>
+            <h1 style={{
+              fontFamily: "'Cinzel Decorative', serif",
+              fontSize: "clamp(2.25rem, 4vw, 3.5rem)",
+              fontWeight: 700,
               lineHeight: 1.08,
-              marginBottom: "18px",
-              color: "#1a1a1a",
-            }}
-          >
-            Contact
-          </h1>
-        </AnimatedItem>
+              letterSpacing: "0.02em",
+              color: CHARCOAL,
+              marginBottom: "1.75rem",
+            }}>
+              Let's Talk
+            </h1>
+          </AnimatedItem>
 
-        {/* SUBTITLE */}
-        <AnimatedItem delay={150}>
-          <p
-            style={{
-              color: "#7a6b5d",
-              fontSize: "1.05rem",
-              lineHeight: 1.7,
-              maxWidth: "440px",
-              marginBottom: "52px",
-            }}
-          >
-            Have a question about AR preview, delivery, or styling? Our team is here to help.
-          </p>
-        </AnimatedItem>
+          {/* Gold ornament */}
+          <AnimatedItem delay={140}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "2rem", maxWidth: "12rem" }}>
+              <div style={{ height: "1px", flex: 1, background: GOLD, opacity: 0.45 }} />
+              <div style={{ width: "4px", height: "4px", background: GOLD, transform: "rotate(45deg)", opacity: 0.6 }} />
+              <div style={{ height: "1px", flex: 1, background: GOLD, opacity: 0.45 }} />
+            </div>
+          </AnimatedItem>
 
-        {/* ── FORM / SUCCESS ── */}
-        <AnimatedItem delay={240}>
+          {/* Subtitle */}
+          <AnimatedItem delay={200}>
+            <p style={{
+              fontSize: "1.125rem",
+              fontStyle: "italic",
+              fontWeight: 300,
+              color: MUTED,
+              lineHeight: 1.85,
+              maxWidth: "22rem",
+              marginBottom: "3.5rem",
+            }}>
+              Questions about AR preview, delivery, or styling advice? Our team responds within 24 hours.
+            </p>
+          </AnimatedItem>
+
+          {/* Contact info list */}
+          {[
+            { label: "Email", value: "hello@aroom.com" },
+            { label: "Location", value: "Algiers, Algeria" },
+            { label: "Hours", value: "Mon–Fri, 9am–6pm" },
+          ].map(({ label, value }, i) => (
+            <AnimatedItem key={label} delay={280 + i * 70}>
+              <div style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: "1.25rem",
+                marginBottom: "1.25rem",
+                paddingBottom: "1.25rem",
+                borderBottom: "1px solid rgba(200,169,106,0.12)",
+              }}>
+                <span style={{
+                  fontFamily: "sans-serif",
+                  fontSize: "0.55rem",
+                  letterSpacing: "0.3em",
+                  textTransform: "uppercase",
+                  color: GOLD,
+                  minWidth: "5rem",
+                }}>
+                  {label}
+                </span>
+                <span style={{ fontSize: "0.9375rem", color: CHARCOAL, fontWeight: 400 }}>
+                  {value}
+                </span>
+              </div>
+            </AnimatedItem>
+          ))}
+
+          {/* Bottom ornament */}
+          <AnimatedItem delay={560}>
+            <div style={{ marginTop: "2rem" }}>
+              <span style={{
+                fontFamily: "'Cinzel Decorative', serif",
+                fontSize: "0.55rem",
+                letterSpacing: "0.5em",
+                textTransform: "uppercase",
+                color: `rgba(200,169,106,0.3)`,
+              }}>
+                Aroom · Est. MMXV
+              </span>
+            </div>
+          </AnimatedItem>
+        </div>
+
+        {/* ── RIGHT PANEL — FORM ── */}
+        <div style={{
+          padding: "8rem 1rem 6rem 4rem",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}>
+
           {sent ? (
-            <div
-              style={{
+            <AnimatedItem delay={0}>
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
                 textAlign: "center",
-                padding: "64px 32px",
-                background: "rgba(255,255,255,0.7)",
-                borderRadius: "24px",
-                border: "1px solid rgba(139,111,94,0.18)",
-                boxShadow: "0 20px 60px rgba(92,74,58,0.10), 0 2px 8px rgba(92,74,58,0.06)",
-                backdropFilter: "blur(12px)",
-              }}
-            >
-              {/* Animated checkmark */}
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
+                padding: "5rem 2rem",
+                gap: "1.5rem",
+              }}>
+                {/* Animated check circle */}
+                <div style={{
+                  width: "72px",
+                  height: "72px",
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, #16a34a22, #16a34a11)",
-                  border: "1.5px solid #16a34a44",
+                  border: `1px solid rgba(200,169,106,0.4)`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  margin: "0 auto 20px",
-                  fontSize: "28px",
-                  animation: "popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
-                }}
-              >
-                ✓
+                  animation: "popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both",
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <polyline
+                      points="5,14 11,20 23,8"
+                      stroke={GOLD}
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="40"
+                      strokeDashoffset="0"
+                      style={{ animation: "checkDraw 0.5s ease 0.3s both" }}
+                    />
+                  </svg>
+                </div>
+
+                <div>
+                  <h2 style={{
+                    fontFamily: "'Cinzel Decorative', serif",
+                    fontSize: "1.75rem",
+                    fontWeight: 700,
+                    color: CHARCOAL,
+                    marginBottom: "0.75rem",
+                  }}>
+                    Thank You
+                  </h2>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", justifyContent: "center", marginBottom: "1.25rem" }}>
+                    <div style={{ height: "1px", width: "2rem", background: GOLD, opacity: 0.4 }} />
+                    <div style={{ width: "4px", height: "4px", background: GOLD, transform: "rotate(45deg)", opacity: 0.5 }} />
+                    <div style={{ height: "1px", width: "2rem", background: GOLD, opacity: 0.4 }} />
+                  </div>
+                  <p style={{ color: MUTED, fontSize: "1rem", fontStyle: "italic", fontWeight: 300, lineHeight: 1.8 }}>
+                    We'll get back to you within 24 hours.
+                  </p>
+                </div>
               </div>
-              <p
-                style={{
-                  fontSize: "1.5rem",
-                  fontWeight: "800",
-                  color: "#16a34a",
-                  marginBottom: "10px",
-                }}
-              >
-                Thank you!
-              </p>
-              <p style={{ color: "#7a6b5d", fontSize: "0.9rem" }}>
-                We'll get back to you within 24 hours.
-              </p>
-              <style>{`
-                @keyframes popIn {
-                  from { transform: scale(0.4); opacity: 0; }
-                  to   { transform: scale(1);   opacity: 1; }
-                }
-              `}</style>
-            </div>
+            </AnimatedItem>
           ) : (
-            <div
-              style={{
-                background: "rgba(255,255,255,0.72)",
-                borderRadius: "24px",
-                border: "1px solid rgba(210,196,182,0.55)",
-                boxShadow:
-                  "0 32px 80px rgba(92,74,58,0.12), 0 8px 24px rgba(92,74,58,0.07), 0 1px 3px rgba(92,74,58,0.05)",
-                backdropFilter: "blur(14px)",
-                padding: "40px 36px",
-                marginBottom: "48px",
-              }}
-            >
+            <>
+              <AnimatedItem delay={100}>
+                <p style={{
+                  fontFamily: "sans-serif",
+                  fontSize: "0.575rem",
+                  letterSpacing: "0.35em",
+                  textTransform: "uppercase",
+                  color: MUTED,
+                  marginBottom: "2.5rem",
+                }}>
+                  Send a message
+                </p>
+              </AnimatedItem>
+
               {/* Name + Email row */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "20px",
-                  marginBottom: "20px",
-                }}
-              >
-                {[
-                  { label: "Name", key: "name", type: "text", val: name, set: setName },
-                  { label: "Email", key: "email", type: "email", val: email, set: setEmail },
-                ].map(({ label, key, type, val, set }) => (
-                  <div key={key}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: "0.65rem",
-                        letterSpacing: "0.12em",
-                        textTransform: "uppercase",
-                        fontWeight: "700",
-                        color: focused === key ? "#5c4a3a" : "#a89585",
-                        marginBottom: "8px",
-                        transition: "color 0.2s",
-                      }}
-                    >
-                      {label}
-                    </label>
+              <AnimatedItem delay={180}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginBottom: "2.5rem" }}>
+                  <div>
+                    <label style={labelStyle("name")}>Name</label>
                     <input
-                      type={type}
-                      value={val}
-                      onChange={(e) => set(e.target.value)}
-                      onFocus={() => setFocused(key)}
+                      type="text"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      onFocus={() => setFocused("name")}
                       onBlur={() => setFocused(null)}
-                      required
-                      style={{
-                        width: "100%",
-                        height: "52px",
-                        padding: "0 16px",
-                        background: focused === key ? "rgba(255,255,255,0.95)" : "rgba(250,248,244,0.8)",
-                        border: `1.5px solid ${focused === key ? "#5c4a3a" : "rgba(210,196,182,0.6)"}`,
-                        borderRadius: "12px",
-                        fontSize: "0.9rem",
-                        color: "#1a1a1a",
-                        outline: "none",
-                        transition: "all 0.25s",
-                        boxShadow: focused === key
-                          ? "0 0 0 3px rgba(92,74,58,0.08), 0 4px 16px rgba(92,74,58,0.1)"
-                          : "0 2px 6px rgba(92,74,58,0.04)",
-                        boxSizing: "border-box",
-                        fontFamily: "inherit",
-                      }}
+                      placeholder="Your name"
+                      style={inputStyle("name")}
                     />
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <label style={labelStyle("email")}>Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      onFocus={() => setFocused("email")}
+                      onBlur={() => setFocused(null)}
+                      placeholder="your@email.com"
+                      style={inputStyle("email")}
+                    />
+                  </div>
+                </div>
+              </AnimatedItem>
 
               {/* Message */}
-              <div style={{ marginBottom: "28px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.65rem",
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    fontWeight: "700",
-                    color: focused === "message" ? "#5c4a3a" : "#a89585",
-                    marginBottom: "8px",
-                    transition: "color 0.2s",
-                  }}
-                >
-                  Message
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onFocus={() => setFocused("message")}
-                  onBlur={() => setFocused(null)}
-                  rows={5}
-                  required
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px",
-                    background: focused === "message" ? "rgba(255,255,255,0.95)" : "rgba(250,248,244,0.8)",
-                    border: `1.5px solid ${focused === "message" ? "#5c4a3a" : "rgba(210,196,182,0.6)"}`,
-                    borderRadius: "12px",
-                    fontSize: "0.9rem",
-                    color: "#1a1a1a",
-                    outline: "none",
-                    resize: "none",
-                    transition: "all 0.25s",
-                    boxShadow: focused === "message"
-                      ? "0 0 0 3px rgba(92,74,58,0.08), 0 4px 16px rgba(92,74,58,0.1)"
-                      : "0 2px 6px rgba(92,74,58,0.04)",
-                    boxSizing: "border-box",
-                    fontFamily: "inherit",
-                    lineHeight: 1.6,
-                  }}
-                />
-              </div>
+              <AnimatedItem delay={260}>
+                <div style={{ marginBottom: "3rem" }}>
+                  <label style={labelStyle("message")}>Message</label>
+                  <textarea
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    onFocus={() => setFocused("message")}
+                    onBlur={() => setFocused(null)}
+                    rows={5}
+                    placeholder="Tell us how we can help..."
+                    style={{
+                      ...inputStyle("message"),
+                      resize: "none",
+                      lineHeight: 1.75,
+                      paddingTop: "12px",
+                    }}
+                  />
+                </div>
+              </AnimatedItem>
 
-              {/* Submit button */}
-              <SendButton onClick={handleSubmit} />
-            </div>
+              {/* Submit */}
+              <AnimatedItem delay={340}>
+                <SendButton onClick={handleSubmit} disabled={!name || !email || !message} />
+              </AnimatedItem>
+            </>
           )}
-        </AnimatedItem>
-
-        {/* ── CONTACT INFO CARDS ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "16px",
-          }}
-        >
-          {[
-            { icon: "✉", label: "Email", value: "hello@aroom.com", delay: 320 },
-            { icon: "📍", label: "Location", value: "Algiers, Algeria", delay: 400 },
-            { icon: "🕐", label: "Hours", value: "Mon–Fri, 9am–6pm", delay: 480 },
-          ].map(({ icon, label, value, delay }) => (
-            <AnimatedItem key={label} delay={delay}>
-              <InfoCard icon={icon} label={label} value={value} />
-            </AnimatedItem>
-          ))}
         </div>
-      </main>
+      </div>
+
+      {/* Responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .contact-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
-function SendButton({ onClick }) {
+function SendButton({ onClick, disabled }) {
   const [hovered, setHovered] = useState(false);
-  const [pressed, setPressed] = useState(false);
 
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setPressed(false); }}
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "10px",
-        padding: "0 32px",
-        height: "52px",
-        background: hovered
-          ? "linear-gradient(135deg, #3d2f22, #5c4a3a)"
-          : "linear-gradient(135deg, #5c4a3a, #7a5f4e)",
-        color: "white",
-        border: "none",
-        borderRadius: "999px",
-        fontSize: "0.82rem",
-        fontWeight: "700",
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        cursor: "pointer",
-        transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)",
-        boxShadow: hovered
-          ? "0 12px 32px rgba(92,74,58,0.35), 0 4px 12px rgba(92,74,58,0.2)"
-          : "0 4px 16px rgba(92,74,58,0.2), 0 1px 4px rgba(92,74,58,0.1)",
-        transform: pressed ? "scale(0.97) translateY(1px)" : hovered ? "translateY(-2px)" : "none",
-        fontFamily: "inherit",
-      }}
-    >
-      Send Message
-      <span
-        style={{
-          display: "inline-block",
-          transition: "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
-          transform: hovered ? "translateX(4px)" : "none",
-          fontSize: "1rem",
-        }}
-      >
-        →
-      </span>
-    </button>
-  );
-}
-
-function InfoCard({ icon, label, value }) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
+      disabled={disabled}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: hovered ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.55)",
-        borderRadius: "16px",
-        border: `1px solid ${hovered ? "rgba(139,111,94,0.3)" : "rgba(210,196,182,0.45)"}`,
-        padding: "20px 18px",
-        transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
-        boxShadow: hovered
-          ? "0 16px 40px rgba(92,74,58,0.14), 0 4px 12px rgba(92,74,58,0.08)"
-          : "0 4px 16px rgba(92,74,58,0.06), 0 1px 3px rgba(92,74,58,0.04)",
-        transform: hovered ? "translateY(-4px)" : "none",
-        cursor: "default",
-        backdropFilter: "blur(8px)",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        padding: "0 2.25rem",
+        height: "52px",
+        background: disabled ? "transparent" : "transparent",
+        color: disabled ? "rgba(200,169,106,0.35)" : hovered ? "#1C1916" : GOLD,
+        border: `1px solid ${disabled ? "rgba(200,169,106,0.2)" : hovered ? "#1C1916" : "rgba(200,169,106,0.55)"}`,
+        borderRadius: 0,
+        fontFamily: "sans-serif",
+        fontSize: "0.6rem",
+        fontWeight: 600,
+        letterSpacing: "0.3em",
+        textTransform: "uppercase",
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "all 0.25s ease",
+        outline: "none",
       }}
     >
-      <div
-        style={{
-          width: "38px",
-          height: "38px",
-          borderRadius: "10px",
-          background: "linear-gradient(135deg, rgba(139,111,94,0.15), rgba(92,74,58,0.1))",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "17px",
-          marginBottom: "12px",
-          transition: "transform 0.3s",
-          transform: hovered ? "scale(1.1)" : "none",
-        }}
-      >
-        {icon}
-      </div>
-      <p
-        style={{
-          fontSize: "0.62rem",
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          fontWeight: "700",
-          color: "#a89585",
-          marginBottom: "4px",
-        }}
-      >
-        {label}
-      </p>
-      <p style={{ fontSize: "0.85rem", color: "#3d2f22", fontWeight: "500" }}>{value}</p>
-    </div>
+      Send Message
+      <span style={{
+        display: "inline-block",
+        transition: "transform 0.3s ease",
+        transform: hovered && !disabled ? "translateX(5px)" : "none",
+        fontSize: "0.875rem",
+      }}>
+        →
+      </span>
+    </button>
   );
 }
 
