@@ -4,22 +4,22 @@ from models import Blogs
 from schema import BlogCreate, BlogUpdate
 from database import get_db
 
-router = APIRouter(prefix="/blogs", tags=["Blogs"])
+router = APIRouter(prefix="/api/blogs", tags=["Blogs"])
 
 def blog_dict(b):
     return {
         "id": b.id,
         "title": b.title,
-        "image": "",
-        "tag":b.tag,
+        "image": b.image,
+        "tag": b.tag,
         "category": b.category,
-        "content": b.content,
+        "body": b.content,
         "excerpt": b.excerpt,
+        "readTime": "5 min read",
+        "date": b.published_at or b.created_at,
         "author": b.author,
         "views": b.views,
         "status": b.status,
-        "published_at": b.published_at,
-        "created_at": b.created_at,
     }
 
 @router.get("/")

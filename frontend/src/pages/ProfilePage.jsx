@@ -12,7 +12,7 @@ function getInitials(name = "") {
 }
 
 const BASE = "http://127.0.0.1:8000";
-const img  = (path) => (path ? `${BASE}/${path}` : null);
+const img = (path) => (path ? `${BASE}/${path}` : null);
 
 function Toggle({ on, onToggle }) {
   return (
@@ -31,9 +31,9 @@ function Toggle({ on, onToggle }) {
 
 const STATUS_COLORS = {
   delivered: { bg: "#F0FDF4", text: "#16A34A" },
-  shipped:   { bg: "#FFFBEB", text: "#D97706" },
-  canceled:  { bg: "#FEE2E2", text: "#EF4444" },
-  pending:   { bg: "#F5F5F5", text: "#666666" },
+  shipped: { bg: "#FFFBEB", text: "#D97706" },
+  canceled: { bg: "#FEE2E2", text: "#EF4444" },
+  pending: { bg: "#F5F5F5", text: "#666666" },
 };
 
 function formatDate(dateStr) {
@@ -51,7 +51,7 @@ function formatPrice(val) {
 }
 
 const DEFAULT_NOTIF = { orders: true, promotions: false, newsletter: true };
-const DEFAULT_PRIV  = { publicProfile: false, shareActivity: true };
+const DEFAULT_PRIV = { publicProfile: false, shareActivity: true };
 
 function loadPref(key, fallback) {
   try {
@@ -62,24 +62,24 @@ function loadPref(key, fallback) {
 
 export function ProfilePage() {
   const [profileInfo, setProfileInfo] = useState();
-  const [avatar, setAvatar]           = useState(null);
+  const [avatar, setAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);   // blob URL only
-  const [avatarFile, setAvatarFile]   = useState(null);
-  const editFileInputRef              = useRef(null);
-  const [draft, setDraft]             = useState({});
-  const [editing, setEditing]         = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const editFileInputRef = useRef(null);
+  const [draft, setDraft] = useState({});
+  const [editing, setEditing] = useState(false);
 
-  const [notif, setNotif]           = useState(() => loadPref("notif_prefs", DEFAULT_NOTIF));
-  const [showNotif, setShowNotif]   = useState(false);
+  const [notif, setNotif] = useState(() => loadPref("notif_prefs", DEFAULT_NOTIF));
+  const [showNotif, setShowNotif] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
 
-  const [priv, setPriv]           = useState(() => loadPref("priv_prefs", DEFAULT_PRIV));
-  const [showPriv, setShowPriv]   = useState(false);
+  const [priv, setPriv] = useState(() => loadPref("priv_prefs", DEFAULT_PRIV));
+  const [showPriv, setShowPriv] = useState(false);
   const [privSaved, setPrivSaved] = useState(false);
 
-  const [showAllOrders, setShowAllOrders]       = useState(false);
+  const [showAllOrders, setShowAllOrders] = useState(false);
   const [showAllFavorites, setShowAllFavorites] = useState(false);
-  const [expandedOrderId, setExpandedOrderId]   = useState(null);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -113,9 +113,9 @@ export function ProfilePage() {
     try {
       const formData = new FormData();
       if (draft.username) formData.append("username", draft.username);
-      if (draft.email)    formData.append("email",    draft.email);
-      if (draft.phone)    formData.append("phone",    draft.phone);
-      if (avatarFile)     formData.append("avatar",   avatarFile);
+      if (draft.email) formData.append("email", draft.email);
+      if (draft.phone) formData.append("phone", draft.phone);
+      if (avatarFile) formData.append("avatar", avatarFile);
 
       const res = await api.put("/api/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -125,9 +125,9 @@ export function ProfilePage() {
 
       setProfileInfo((p) => ({
         ...p,
-        username:   updated.username,
-        email:      updated.email,
-        phone:      updated.phone,
+        username: updated.username,
+        email: updated.email,
+        phone: updated.phone,
         avatar_url: updated.avatar_url,
       }));
 
@@ -177,9 +177,9 @@ export function ProfilePage() {
     );
   }
 
-  const visibleOrders    = showAllOrders    ? profileInfo.orders    : profileInfo.orders.slice(0, 2);
+  const visibleOrders = showAllOrders ? profileInfo.orders : profileInfo.orders.slice(0, 2);
   const visibleFavorites = showAllFavorites ? profileInfo.favorites : profileInfo.favorites.slice(0, 2);
-  const initials         = getInitials(profileInfo.username);
+  const initials = getInitials(profileInfo.username);
 
   return (
     <div style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
@@ -264,9 +264,9 @@ export function ProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { label: "Username",     key: "username", type: "text",  placeholder: "Your name"        },
-                { label: "Email",        key: "email",    type: "email", placeholder: "you@example.com"  },
-                { label: "Phone Number", key: "phone",    type: "tel",   placeholder: "+213 6XX XXX XXX" },
+                { label: "Username", key: "username", type: "text", placeholder: "Your name" },
+                { label: "Email", key: "email", type: "email", placeholder: "you@example.com" },
+                { label: "Phone Number", key: "phone", type: "tel", placeholder: "+213 6XX XXX XXX" },
               ].map(({ label, key, type, placeholder }) => (
                 <div key={key}>
                   <label className="block text-[10px] font-semibold text-[#aaa] mb-1 uppercase tracking-widest">
@@ -286,12 +286,12 @@ export function ProfilePage() {
                 Save Changes
               </button>
               <button onClick={() => {
-                  setEditing(false);
-                  setAvatarPreview(null);
-                  setAvatarFile(null);
-                  // restore to whatever was last saved
-                  setAvatar(profileInfo.avatar_url || null);
-                }}
+                setEditing(false);
+                setAvatarPreview(null);
+                setAvatarFile(null);
+                // restore to whatever was last saved
+                setAvatar(profileInfo.avatar_url || null);
+              }}
                 className="px-5 py-2 border border-[#d4c9bc] text-[#888] text-xs font-semibold rounded-full hover:bg-[#f0ece6] transition-colors">
                 Discard
               </button>
@@ -370,7 +370,7 @@ export function ProfilePage() {
                   return (
                     <div
                       key={order.id}
-                      onClick={() => navigate(`/order/tracking/${order.id}/${order.items.product_id}`)}   
+                      onClick={() => navigate(`/order/tracking/${order.id}/${order.items.product_id}`)}
                       className="bg-white rounded-xl border border-[#ede7df] hover:border-[#5c4a3a] hover:shadow-sm transition-all cursor-pointer overflow-hidden"
                     >
                       <div className="flex items-center justify-between p-4">
@@ -406,7 +406,7 @@ export function ProfilePage() {
                             <div key={item.id} className="flex items-center gap-3 px-4 py-3">
                               {item.product?.image
                                 ? <img src={img(item.product.image)} alt={item.product?.name}
-                                    className="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-[#f0ebe4]" />
+                                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-[#f0ebe4]" />
                                 : <div className="w-10 h-10 rounded-lg bg-[#f0ebe4] flex-shrink-0" />
                               }
                               <div className="flex-1 min-w-0">
