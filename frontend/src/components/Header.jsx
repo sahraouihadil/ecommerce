@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation,useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { logout } from '../services/auth';
 
 function decodeToken(token) {
@@ -29,7 +29,7 @@ export function Header() {
         setUser(null);
       }
     } else {
-      setUser(null);
+      setUser(null); 
     }
   }, [location.pathname]);
 
@@ -52,10 +52,10 @@ export function Header() {
   }, [menuOpen]);
 
   const handleLogout = () => {
-  logout();        // removes token + role
-  setUser(null);   // resets header UI immediately
-  navigate('/');   // triggers the useEffect as a bonus safety net
-};
+    logout();        // removes token + role
+    setUser(null);   // resets header UI immediately
+    navigate('/');   // triggers the useEffect as a bonus safety net
+  };
 
   const navLinks = [
     { to: '/furniture', label: 'Shop' },
@@ -78,7 +78,8 @@ export function Header() {
               {/* Logo */}
               <Link
                 to="/"
-                className="font-serif text-2xl font-bold text-primary hover:text-accent2 transition-colors duration-300 select-none"
+                style={{ fontFamily: "'Cinzel Decorative', cursive" }}
+                className="text-2xl font-bold text-primary hover:text-accent2 transition-colors duration-300 select-none"
               >
                 ARoom
               </Link>
@@ -186,7 +187,7 @@ export function Header() {
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5">
-              <span className="font-serif text-sm font-bold tracking-wide text-primary">ARoom</span>
+              <span style={{ fontFamily: "'Cinzel Decorative', cursive" }} className="text-sm font-bold text-primary">ARoom</span>
               <button onClick={() => setMenuOpen(false)} className="text-muted hover:text-primary transition-colors" aria-label="Close menu">
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
