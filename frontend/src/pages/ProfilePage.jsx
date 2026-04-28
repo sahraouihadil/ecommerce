@@ -14,6 +14,9 @@ function getInitials(name = "") {
 const BASE = "http://127.0.0.1:8000";
 const img = (path) => (path ? `${BASE}/${path}` : null);
 
+// hide backend placeholder "string" values
+const real = (val) => (val && val !== "string" ? val : null);
+
 function Toggle({ on, onToggle }) {
   return (
     <button
@@ -31,9 +34,9 @@ function Toggle({ on, onToggle }) {
 
 const STATUS_COLORS = {
   delivered: { bg: "#F0FDF4", text: "#16A34A" },
-  shipped: { bg: "#FFFBEB", text: "#D97706" },
-  canceled: { bg: "#FEE2E2", text: "#EF4444" },
-  pending: { bg: "#F5F5F5", text: "#666666" },
+  shipped:   { bg: "#FFFBEB", text: "#D97706" },
+  canceled:  { bg: "#FEE2E2", text: "#EF4444" },
+  pending:   { bg: "#F5F5F5", text: "#666666" },
 };
 
 function formatDate(dateStr) {
@@ -51,7 +54,7 @@ function formatPrice(val) {
 }
 
 const DEFAULT_NOTIF = { orders: true, promotions: false, newsletter: true };
-const DEFAULT_PRIV = { publicProfile: false, shareActivity: true };
+const DEFAULT_PRIV  = { publicProfile: false, shareActivity: true };
 
 function loadPref(key, fallback) {
   try {
@@ -63,23 +66,27 @@ function loadPref(key, fallback) {
 export function ProfilePage() {
   const [profileInfo, setProfileInfo] = useState();
   const [avatar, setAvatar] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(null);   // blob URL only
-  const [avatarFile, setAvatarFile] = useState(null);
-  const editFileInputRef = useRef(null);
-  const [draft, setDraft] = useState({});
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile]       = useState(null);
+  const [avatarHover, setAvatarHover]     = useState(false);
+
+  const editFileInputRef  = useRef(null);
+  const quickUploadRef    = useRef(null);   // for the header camera click
+
+  const [draft,   setDraft]   = useState({});
   const [editing, setEditing] = useState(false);
 
-  const [notif, setNotif] = useState(() => loadPref("notif_prefs", DEFAULT_NOTIF));
-  const [showNotif, setShowNotif] = useState(false);
+  const [notif,      setNotif]      = useState(() => loadPref("notif_prefs", DEFAULT_NOTIF));
+  const [showNotif,  setShowNotif]  = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
 
-  const [priv, setPriv] = useState(() => loadPref("priv_prefs", DEFAULT_PRIV));
-  const [showPriv, setShowPriv] = useState(false);
+  const [priv,      setPriv]      = useState(() => loadPref("priv_prefs", DEFAULT_PRIV));
+  const [showPriv,  setShowPriv]  = useState(false);
   const [privSaved, setPrivSaved] = useState(false);
 
-  const [showAllOrders, setShowAllOrders] = useState(false);
+  const [showAllOrders,    setShowAllOrders]    = useState(false);
   const [showAllFavorites, setShowAllFavorites] = useState(false);
-  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [expandedOrderId,  setExpandedOrderId]  = useState(null);
 
   const navigate = useNavigate();
 
@@ -88,7 +95,6 @@ export function ProfilePage() {
       const res = await api.get("/api/profile");
       setProfileInfo(res.data);
       setDraft(res.data);
-      // always store raw path — img() adds the BASE prefix
       if (res.data.avatar_url) setAvatar(res.data.avatar_url);
     } catch (err) {
       console.error(err);
@@ -113,25 +119,23 @@ export function ProfilePage() {
     try {
       const formData = new FormData();
       if (draft.username) formData.append("username", draft.username);
-      if (draft.email) formData.append("email", draft.email);
-      if (draft.phone) formData.append("phone", draft.phone);
-      if (avatarFile) formData.append("avatar", avatarFile);
+      if (draft.email)    formData.append("email",    draft.email);
+      if (draft.phone)    formData.append("phone",    draft.phone);
+      if (avatarFile)     formData.append("avatar",   avatarFile);
 
-      const res = await api.put("/api/profile", formData, {
+      const res     = await api.put("/api/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       const updated = res.data.user;
 
       setProfileInfo((p) => ({
         ...p,
-        username: updated.username,
-        email: updated.email,
-        phone: updated.phone,
+        username:   updated.username,
+        email:      updated.email,
+        phone:      updated.phone,
         avatar_url: updated.avatar_url,
       }));
 
-      // store raw path only — consistent with fetchProfile
       if (updated.avatar_url) setAvatar(updated.avatar_url);
       setAvatarPreview(null);
       setAvatarFile(null);
@@ -141,16 +145,18 @@ export function ProfilePage() {
     }
   };
 
-  const handleEditAvatarChange = (e) => {
+  // shared handler for both the header quick-upload and the edit-panel upload
+  const handleAvatarFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setAvatarPreview(URL.createObjectURL(file));  // blob for preview only
+      setAvatarPreview(URL.createObjectURL(file));
       setAvatarFile(file);
     }
   };
 
-  // always show blob preview while editing if one exists, else the server path
-  const displaySrc = editing && avatarPreview ? avatarPreview : img(avatar);
+  const displaySrc = (editing && avatarPreview) ? avatarPreview
+                   : avatarPreview               ? avatarPreview
+                   : img(avatar);
 
   const removeFavorite = async (favId) => {
     try {
@@ -170,31 +176,47 @@ export function ProfilePage() {
 
   if (!profileInfo) {
     return (
-      <div style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
-        className="min-h-screen bg-[#FAF8F4] flex items-center justify-center text-[#bbb] text-sm">
+      <div
+        style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+        className="min-h-screen bg-[#FAF8F4] flex items-center justify-center text-[#bbb] text-sm"
+      >
         Loading…
       </div>
     );
   }
 
-  const visibleOrders = showAllOrders ? profileInfo.orders : profileInfo.orders.slice(0, 2);
+  const visibleOrders    = showAllOrders    ? profileInfo.orders    : profileInfo.orders.slice(0, 2);
   const visibleFavorites = showAllFavorites ? profileInfo.favorites : profileInfo.favorites.slice(0, 2);
-  const initials = getInitials(profileInfo.username);
+  const initials         = getInitials(profileInfo.username);
+
+  // safe display values — never show raw "string"
+  const displayEmail = real(profileInfo.email);
+  const displayPhone = real(profileInfo.phone);
+  const displayRole  = real(profileInfo.role);
 
   return (
-    <div style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
-      className="min-h-screen bg-[#FAF8F4] text-[#1a1a1a] pb-24">
+    <div
+      style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+      className="min-h-screen bg-[#FAF8F4] text-[#1a1a1a] pb-24"
+    >
       <main className="max-w-5xl mx-auto px-6 pt-36">
 
         {/* ── HEADER PROFILE ROW ── */}
         <div className="flex items-center gap-8 mb-10">
 
-          <div style={{ width: "96px", height: "96px", position: "relative", flexShrink: 0 }}>
+          {/* Avatar with camera overlay */}
+          <div
+            style={{ width: "96px", height: "96px", position: "relative", flexShrink: 0 }}
+            onMouseEnter={() => setAvatarHover(true)}
+            onMouseLeave={() => setAvatarHover(false)}
+          >
+            {/* ring */}
             <div style={{
               position: "absolute", inset: "-3px", borderRadius: "50%",
-              background: "linear-gradient(135deg, #8b6f5e44, #5c4a3a33)",
               border: "1.5px solid rgba(92,74,58,0.25)",
             }} />
+
+            {/* avatar circle */}
             <div style={{
               width: "96px", height: "96px", borderRadius: "50%", overflow: "hidden",
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -205,19 +227,62 @@ export function ProfilePage() {
                 : <span style={{ fontSize: "2rem", fontWeight: "700", color: "white" }}>{initials || "?"}</span>
               }
             </div>
+
+            {/* camera overlay — always visible on hover */}
+            <div
+              onClick={() => quickUploadRef.current?.click()}
+              title="Change photo"
+              style={{
+                position: "absolute", inset: 0, borderRadius: "50%",
+                background: "rgba(0,0,0,0.42)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+                opacity: avatarHover ? 1 : 0,
+                transition: "opacity 0.2s ease",
+              }}
+            >
+              {/* camera SVG icon */}
+              <svg
+                width="24" height="24" viewBox="0 0 24 24"
+                fill="none" stroke="white" strokeWidth="1.8"
+                strokeLinecap="round" strokeLinejoin="round"
+              >
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </div>
+
+            {/* hidden file input for quick header upload */}
+            <input
+              ref={quickUploadRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleAvatarFileChange}
+            />
           </div>
 
+          {/* Name / info */}
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-2xl tracking-tight truncate">{profileInfo.username}</h1>
-            <p className="text-[#888] text-sm mt-0.5 truncate">{profileInfo.email}</p>
-            {profileInfo.phone && (
-              <p className="text-[#aaa] text-xs mt-0.5">{profileInfo.phone}</p>
+            {displayEmail && (
+              <p className="text-[#888] text-sm mt-0.5 truncate">{displayEmail}</p>
             )}
-            <p className="text-[#bbb] text-xs mt-0.5 capitalize">{profileInfo.role}</p>
+            {displayPhone && (
+              <p className="text-[#aaa] text-xs mt-0.5">{displayPhone}</p>
+            )}
+            {displayRole && (
+              <p className="text-[#bbb] text-xs mt-0.5 capitalize">{displayRole}</p>
+            )}
           </div>
 
           <button
-            onClick={() => { setDraft(profileInfo); setEditing((v) => !v); setShowNotif(false); setShowPriv(false); }}
+            onClick={() => {
+              setDraft(profileInfo);
+              setEditing((v) => !v);
+              setShowNotif(false);
+              setShowPriv(false);
+            }}
             className="text-xs font-semibold px-4 py-2 rounded-full border border-[#d4c9bc] text-[#5c4a3a] hover:bg-[#5c4a3a] hover:text-white transition-all duration-200 flex-shrink-0"
           >
             {editing ? "Cancel" : "Edit"}
@@ -245,18 +310,28 @@ export function ProfilePage() {
               <div>
                 <p className="text-xs font-semibold text-[#555] mb-1">Profile Photo</p>
                 <p className="text-[10px] text-[#bbb] mb-2">JPG, PNG or GIF · Max 5 MB</p>
-                <button type="button" onClick={() => editFileInputRef.current.click()}
-                  className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#d4c9bc] text-[#5c4a3a] hover:bg-[#5c4a3a] hover:text-white transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="text-xs font-semibold px-4 py-1.5 rounded-full border border-[#d4c9bc] text-[#5c4a3a] hover:bg-[#5c4a3a] hover:text-white transition-all duration-200"
+                >
                   Upload new photo
                 </button>
-                <input ref={editFileInputRef} type="file" accept="image/*"
-                  className="hidden" onChange={handleEditAvatarChange} />
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarFileChange}
+                />
               </div>
 
               {(avatarPreview || avatar) && (
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => { setAvatar(null); setAvatarPreview(null); setAvatarFile(null); }}
-                  className="ml-auto text-[10px] text-[#ccc] hover:text-red-400 transition-colors font-semibold">
+                  className="ml-auto text-[10px] text-[#ccc] hover:text-red-400 transition-colors font-semibold"
+                >
                   Remove
                 </button>
               )}
@@ -264,15 +339,18 @@ export function ProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { label: "Username", key: "username", type: "text", placeholder: "Your name" },
-                { label: "Email", key: "email", type: "email", placeholder: "you@example.com" },
-                { label: "Phone Number", key: "phone", type: "tel", placeholder: "+213 6XX XXX XXX" },
+                { label: "Username",     key: "username", type: "text",  placeholder: "Your name"          },
+                { label: "Email",        key: "email",    type: "email", placeholder: "you@example.com"    },
+                { label: "Phone Number", key: "phone",    type: "tel",   placeholder: "+213 6XX XXX XXX"   },
               ].map(({ label, key, type, placeholder }) => (
                 <div key={key}>
                   <label className="block text-[10px] font-semibold text-[#aaa] mb-1 uppercase tracking-widest">
                     {label}
                   </label>
-                  <input type={type} value={draft[key] ?? ""} placeholder={placeholder}
+                  <input
+                    type={type}
+                    value={draft[key] ?? ""}
+                    placeholder={placeholder}
                     onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
                     className="w-full border border-[#e0d8d0] rounded-lg px-3 py-2 text-sm bg-[#faf8f4] focus:outline-none focus:border-[#5c4a3a] transition-colors placeholder:text-[#ccc]"
                   />
@@ -281,18 +359,21 @@ export function ProfilePage() {
             </div>
 
             <div className="flex gap-3 mt-5">
-              <button onClick={handleSaveProfile}
-                className="px-5 py-2 bg-[#5c4a3a] text-white text-xs font-semibold rounded-full hover:bg-[#3d2f22] transition-colors">
+              <button
+                onClick={handleSaveProfile}
+                className="px-5 py-2 bg-[#5c4a3a] text-white text-xs font-semibold rounded-full hover:bg-[#3d2f22] transition-colors"
+              >
                 Save Changes
               </button>
-              <button onClick={() => {
-                setEditing(false);
-                setAvatarPreview(null);
-                setAvatarFile(null);
-                // restore to whatever was last saved
-                setAvatar(profileInfo.avatar_url || null);
-              }}
-                className="px-5 py-2 border border-[#d4c9bc] text-[#888] text-xs font-semibold rounded-full hover:bg-[#f0ece6] transition-colors">
+              <button
+                onClick={() => {
+                  setEditing(false);
+                  setAvatarPreview(null);
+                  setAvatarFile(null);
+                  setAvatar(profileInfo.avatar_url || null);
+                }}
+                className="px-5 py-2 border border-[#d4c9bc] text-[#888] text-xs font-semibold rounded-full hover:bg-[#f0ece6] transition-colors"
+              >
                 Discard
               </button>
             </div>
@@ -314,8 +395,8 @@ export function ProfilePage() {
               <p className="font-bold text-xl">{profileInfo.stats.points.toLocaleString()}</p>
               <span style={{
                 background: profileInfo.stats.tier.color + "18",
-                color: profileInfo.stats.tier.color,
-                border: `1px solid ${profileInfo.stats.tier.color}44`,
+                color:      profileInfo.stats.tier.color,
+                border:     `1px solid ${profileInfo.stats.tier.color}44`,
                 fontSize: "10px", fontWeight: "700", padding: "2px 8px",
                 borderRadius: "999px", letterSpacing: "0.06em",
               }}>
@@ -325,7 +406,7 @@ export function ProfilePage() {
             <p className="text-[#bbb] text-xs mb-2">Points</p>
             <div style={{ background: "#ede7df", borderRadius: "999px", height: "5px", width: "100%", maxWidth: "200px" }}>
               <div style={{
-                width: `${profileInfo.stats.progress_pct}%`,
+                width:      `${profileInfo.stats.progress_pct}%`,
                 background: `linear-gradient(90deg, ${profileInfo.stats.tier.color}99, ${profileInfo.stats.tier.color})`,
                 borderRadius: "999px", height: "100%", transition: "width 0.6s ease",
               }} />
@@ -355,8 +436,10 @@ export function ProfilePage() {
             <section className="mb-10">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="font-bold text-lg">My Orders</h2>
-                <button onClick={() => setShowAllOrders((v) => !v)}
-                  className="text-xs text-[#aaa] hover:text-[#5c4a3a] transition-colors font-semibold">
+                <button
+                  onClick={() => setShowAllOrders((v) => !v)}
+                  className="text-xs text-[#aaa] hover:text-[#5c4a3a] transition-colors font-semibold"
+                >
                   {showAllOrders ? "Show less ↑" : `See all (${profileInfo.orders.length}) →`}
                 </button>
               </div>
@@ -365,7 +448,7 @@ export function ProfilePage() {
                   <p className="py-6 text-center text-sm text-[#bbb]">No orders yet.</p>
                 )}
                 {visibleOrders.map((order) => {
-                  const s = STATUS_COLORS[order.status?.toLowerCase()] ?? { bg: "#F5F5F5", text: "#666" };
+                  const s          = STATUS_COLORS[order.status?.toLowerCase()] ?? { bg: "#F5F5F5", text: "#666" };
                   const isExpanded = expandedOrderId === order.id;
                   return (
                     <div
@@ -386,15 +469,20 @@ export function ProfilePage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-[11px] font-semibold px-3 py-1 rounded-full"
-                            style={{ background: s.bg, color: s.text }}>
+                          <span
+                            className="text-[11px] font-semibold px-3 py-1 rounded-full"
+                            style={{ background: s.bg, color: s.text }}
+                          >
                             {order.status}
                           </span>
-                          {/* Stop propagation so expand toggle doesn't also navigate */}
                           {order.items?.length > 0 && (
                             <button
-                              onClick={(e) => { e.stopPropagation(); setExpandedOrderId(isExpanded ? null : order.id); }}
-                              className="text-[#bbb] hover:text-[#5c4a3a] transition-colors text-xs font-semibold">
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedOrderId(isExpanded ? null : order.id);
+                              }}
+                              className="text-[#bbb] hover:text-[#5c4a3a] transition-colors text-xs font-semibold"
+                            >
                               {isExpanded ? "▲" : "▼"}
                             </button>
                           )}
@@ -405,8 +493,11 @@ export function ProfilePage() {
                           {order.items.map((item) => (
                             <div key={item.id} className="flex items-center gap-3 px-4 py-3">
                               {item.product?.image
-                                ? <img src={img(item.product.image)} alt={item.product?.name}
-                                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-[#f0ebe4]" />
+                                ? <img
+                                    src={img(item.product.image)}
+                                    alt={item.product?.name}
+                                    className="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-[#f0ebe4]"
+                                  />
                                 : <div className="w-10 h-10 rounded-lg bg-[#f0ebe4] flex-shrink-0" />
                               }
                               <div className="flex-1 min-w-0">
@@ -431,8 +522,10 @@ export function ProfilePage() {
             <section>
               <div className="flex justify-between items-center mb-5">
                 <h2 className="font-bold text-lg">Favorites List</h2>
-                <button onClick={() => setShowAllFavorites((v) => !v)}
-                  className="text-xs text-[#aaa] hover:text-[#5c4a3a] transition-colors font-semibold">
+                <button
+                  onClick={() => setShowAllFavorites((v) => !v)}
+                  className="text-xs text-[#aaa] hover:text-[#5c4a3a] transition-colors font-semibold"
+                >
                   {showAllFavorites ? "Show less ↑" : `View all (${profileInfo.favorites.length}) →`}
                 </button>
               </div>
@@ -441,17 +534,25 @@ export function ProfilePage() {
                   <p className="py-6 text-center text-sm text-[#bbb]">No favorites yet.</p>
                 )}
                 {visibleFavorites.map((item) => (
-                  <div key={item.id}
-                    className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#ede7df] hover:border-[#c9bdb0] transition-colors">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#ede7df] hover:border-[#c9bdb0] transition-colors"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
-                      <img src={img(item.image)} alt={item.name}
-                        className="w-12 h-12 rounded-lg object-cover border border-[#eee]" />
+                      <img
+                        src={img(item.image)}
+                        alt={item.name}
+                        className="w-12 h-12 rounded-lg object-cover border border-[#eee]"
+                      />
                       <span className="text-sm truncate">{item.name}</span>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-[#5c4a3a] text-sm font-bold">{formatPrice(item.price)}</span>
-                      <button onClick={() => removeFavorite(item.id)}
-                        className="text-[#ccc] hover:text-red-400 transition-colors text-xs" title="Remove">
+                      <button
+                        onClick={() => removeFavorite(item.id)}
+                        className="text-[#ccc] hover:text-red-400 transition-colors text-xs"
+                        title="Remove"
+                      >
                         ✕
                       </button>
                     </div>
@@ -470,15 +571,22 @@ export function ProfilePage() {
             <div className="space-y-1">
 
               <button
-                onClick={() => { setDraft(profileInfo); setEditing((v) => !v); setShowNotif(false); setShowPriv(false); }}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-[#555] hover:bg-white hover:text-[#5c4a3a] border border-transparent hover:border-[#ede7df] transition-all">
+                onClick={() => {
+                  setDraft(profileInfo);
+                  setEditing((v) => !v);
+                  setShowNotif(false);
+                  setShowPriv(false);
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-[#555] hover:bg-white hover:text-[#5c4a3a] border border-transparent hover:border-[#ede7df] transition-all"
+              >
                 <span>Edit Profile</span>
                 <span className="text-[#bbb] text-xs">{editing ? "↑" : "›"}</span>
               </button>
 
               <button
                 onClick={() => { setShowNotif((v) => !v); setShowPriv(false); setEditing(false); }}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-[#555] hover:bg-white hover:text-[#5c4a3a] border border-transparent hover:border-[#ede7df] transition-all">
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-[#555] hover:bg-white hover:text-[#5c4a3a] border border-transparent hover:border-[#ede7df] transition-all"
+              >
                 <span>Notifications</span>
                 <span className="text-[#bbb] text-xs">{showNotif ? "↑" : "›"}</span>
               </button>
@@ -492,9 +600,11 @@ export function ProfilePage() {
                       <Toggle on={val} onToggle={() => setNotif((n) => ({ ...n, [key]: !n[key] }))} />
                     </div>
                   ))}
-                  <button onClick={handleSaveNotif}
+                  <button
+                    onClick={handleSaveNotif}
                     className="w-full mt-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
-                    style={{ background: notifSaved ? "#F0FDF4" : "#5c4a3a", color: notifSaved ? "#16A34A" : "white" }}>
+                    style={{ background: notifSaved ? "#F0FDF4" : "#5c4a3a", color: notifSaved ? "#16A34A" : "white" }}
+                  >
                     {notifSaved ? "✓ Saved" : "Save preferences"}
                   </button>
                 </div>
@@ -502,7 +612,8 @@ export function ProfilePage() {
 
               <button
                 onClick={() => { setShowPriv((v) => !v); setShowNotif(false); setEditing(false); }}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-[#555] hover:bg-white hover:text-[#5c4a3a] border border-transparent hover:border-[#ede7df] transition-all">
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-[#555] hover:bg-white hover:text-[#5c4a3a] border border-transparent hover:border-[#ede7df] transition-all"
+              >
                 <span>Privacy</span>
                 <span className="text-[#bbb] text-xs">{showPriv ? "↑" : "›"}</span>
               </button>
@@ -516,9 +627,11 @@ export function ProfilePage() {
                       <Toggle on={val} onToggle={() => setPriv((p) => ({ ...p, [key]: !p[key] }))} />
                     </div>
                   ))}
-                  <button onClick={handleSavePriv}
+                  <button
+                    onClick={handleSavePriv}
                     className="w-full mt-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
-                    style={{ background: privSaved ? "#F0FDF4" : "#5c4a3a", color: privSaved ? "#16A34A" : "white" }}>
+                    style={{ background: privSaved ? "#F0FDF4" : "#5c4a3a", color: privSaved ? "#16A34A" : "white" }}
+                  >
                     {privSaved ? "✓ Saved" : "Save preferences"}
                   </button>
                 </div>
@@ -528,8 +641,10 @@ export function ProfilePage() {
                 <div className="h-px bg-[#ede7df]" />
               </div>
 
-              <button onClick={handleLogout}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-red-400 hover:bg-red-50 border border-transparent transition-all">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-red-400 hover:bg-red-50 border border-transparent transition-all"
+              >
                 <span>Logout</span>
                 <span className="text-xs">→</span>
               </button>
