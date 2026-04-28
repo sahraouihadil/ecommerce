@@ -3,393 +3,74 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const WILAYAS = [
-  "Constantine","Mila", "Guelma", "Oum El Bouaghi", "Skikda", "Batna", "Sétif",
-  "Jijel", "Annaba", "Bordj Bou Arréridj", "Khenchela", "Souk Ahras",
-  "Béjaïa", "Tébessa",
+  "Constantine", "Mila", "Guelma", "Oum El Bouaghi", "Skikda", "Batna", "Sétif",
+  "Jijel", "Annaba", "Bordj Bou Arréridj", "Khenchela", "Souk Ahras", "Béjaïa", "Tébessa",
 ];
 
 const PAYMENT_METHODS = [
-    { id: "cod", icon: "local_shipping", label: "Cash on Delivery", sub: "Local Only", hasForm: false },
-    { id: "cib", icon: "credit_card", label: "CIB / Card", sub: "Visa/Mastercard", hasForm: true },
-    { id: "pickup", icon: "storefront", label: "Self Pickup", sub: "Algiers Showroom", hasForm: false },
-]
-
-const CSS = `
-  /* ── Tokens ── */
-  .checkout-root {
-    --co-bg:        var(--color-cream,   #F5F0E8);
-    --co-surface:   var(--color-surface, #EDE8DF);
-    --co-card:      #2C2016;
-    --co-text:      #1A1208;
-    --co-muted:     #7A7060;
-    --co-primary:   #1A1208;
-    --co-accent:    #C4A96B;
-    --co-success:   #3D8B5E;
-    --co-border:    rgba(0,0,0,0.08);
-    --co-input-bg:  rgba(255,255,255,0.7);
-    --co-radius-sm: 8px;
-    --co-radius-md: 12px;
-    --co-radius-lg: 16px;
-    --co-shadow-sm:         0 1px 4px rgba(0,0,0,0.06);
-    --co-shadow-md:         0 4px 24px rgba(0,0,0,0.08);
-    --co-shadow-lg:         0 8px 40px rgba(0,0,0,0.14);
-    --co-shadow-xl:         0 16px 56px rgba(0,0,0,0.18);
-    --co-shadow-card-hover: 0 8px 32px rgba(0,0,0,0.13);
-    --co-shadow-accent:     0 0 0 3px rgba(196,169,107,0.20);
-    --co-dur-fast:    150ms;
-    --co-dur-base:    220ms;
-    --co-dur-slow:    380ms;
-    --co-ease-out:    cubic-bezier(0.22,1,0.36,1);
-    --co-ease-spring: cubic-bezier(0.34,1.56,0.64,1);
-    --space-1:4px;  --space-2:8px;   --space-3:12px; --space-4:16px;
-    --space-5:20px; --space-6:24px;  --space-8:32px; --space-10:40px;
-    --space-12:48px;--space-16:64px;
-    --font-serif: Georgia, serif;
-    --font-sans:  system-ui, sans-serif;
-    min-height: 100vh;
-    background: var(--co-bg);
-    color: var(--co-text);
-    font-family: var(--font-sans);
-  }
-
-  /* ── Keyframes ── */
-  @keyframes co-fade-up {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes co-fade-in-right {
-    from { opacity: 0; transform: translateX(24px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes co-spin   { to { transform: rotate(360deg); } }
-  @keyframes co-fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: none; }
-  }
-
-  .co-anim-section {
-    animation: co-fade-up var(--co-dur-slow) var(--co-ease-out) both;
-    animation-delay: var(--_delay, 0ms);
-  }
-  .co-anim-aside {
-    animation: co-fade-in-right var(--co-dur-slow) var(--co-ease-out) both;
-    animation-delay: 60ms;
-  }
-
-  /* ── Loading ── */
-  .checkout-loading {
-    min-height: 100vh; background: var(--co-bg);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: var(--space-4); color: var(--co-muted);
-  }
-  .checkout-spinner {
-    width: 2rem; height: 2rem;
-    border: 2px solid var(--co-accent); border-top-color: transparent;
-    border-radius: 50%;
-    animation: co-spin 0.7s linear infinite;
-  }
-
-  /* ── Layout ── */
-  .checkout-main { max-width: 1200px; margin: 0 auto; padding: 9rem var(--space-6) var(--space-16); }
-  .checkout-header { margin-bottom: var(--space-12); }
-  .checkout-eyebrow {
-    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.2em;
-    font-weight: 600; color: var(--co-muted); margin-bottom: var(--space-2);
-  }
-  .checkout-title {
-    font-family: var(--font-serif);
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    font-weight: 700; letter-spacing: -0.02em; line-height: 1;
-  }
-  .checkout-layout { display: grid; grid-template-columns: 1fr; gap: var(--space-8); }
-  @media (min-width: 1024px) {
-    .checkout-layout { grid-template-columns: 1fr 380px; align-items: start; }
-  }
-  .checkout-left { display: flex; flex-direction: column; gap: var(--space-6); }
-
-  /* ── Sections ── */
-  .checkout-section {
-    background: white;
-    border-radius: var(--co-radius-lg);
-    padding: var(--space-8);
-    box-shadow: var(--co-shadow-md);
-    transition:
-      box-shadow var(--co-dur-base) var(--co-ease-out),
-      transform  var(--co-dur-base) var(--co-ease-out);
-  }
-  .checkout-section:hover {
-    box-shadow: var(--co-shadow-card-hover);
-    transform: translateY(-2px);
-  }
-  .section-heading-row {
-    display: flex; align-items: center;
-    gap: var(--space-3); margin-bottom: var(--space-6); flex-wrap: wrap;
-  }
-  .section-number {
-    width: 2rem; height: 2rem; background: var(--co-primary); color: white;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 0.875rem; font-weight: 700; flex-shrink: 0;
-  }
-  .section-title { font-family: var(--font-serif); font-size: 1.125rem; font-weight: 700; flex: 1; }
-
-  /* ── Form ── */
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
-  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
-  .form-input {
-    width: 100%; height: 52px; padding: 0 var(--space-4);
-    background: var(--co-input-bg); border: 1.5px solid var(--co-border);
-    border-radius: var(--co-radius-sm); font-size: 0.875rem;
-    font-family: var(--font-sans); color: var(--co-text);
-    box-sizing: border-box; outline: none;
-    transition:
-      border-color var(--co-dur-fast) var(--co-ease-out),
-      box-shadow   var(--co-dur-fast) var(--co-ease-out),
-      transform    var(--co-dur-fast) var(--co-ease-out);
-  }
-  .form-input::placeholder { color: var(--co-muted); }
-  .form-input:focus {
-    border-color: var(--co-accent);
-    box-shadow: var(--co-shadow-accent);
-    transform: translateY(-1px);
-  }
-  .form-input-full { grid-column: 1 / -1; }
-  .form-select-wrapper { position: relative; }
-  .form-select { appearance: none; -webkit-appearance: none; padding-right: 2.5rem; cursor: pointer; }
-  .select-chevron {
-    position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%);
-    font-size: 1.25rem; color: var(--co-muted); pointer-events: none;
-  }
-
-  /* ── Payment cards ── */
-  .payment-methods-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: var(--space-3); margin-bottom: var(--space-5);
-  }
-  .payment-card {
-    position: relative;
-    display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
-    padding: var(--space-5) var(--space-3);
-    background: var(--co-surface); border: 1.5px solid var(--co-border);
-    border-radius: var(--co-radius-md); cursor: pointer;
-    box-shadow: var(--co-shadow-sm); font-family: var(--font-sans);
-    transition:
-      border-color var(--co-dur-base) var(--co-ease-out),
-      box-shadow   var(--co-dur-base) var(--co-ease-out),
-      background   var(--co-dur-base) var(--co-ease-out),
-      transform    var(--co-dur-base) var(--co-ease-spring);
-  }
-  .payment-card:hover {
-    border-color: var(--co-accent); background: rgba(196,169,107,0.05);
-    box-shadow: var(--co-shadow-md); transform: translateY(-3px);
-  }
-  .payment-card-active {
-    border-color: var(--co-accent); background: rgba(196,169,107,0.08);
-    box-shadow: var(--co-shadow-md), var(--co-shadow-accent); transform: translateY(-2px);
-  }
-  .payment-icon { font-size: 1.5rem; color: var(--co-muted); }
-  .payment-card-active .payment-icon { color: var(--co-accent); }
-  .payment-label { font-size: 0.8125rem; font-weight: 600; color: var(--co-text); text-align: center; }
-  .payment-sub   { font-size: 0.6875rem; color: var(--co-muted); text-align: center; }
-  .payment-check { font-size: 1rem; color: var(--co-accent); }
-
-  .cib-form {
-    border-top: 1px solid var(--co-border); padding-top: var(--space-5);
-    display: flex; flex-direction: column; gap: var(--space-4);
-    animation: co-fadeIn var(--co-dur-base) var(--co-ease-out);
-  }
-  .cib-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
-
-  /* ── Delivery schedule ── */
-  .sched-tabs {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: var(--space-3); margin-bottom: var(--space-5);
-  }
-  .sched-tab {
-    position: relative;
-    display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
-    padding: var(--space-5) var(--space-3);
-    background: var(--co-surface); border: 1.5px solid var(--co-border);
-    border-radius: var(--co-radius-md); cursor: pointer;
-    box-shadow: var(--co-shadow-sm); font-family: var(--font-sans);
-    transition:
-      border-color var(--co-dur-base) var(--co-ease-out),
-      box-shadow   var(--co-dur-base) var(--co-ease-out),
-      background   var(--co-dur-base) var(--co-ease-out),
-      transform    var(--co-dur-base) var(--co-ease-spring);
-  }
-  .sched-tab:hover {
-    border-color: var(--co-accent); background: rgba(196,169,107,0.05);
-    box-shadow: var(--co-shadow-md); transform: translateY(-3px);
-  }
-  .sched-tab-active {
-    border-color: var(--co-accent); background: rgba(196,169,107,0.08);
-    box-shadow: var(--co-shadow-md), var(--co-shadow-accent); transform: translateY(-2px);
-  }
-  .sched-tab-icon { font-size: 1.5rem; color: var(--co-muted); }
-  .sched-tab-active .sched-tab-icon { color: var(--co-accent); }
-  .sched-tab-label { font-size: 0.8125rem; font-weight: 600; color: var(--co-text); }
-  .sched-tab-sub   { font-size: 0.6875rem; color: var(--co-muted); }
-  .sched-check     { font-size: 1rem; color: var(--co-accent); }
-
-  .sched-detail-panel {
-    margin-top: var(--space-5); padding-top: var(--space-5);
-    border-top: 1px solid var(--co-border);
-    display: flex; flex-direction: column; gap: var(--space-3);
-    animation: co-fadeIn var(--co-dur-base) var(--co-ease-out);
-  }
-  .sched-label {
-    font-size: 0.75rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.1em; color: var(--co-muted);
-  }
-  .dow-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-  .dow-btn {
-    padding: 8px 16px; border-radius: 999px;
-    border: 1.5px solid var(--co-border); background: var(--co-surface);
-    font-size: 0.8125rem; font-weight: 600; color: var(--co-muted);
-    cursor: pointer; font-family: var(--font-sans);
-    box-shadow: var(--co-shadow-sm);
-    transition:
-      border-color var(--co-dur-fast) var(--co-ease-out),
-      box-shadow   var(--co-dur-fast) var(--co-ease-out),
-      background   var(--co-dur-fast) var(--co-ease-out),
-      color        var(--co-dur-fast) var(--co-ease-out),
-      transform    var(--co-dur-fast) var(--co-ease-spring);
-  }
-  .dow-btn:hover {
-    border-color: var(--co-accent); color: var(--co-text);
-    box-shadow: var(--co-shadow-md); transform: translateY(-2px);
-  }
-  .dow-btn-active {
-    background: var(--co-primary); border-color: var(--co-primary); color: white;
-    box-shadow: var(--co-shadow-md); transform: translateY(-1px);
-  }
-
-  /* ── Items (mobile) ── */
-  .checkout-items-section { display: block; }
-  @media (min-width: 1024px) { .checkout-items-section { display: none; } }
-  .items-list { display: flex; flex-direction: column; }
-  .item-row {
-    display: flex; align-items: center; gap: var(--space-4);
-    padding: var(--space-4) 0; border-bottom: 1px solid var(--co-border);
-    transition: transform var(--co-dur-fast) var(--co-ease-out);
-  }
-  .item-row:last-child { border-bottom: none; }
-  .item-row:hover { transform: translateX(4px); }
-  .item-image {
-    width: 56px; height: 56px; border-radius: var(--co-radius-sm);
-    background: var(--co-surface); overflow: hidden; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: var(--co-shadow-sm);
-  }
-  .item-image img { width: 100%; height: 100%; object-fit: cover; }
-  .item-info { flex: 1; }
-  .item-name  { font-size: 0.875rem; font-weight: 600; font-family: var(--font-serif); }
-  .item-qty   { font-size: 0.75rem; color: var(--co-muted); margin-top: 2px; }
-  .item-price { font-size: 0.875rem; font-weight: 700; font-family: var(--font-serif); white-space: nowrap; }
-
-  /* ── Aside / summary card ── */
-  .checkout-aside { width: 100%; }
-  .summary-card {
-    position: sticky; top: 7rem;
-    background: var(--co-card); color: #E8DCC8;
-    border-radius: var(--co-radius-lg); padding: var(--space-8);
-    box-shadow: var(--co-shadow-lg);
-    transition: box-shadow var(--co-dur-base) var(--co-ease-out);
-  }
-  .summary-card:hover { box-shadow: var(--co-shadow-xl); }
-  .summary-title {
-    font-family: var(--font-serif); font-size: 1.125rem; font-weight: 700;
-    color: var(--co-accent); text-transform: uppercase; letter-spacing: 0.1em;
-    margin-bottom: var(--space-6);
-  }
-  .summary-items { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-5); }
-  .summary-item-row { display: flex; align-items: center; gap: var(--space-3); }
-  .summary-item-img {
-    width: 36px; height: 36px; border-radius: var(--co-radius-sm);
-    background: rgba(255,255,255,0.08); overflow: hidden; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: var(--co-shadow-sm);
-  }
-  .summary-item-img img { width: 100%; height: 100%; object-fit: cover; }
-  .summary-item-name {
-    flex: 1; font-size: 0.8125rem; color: rgba(232,220,200,0.85);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .summary-item-price { font-size: 0.875rem; font-weight: 700; white-space: nowrap; }
-  .summary-meta {
-    border-top: 1px solid rgba(196,169,107,0.25); padding-top: var(--space-5);
-    display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-5);
-  }
-  .summary-meta-row {
-    display: flex; justify-content: space-between;
-    font-size: 0.875rem; color: rgba(232,220,200,0.7);
-  }
-  .summary-free { color: #5DC88A; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
-  .summary-payment-label { color: var(--co-accent); font-size: 0.75rem; }
-  .summary-total {
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-family: var(--font-serif); font-weight: 700; font-size: 1.1rem;
-    border-top: 1px solid rgba(196,169,107,0.25);
-    padding-top: var(--space-5); margin-bottom: var(--space-6); color: white;
-  }
-  .summary-total span:last-child { font-size: 1.4rem; color: var(--co-accent); }
-
-  .btn-checkout {
-    width: 100%; height: 52px;
-    background: var(--co-accent); color: var(--co-primary);
-    border: none; border-radius: 999px;
-    font-size: 0.875rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    cursor: pointer; box-shadow: var(--co-shadow-md);
-    transition:
-      opacity    var(--co-dur-fast)   var(--co-ease-out),
-      transform  var(--co-dur-base)   var(--co-ease-spring),
-      box-shadow var(--co-dur-base)   var(--co-ease-out);
-  }
-  .btn-checkout:hover:not(:disabled) {
-    opacity: 0.90; transform: translateY(-2px) scale(1.02);
-    box-shadow: var(--co-shadow-lg);
-  }
-  .btn-checkout:active:not(:disabled) {
-    transform: translateY(0) scale(0.98);
-    box-shadow: var(--co-shadow-sm);
-  }
-  .btn-checkout:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .summary-terms {
-    text-align: center; font-size: 0.6875rem;
-    color: rgba(232,220,200,0.45); margin-top: var(--space-5); line-height: 1.6;
-  }
-  .summary-terms a { color: rgba(232,220,200,0.7); text-decoration: underline; }
-  .summary-terms a:hover { color: var(--co-accent); }
-`;
-
-const getNextDateOfWeekday = (dayName) => {
-  const daysMap = {
-    Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
-    Thursday: 4, Friday: 5, Saturday: 6,
-  };
-  const today = new Date();
-  const todayDay = today.getDay();
-  const targetDay = daysMap[dayName];
-  let diff = targetDay - todayDay;
-  if (diff <= 0) diff += 7;
-  const result = new Date();
-  result.setDate(today.getDate() + diff);
-  const year = result.getFullYear();
-  const month = String(result.getMonth() + 1).padStart(2, "0");
-  const day = String(result.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+  { id: "cod", label: "Cash on Delivery", sub: "Local Only" },
+  { id: "cib", label: "CIB / Card", sub: "Visa · Mastercard", hasForm: true },
+  { id: "pickup", label: "Self Pickup", sub: "Algiers Showroom" },
+];
 
 const getTomorrow = () => {
-  const tomorrow = new Date(Date.now() + 86400000);
-  const y = tomorrow.getFullYear();
-  const m = String(tomorrow.getMonth() + 1).padStart(2, "0");
-  const d = String(tomorrow.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  const t = new Date(Date.now() + 86400000);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
 };
+
+const getNextDateOfWeekday = (dayName) => {
+  const map = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+  const today = new Date(); let diff = map[dayName] - today.getDay();
+  if (diff <= 0) diff += 7;
+  const r = new Date(); r.setDate(today.getDate() + diff);
+  return `${r.getFullYear()}-${String(r.getMonth() + 1).padStart(2, "0")}-${String(r.getDate()).padStart(2, "0")}`;
+};
+
+const GoldRule = () => (
+  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={{ height: "1px", flex: 1, background: "linear-gradient(to right, transparent, rgba(200,169,106,0.5))" }} />
+    <div style={{ width: "5px", height: "5px", background: "#C8A96A", transform: "rotate(45deg)", flexShrink: 0 }} />
+    <div style={{ height: "1px", flex: 1, background: "linear-gradient(to left, transparent, rgba(200,169,106,0.5))" }} />
+  </div>
+);
+
+const Label = ({ children }) => (
+  <p style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#9E8E7A", marginBottom: "0.5rem" }}>
+    {children}
+  </p>
+);
+
+const FieldWrap = ({ children, full }) => (
+  <div style={{ gridColumn: full ? "1 / -1" : undefined }}>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: "10px", background: "#EDE7D9", border: "1.5px solid rgba(200,169,106,0.22)", borderRadius: "14px", padding: "0.85rem 1.1rem", transition: "border-color 0.2s" }}
+      onFocus={e => e.currentTarget.style.borderColor = "rgba(200,169,106,0.65)"}
+      onBlur={e => e.currentTarget.style.borderColor = "rgba(200,169,106,0.22)"}
+    >
+      {children}
+    </div>
+  </div>
+);
+
+const inputSt = { flex: 1, background: "transparent", border: "none", outline: "none", fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: "1.05rem", color: "#3D2F1F", lineHeight: 1 };
+
+const SectionCard = ({ children, step, title, delay = 0, style = {} }) => (
+  <div style={{
+    background: "#EDE7D9", border: "1px solid rgba(200,169,106,0.22)", borderRadius: "16px",
+    padding: "2rem 2.25rem",
+    opacity: 0, animation: `fadeUp 0.5s ease ${delay}ms forwards`,
+    ...style
+  }}>
+    <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }`}</style>
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1.75rem" }}>
+      <div style={{ width: "28px", height: "28px", borderRadius: "50%", border: "1.5px solid rgba(200,169,106,0.5)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.65rem", color: "#9A7D4A" }}>{step}</span>
+      </div>
+      <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.9rem", fontWeight: 700, letterSpacing: "0.06em", color: "#1C1916" }}>{title}</h2>
+    </div>
+    {children}
+  </div>
+);
 
 export function CheckoutPage() {
   const [items, setItems] = useState([]);
@@ -414,268 +95,311 @@ export function CheckoutPage() {
   const [selectedDow, setSelectedDow] = useState("");
 
   useEffect(() => {
-    const fetchCart = async () => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap";
+    document.head.appendChild(link);
+    return () => document.head.removeChild(link);
+  }, []);
+
+  useEffect(() => {
+    const fetch_ = async () => {
       try {
         const res = await api.get("/api/cart");
         setItems(res.data);
         if (res.data.length === 0) navigate("/cart");
-      } catch {
-        navigate("/login");
-      } finally {
-        setLoading(false);
-      }
+      } catch { navigate("/login"); }
+      finally { setLoading(false); }
     };
-    fetchCart();
+    fetch_();
   }, [navigate]);
 
-  const total = items.reduce((sum, i) => sum + (i.product?.price || 0) * i.quantity, 0);
-  const activePayment = PAYMENT_METHODS.find((m) => m.id === paymentMethod);
-  const addressValid = fullName && phone && wilaya && city && streetAddress;
-  const cibValid = paymentMethod !== "cib" || (cardNumber.replace(/\s/g, "").length === 16 && cardExpiry && cardCvv);
-  const canSubmit = addressValid && cibValid && !placing;
+  const total = items.reduce((s, i) => s + (i.product?.price || 0) * i.quantity, 0);
+  const canSubmit = fullName && phone && wilaya && city && streetAddress &&
+    (paymentMethod !== "cib" || (cardNumber.replace(/\s/g, "").length === 16 && cardExpiry && cardCvv)) && !placing;
 
   const handlePlaceOrder = async () => {
     if (!canSubmit) return;
     setPlacing(true);
     try {
       const res = await api.post("/api/orders", {
-        fullName,
-        phone,
-        wilaya,
-        city,
-        streetAddress,
-        notes,
-        paymentMethod,
+        fullName, phone, wilaya, city, streetAddress, notes, paymentMethod,
         ...(paymentMethod === "cib" ? { cardNumber, cardExpiry, cardCvv } : {}),
-        delivery_type:deliveryType,
-        deliverydate: deliveryDate
+        delivery_type: deliveryType, deliverydate: deliveryDate,
       });
       navigate("/order", { state: { orderId: res.data.order_id, total: res.data.total } });
     } catch (err) {
       alert(err?.response?.data?.detail || "Failed to place order");
-    } finally {
-      setPlacing(false);
-    }
+    } finally { setPlacing(false); }
   };
 
+  const base = { minHeight: "100vh", background: "#F5F0E8", color: "#1C1916", fontFamily: "'Cormorant Garamond',Georgia,serif", overflowX: "hidden", position: "relative" };
+
   if (loading) return (
-    <div className="checkout-root">
-      <style>{CSS}</style>
-      <div className="checkout-loading">
-        <div className="checkout-spinner" />
-        <p>Loading checkout...</p>
+    <div style={{ ...base, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
+        <div style={{ position: "relative", width: "48px", height: "48px" }}>
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid #C8A96A", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
+          <div style={{ position: "absolute", inset: "5px", borderRadius: "50%", border: "1px solid rgba(200,169,106,0.25)" }} />
+        </div>
+        <p style={{ fontFamily: "sans-serif", fontSize: "0.575rem", letterSpacing: "0.42em", textTransform: "uppercase", color: "#9E8E7A" }}>Preparing checkout</p>
+        <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
       </div>
     </div>
   );
 
   return (
-    <div className="checkout-root">
-      <style>{CSS}</style>
+    <div style={base}>
 
-      <main className="checkout-main">
+      {/* Ghost watermark */}
+      <div aria-hidden="true" style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", userSelect: "none", zIndex: 0 }}>
+        <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "clamp(4rem,20vw,16rem)", fontWeight: 900, color: "transparent", WebkitTextStroke: "1px rgba(180,148,90,0.04)", letterSpacing: "0.12em", whiteSpace: "nowrap" }}>CHECKOUT</span>
+      </div>
 
-        <div className="checkout-header">
-          <p className="checkout-eyebrow">Complete your order</p>
-          <h1 className="checkout-title">Checkout</h1>
+      <div style={{ maxWidth: "1180px", margin: "0 auto", padding: "clamp(7rem,12vw,9rem) 1.5rem 6rem", position: "relative", zIndex: 1 }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: "3rem" }}>
+          <p style={{ fontFamily: "sans-serif", fontSize: "0.575rem", letterSpacing: "0.38em", textTransform: "uppercase", color: "#9E8E7A", marginBottom: "1rem" }}>Complete Your Order</p>
+          <h1 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "clamp(1.8rem,5vw,3rem)", fontWeight: 700, letterSpacing: "0.035em", lineHeight: 1.08, color: "#1C1916", marginBottom: "1.5rem" }}>Checkout</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", maxWidth: "12rem" }}>
+            <div style={{ height: "1px", flex: 1, background: "#C8A96A", opacity: 0.55 }} />
+            <div style={{ width: "4px", height: "4px", background: "#C8A96A", transform: "rotate(45deg)", opacity: 0.7 }} />
+            <div style={{ height: "1px", flex: 1, background: "#C8A96A", opacity: 0.55 }} />
+          </div>
         </div>
 
-        <div className="checkout-layout">
+        {/* Two-column layout */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "2rem" }}>
+          <style>{`
+            @media (min-width: 1024px) { .co-layout { grid-template-columns: 1fr 360px !important; } }
+            @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+            @keyframes spin { to { transform:rotate(360deg); } }
+          `}</style>
+          <div className="co-layout" style={{ display: "grid", gridTemplateColumns: "1fr", gap: "2rem" }}>
 
-          {/* ─── LEFT COLUMN ─── */}
-          <div className="checkout-left">
+            {/* LEFT */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
 
-            {/* SECTION 1 — Delivery Address */}
-            <section className="checkout-section co-anim-section" style={{ "--_delay": "0ms" }}>
-              <div className="section-heading-row">
-                <div className="section-number">1</div>
-                <h2 className="section-title">Delivery Address</h2>
-              </div>
-              <div className="form-grid">
-                <input className="form-input" type="text" placeholder="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                <input className="form-input" type="tel" placeholder="Phone (e.g. 0550 123 456)" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                <div className="form-select-wrapper">
-                  <select className="form-input form-select" value={wilaya} onChange={(e) => setWilaya(e.target.value)}>
-                    <option value="">Select Wilaya</option>
-                    {WILAYAS.map((w) => <option key={w} value={w}>{w}</option>)}
-                  </select>
-                  <span className="select-chevron material-symbols-outlined">expand_more</span>
+              {/* Section 1 — Address */}
+              <SectionCard step="1" title="Delivery Address" delay={0}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <FieldWrap><input style={inputSt} placeholder="Full name" value={fullName} onChange={e => setFullName(e.target.value)} /></FieldWrap>
+                  <FieldWrap><input style={inputSt} placeholder="Phone (0550 123 456)" value={phone} onChange={e => setPhone(e.target.value)} /></FieldWrap>
+
+                  {/* Wilaya select */}
+                  <FieldWrap>
+                    <select
+                      value={wilaya} onChange={e => setWilaya(e.target.value)}
+                      style={{ ...inputSt, appearance: "none", WebkitAppearance: "none", flex: 1, cursor: "pointer" }}
+                    >
+                      <option value="">Select Wilaya</option>
+                      {WILAYAS.map(w => <option key={w} value={w}>{w}</option>)}
+                    </select>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9E8E7A" strokeWidth="2" style={{ flexShrink: 0, opacity: 0.6 }}><path d="M6 9l6 6 6-6" /></svg>
+                  </FieldWrap>
+
+                  <FieldWrap><input style={inputSt} placeholder="City / Commune" value={city} onChange={e => setCity(e.target.value)} /></FieldWrap>
+                  <FieldWrap full><input style={{ ...inputSt, gridColumn: "1/-1" }} placeholder="Street address" value={streetAddress} onChange={e => setStreetAddress(e.target.value)} /></FieldWrap>
+                  <FieldWrap full><input style={inputSt} placeholder="Additional notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} /></FieldWrap>
                 </div>
-                <input className="form-input" type="text" placeholder="City / Municipality (Commune)" value={city} onChange={(e) => setCity(e.target.value)} />
-                <input className="form-input form-input-full" type="text" placeholder="Street Address" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} />
-                <input className="form-input form-input-full" type="text" placeholder="Additional Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-              </div>
-            </section>
+              </SectionCard>
 
-            {/* SECTION 2 — Payment */}
-            <section className="checkout-section co-anim-section" style={{ "--_delay": "80ms" }}>
-              <div className="section-heading-row">
-                <div className="section-number">2</div>
-                <h2 className="section-title">Payment Method</h2>
-              </div>
-              <div className="payment-methods-grid">
-                {PAYMENT_METHODS.map((method) => (
-                  <button
-                    key={method.id}
-                    className={`payment-card ${paymentMethod === method.id ? "payment-card-active" : ""}`}
-                    onClick={() => setPaymentMethod(method.id)}
-                  >
-                    <span className="material-symbols-outlined payment-icon">{method.icon}</span>
-                    <span className="payment-label">{method.label}</span>
-                    <span className="payment-sub">{method.sub}</span>
-                    {paymentMethod === method.id && (
-                      <span className="material-symbols-outlined payment-check">check_circle</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-              {activePayment?.hasForm && (
-                <div className="cib-form">
-                  <input
-                    className="form-input form-input-full" type="text" placeholder="Card Number (16 digits)" maxLength={19} value={cardNumber}
-                    onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 16); setCardNumber(v.replace(/(.{4})/g, "$1 ").trim()); }}
-                  />
-                  <div className="cib-form-row">
-                    <input className="form-input" type="text" placeholder="MM/YY" maxLength={5} value={cardExpiry}
-                      onChange={(e) => { let v = e.target.value.replace(/\D/g, "").slice(0, 4); if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2); setCardExpiry(v); }}
-                    />
-                    <input className="form-input" type="text" placeholder="CVV" maxLength={3} value={cardCvv} onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))} />
-                  </div>
-                </div>
-              )}
-            </section>
-
-            {/* SECTION 3 — Delivery Schedule */}
-            <section className="checkout-section co-anim-section" style={{ "--_delay": "160ms" }}>
-              <div className="section-heading-row">
-                <div className="section-number">3</div>
-                <h2 className="section-title">Delivery Schedule</h2>
-              </div>
-              <div className="sched-tabs">
-                {[
-                  { id: "any time", icon: "bolt", label: "Any Time", sub: "We'll deliver ASAP" },
-                  { id: "specific date", icon: "calendar_month", label: "Specific Date", sub: "Pick a date" },
-                  { id: "day of week", icon: "date_range", label: "Day of Week", sub: "Pick a weekday" },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    className={`sched-tab ${deliveryType === opt.id ? "sched-tab-active" : ""}`}
-                    onClick={() => {
-                      setDeliveryType(opt.id);
-                      if (opt.id === "any time") {
-                        setDeliveryDate(getTomorrow());
-                        setSelectedDow("");
-                      }
-                    }}
-                  >
-                    <span className="material-symbols-outlined sched-tab-icon">{opt.icon}</span>
-                    <span className="sched-tab-label">{opt.label}</span>
-                    <span className="sched-tab-sub">{opt.sub}</span>
-                    {deliveryType === opt.id && (
-                      <span className="material-symbols-outlined sched-check">check_circle</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-              {deliveryType === "specific date" && (
-                <div className="sched-detail-panel" key="specific date">
-                  <label className="sched-label">Choose a date</label>
-                  <input
-                    className="form-input" type="date"
-                    min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
-                    value={deliveryDate}
-                    onChange={(e) => setDeliveryDate(e.target.value)}
-                    style={{ maxWidth: 220 }}
-                  />
-                </div>
-              )}
-              {deliveryType === "day of week" && (
-                <div className="sched-detail-panel" key="day of week">
-                  <label className="sched-label">Choose a weekday</label>
-                  <div className="dow-grid">
-                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d) => (
-                      <button
-                        key={d}
-                        className={`dow-btn ${selectedDow === d ? "dow-btn-active" : ""}`}
-                        onClick={() => {
-                          setSelectedDow(d);
-                          setDeliveryDate(getNextDateOfWeekday(d));
-                        }}
-                      >
-                        {d.slice(0, 3)}
+              {/* Section 2 — Payment */}
+              <SectionCard step="2" title="Payment Method" delay={80}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "0.85rem", marginBottom: paymentMethod === "cib" ? "1.5rem" : 0 }}>
+                  {PAYMENT_METHODS.map(m => {
+                    const active = paymentMethod === m.id;
+                    return (
+                      <button key={m.id} onClick={() => setPaymentMethod(m.id)} style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+                        padding: "1.25rem 0.75rem",
+                        background: active ? "rgba(200,169,106,0.12)" : "#F5F0E8",
+                        border: `1.5px solid ${active ? "rgba(200,169,106,0.6)" : "rgba(200,169,106,0.2)"}`,
+                        borderRadius: "14px",
+                        cursor: "pointer", transition: "all 0.2s",
+                        position: "relative",
+                      }}>
+                        {active && <div style={{ position: "absolute", top: "8px", right: "8px", width: "6px", height: "6px", borderRadius: "50%", background: "#C8A96A" }} />}
+                        <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.04em", color: active ? "#9A7D4A" : "#1C1916", textAlign: "center", lineHeight: 1.3 }}>{m.label}</span>
+                        <span style={{ fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "#9E8E7A" }}>{m.sub}</span>
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
-            </section>
 
-            {/* Items (mobile only) */}
-            <section className="checkout-section checkout-items-section co-anim-section" style={{ "--_delay": "240ms" }}>
-              <h2 className="section-title" style={{ marginBottom: "var(--space-4)" }}>Your Items</h2>
-              <div className="items-list">
-                {items.map((item) => (
-                  <div key={item.id} className="item-row">
-                    <div className="item-image">
-                      {item.product?.image ? <img src={item.product.image} alt={item.product.name} /> : <span className="material-symbols-outlined">image</span>}
+                {paymentMethod === "cib" && (
+                  <div style={{ borderTop: "1px solid rgba(200,169,106,0.25)", paddingTop: "1.5rem", display: "flex", flexDirection: "column", gap: "0.85rem", animation: "fadeUp 0.25s ease" }}>
+                    <FieldWrap full>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9E8E7A" strokeWidth="1.5" style={{ flexShrink: 0 }}><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+                      <input style={inputSt} placeholder="Card number (16 digits)" maxLength={19} value={cardNumber}
+                        onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 16); setCardNumber(v.replace(/(.{4})/g, "$1 ").trim()); }} />
+                    </FieldWrap>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+                      <FieldWrap>
+                        <input style={inputSt} placeholder="MM/YY" maxLength={5} value={cardExpiry}
+                          onChange={e => { let v = e.target.value.replace(/\D/g, "").slice(0, 4); if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2); setCardExpiry(v); }} />
+                      </FieldWrap>
+                      <FieldWrap>
+                        <input style={inputSt} placeholder="CVV" maxLength={3} value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))} />
+                      </FieldWrap>
                     </div>
-                    <div className="item-info">
-                      <p className="item-name">{item.product?.name ?? "Product"}</p>
-                      <p className="item-qty">Qty: {item.quantity}</p>
-                    </div>
-                    <p className="item-price">{((item.product?.price || 0) * item.quantity).toLocaleString()} DA</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-          </div>
-
-          {/* ─── RIGHT COLUMN — Summary ─── */}
-          <aside className="checkout-aside co-anim-aside">
-            <div className="summary-card">
-              <h3 className="summary-title">Order Summary</h3>
-              <div className="summary-items">
-                {items.map((item) => (
-                  <div key={item.id} className="summary-item-row">
-                    <div className="summary-item-img">
-                      {item.product?.image ? <img src={item.product.image} alt={item.product.name} /> : <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>image</span>}
-                    </div>
-                    <span className="summary-item-name">{item.quantity}× {item.product?.name ?? "Item"}</span>
-                    <span className="summary-item-price">{((item.product?.price || 0) * item.quantity).toLocaleString()} DZD</span>
-                  </div>
-                ))}
-              </div>
-              <div className="summary-meta">
-                <div className="summary-meta-row"><span>Subtotal</span><span>{total.toLocaleString()} DZD</span></div>
-                <div className="summary-meta-row"><span>Delivery</span><span className="summary-free">FREE</span></div>
-                {paymentMethod && (
-                  <div className="summary-meta-row">
-                    <span>Payment</span>
-                    <span className="summary-payment-label">{PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}</span>
                   </div>
                 )}
-                <div className="summary-meta-row">
-                  <span>Schedule</span>
-                  <span className="summary-payment-label">
-                    {deliveryType === "any time" ? "ASAP" : deliveryType === "specific date" ? deliveryDate || "—" : selectedDow || "—"}
+              </SectionCard>
+
+              {/* Section 3 — Delivery schedule */}
+              <SectionCard step="3" title="Delivery Schedule" delay={160}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "0.85rem" }}>
+                  {[
+                    { id: "any time", label: "Any Time", sub: "Deliver ASAP" },
+                    { id: "specific date", label: "Specific Date", sub: "Pick a date" },
+                    { id: "day of week", label: "Day of Week", sub: "Pick a weekday" },
+                  ].map(opt => {
+                    const active = deliveryType === opt.id;
+                    return (
+                      <button key={opt.id} onClick={() => { setDeliveryType(opt.id); if (opt.id === "any time") { setDeliveryDate(getTomorrow()); setSelectedDow(""); } }} style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+                        padding: "1.25rem 0.75rem",
+                        background: active ? "rgba(200,169,106,0.12)" : "#F5F0E8",
+                        border: `1.5px solid ${active ? "rgba(200,169,106,0.6)" : "rgba(200,169,106,0.2)"}`,
+                        borderRadius: "14px", cursor: "pointer", transition: "all 0.2s", position: "relative",
+                      }}>
+                        {active && <div style={{ position: "absolute", top: "8px", right: "8px", width: "6px", height: "6px", borderRadius: "50%", background: "#C8A96A" }} />}
+                        <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.04em", color: active ? "#9A7D4A" : "#1C1916", textAlign: "center", lineHeight: 1.3 }}>{opt.label}</span>
+                        <span style={{ fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "#9E8E7A" }}>{opt.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {deliveryType === "specific date" && (
+                  <div style={{ marginTop: "1.5rem", borderTop: "1px solid rgba(200,169,106,0.25)", paddingTop: "1.5rem", animation: "fadeUp 0.25s ease" }}>
+                    <Label>Choose a date</Label>
+                    <FieldWrap>
+                      <input type="date" style={{ ...inputSt, maxWidth: "200px" }}
+                        min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                        value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+                    </FieldWrap>
+                  </div>
+                )}
+
+                {deliveryType === "day of week" && (
+                  <div style={{ marginTop: "1.5rem", borderTop: "1px solid rgba(200,169,106,0.25)", paddingTop: "1.5rem", animation: "fadeUp 0.25s ease" }}>
+                    <Label>Choose a weekday</Label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
+                      {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => {
+                        const active = selectedDow === d;
+                        return (
+                          <button key={d} onClick={() => { setSelectedDow(d); setDeliveryDate(getNextDateOfWeekday(d)); }} style={{
+                            padding: "0.45rem 1rem",
+                            background: active ? "#1C1916" : "transparent",
+                            border: `1px solid ${active ? "#1C1916" : "rgba(200,169,106,0.35)"}`,
+                            borderRadius: "2rem",
+                            fontFamily: "sans-serif", fontSize: "0.52rem", letterSpacing: "0.18em", textTransform: "uppercase",
+                            color: active ? "#F5F0E8" : "#9A7D4A",
+                            cursor: "pointer", transition: "all 0.18s",
+                          }}>{d.slice(0, 3)}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </SectionCard>
+
+            </div>
+
+            {/* RIGHT — Summary */}
+            <aside style={{ opacity: 0, animation: "fadeUp 0.5s ease 60ms forwards" }}>
+              <div style={{
+                position: "sticky", top: "7rem",
+                background: "#2C1F10", borderRadius: "16px",
+                border: "1px solid rgba(200,169,106,0.2)",
+                padding: "2rem 2.25rem",
+                color: "#E8DCC8",
+              }}>
+
+                {/* Title */}
+                <p style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.7rem", letterSpacing: "0.35em", textTransform: "uppercase", color: "#C8A96A", marginBottom: "1.75rem" }}>Order Summary</p>
+
+                {/* Items */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.75rem" }}>
+                  {items.map(item => (
+                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div style={{ width: "38px", height: "38px", borderRadius: "8px", background: "rgba(255,255,255,0.07)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {item.product?.image ? <img src={item.product.image} alt={item.product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "10px", color: "rgba(200,169,106,0.4)" }}>img</span>}
+                      </div>
+                      <span style={{ flex: 1, fontFamily: "'Cormorant Garamond',serif", fontSize: "0.95rem", color: "rgba(232,220,200,0.8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {item.quantity}× {item.product?.name ?? "Item"}
+                      </span>
+                      <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.8rem", color: "#C8A96A", whiteSpace: "nowrap" }}>
+                        {((item.product?.price || 0) * item.quantity).toLocaleString()} DA
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: "1px", background: "rgba(200,169,106,0.2)", marginBottom: "1.5rem" }} />
+
+                {/* Meta rows */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                  {[
+                    { label: "Subtotal", value: `${total.toLocaleString()} DA` },
+                    { label: "Delivery", value: "Free", valueStyle: { color: "#5DC88A", fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.2em", textTransform: "uppercase" } },
+                    { label: "Payment", value: PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label },
+                    { label: "Schedule", value: deliveryType === "any time" ? "ASAP" : deliveryType === "specific date" ? deliveryDate || "—" : selectedDow || "—" },
+                  ].map(({ label, value, valueStyle }) => (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontFamily: "sans-serif", fontSize: "0.52rem", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(200,169,106,0.55)" }}>{label}</span>
+                      <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "0.95rem", color: "rgba(232,220,200,0.75)", ...valueStyle }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderTop: "1px solid rgba(200,169,106,0.2)", paddingTop: "1.25rem", marginBottom: "1.75rem" }}>
+                  <span style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(200,169,106,0.7)" }}>Total</span>
+                  <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "1.2rem", fontWeight: 700, color: "#C8A96A" }}>{total.toLocaleString()} DA</span>
+                </div>
+
+                {/* CTA */}
+                <button
+                  onClick={handlePlaceOrder} disabled={!canSubmit}
+                  style={{
+                    width: "100%", padding: "0.9rem",
+                    background: canSubmit ? "#C8A96A" : "rgba(200,169,106,0.3)",
+                    border: "none", borderRadius: "2rem",
+                    fontFamily: "sans-serif", fontSize: "0.575rem", letterSpacing: "0.28em", textTransform: "uppercase",
+                    color: canSubmit ? "#1C1916" : "rgba(200,169,106,0.5)",
+                    cursor: canSubmit ? "pointer" : "not-allowed",
+                    fontWeight: 600, transition: "all 0.2s",
+                  }}
+                  onMouseEnter={e => { if (canSubmit) e.currentTarget.style.background = "#D4BA80"; }}
+                  onMouseLeave={e => { if (canSubmit) e.currentTarget.style.background = "#C8A96A"; }}
+                >
+                  {placing ? "Placing Order..." : paymentMethod === "cib" ? "Pay Now" : "Confirm Order"}
+                </button>
+
+                <p style={{ textAlign: "center", marginTop: "1.25rem", fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.15em", color: "rgba(200,169,106,0.3)", lineHeight: 1.8 }}>
+                  By completing your purchase you agree to our{" "}
+                  <a href="#" style={{ color: "rgba(200,169,106,0.55)", textDecoration: "underline" }}>Terms</a>
+                  {" & "}
+                  <a href="#" style={{ color: "rgba(200,169,106,0.55)", textDecoration: "underline" }}>Privacy</a>
+                </p>
+
+                {/* Footer signature */}
+                <div style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
+                  <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.48rem", letterSpacing: "0.45em", textTransform: "uppercase", color: "rgba(200,169,106,0.2)" }}>
+                    enter your sanctuary
                   </span>
                 </div>
-              </div>
-              <div className="summary-total">
-                <span>Total</span>
-                <span>{total.toLocaleString()} DZD</span>
-              </div>
-              <button className="btn-checkout" onClick={handlePlaceOrder} disabled={!canSubmit}>
-                {placing ? "Placing Order..." : paymentMethod === "cod" ? "Confirm Order" : "Pay Now"}
-              </button>
-              <p className="summary-terms">
-                By completing your purchase you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
-              </p>
-            </div>
-          </aside>
 
+              </div>
+            </aside>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
