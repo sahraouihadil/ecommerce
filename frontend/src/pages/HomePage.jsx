@@ -123,7 +123,8 @@ export function HomePage() {
 
       {/* ── SHOP FURNITURE ── */}
       <Section size="lg" id="shop">
-        <h2 className="font-serif text-[2.5rem] font-bold tracking-tight mb-16">
+        <h2  style={{ fontFamily: "'Cinzel Decorative', cursive" }}
+                className="text-[clamp(3rem,6vw,3.5rem)] font-bold leading-[0.95] tracking-tight mb-8">
           Shop Furniture
         </h2>
 
