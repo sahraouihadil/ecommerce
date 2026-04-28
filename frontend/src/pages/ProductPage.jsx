@@ -141,7 +141,7 @@ export function ProductPage() {
                     )}
 
                     <div className="absolute bottom-5 right-5 flex gap-3 z-[2]">
-                      {IS_MOBILE && product.ios_src && (
+                      {IS_MOBILE && (product.able_ar ?? product.model_src) && (
                         <Button
                           variant="blush"
                           size="sm"

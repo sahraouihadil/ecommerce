@@ -24,7 +24,7 @@ import axios from "axios";
 
 // Read the backend URL from the Vite environment variable.
 // If not set (e.g. local dev without a .env file), fall back to localhost:8000.
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // Create a reusable Axios instance.
 // axios.create() lets us set default config (baseURL, headers) once
