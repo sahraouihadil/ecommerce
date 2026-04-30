@@ -269,7 +269,7 @@ export function HomePage() {
           )}
 
           <p className="font-cinzel mt-16 text-[0.55rem] tracking-[0.5em] uppercase text-cream/20">
-            Aroom · Est. MMXV
+            Aroom is your sanctuary.
           </p>
         </div>
       </section>
