@@ -226,7 +226,7 @@ export function ContactusPage() {
                 textTransform: "uppercase",
                 color: `rgba(200,169,106,0.3)`,
               }}>
-                Aroom · Est. MMXV
+                Aroom 
               </span>
             </div>
           </AnimatedItem>
