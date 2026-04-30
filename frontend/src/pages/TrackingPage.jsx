@@ -374,10 +374,10 @@ export function TrackingPage() {
               fontSize: "0.55rem",
               letterSpacing: "0.45em",
               textTransform: "uppercase",
-              color: "rgba(200,169,106,0.35)",
+              color: "rgba(181, 152, 94, 0.35)",
             }}
           >
-            enter your sanctuary
+            Thank You For Choosing Us🤎
           </span>
         </div>
 
