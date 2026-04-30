@@ -96,7 +96,7 @@ export function AboutusPage() {
             }} />
             <img
               alt="ARoom AR furniture preview"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2gyqcgzSNriw4OUPA4wGTTJu_8N6WAaOhqQ30c68zvKqKwzFWxQehIKWkPvPYmsvXi4Z8zCR4i_Asxe1G7tHcQ94uWB601zCHR2dwxnS5zNAxIjMtmla5Fl4SIh23MdRfBfQNoL06d7u7JTefmYMYp3EXTVum0IpsGDXrPS4ysP7vcRrY2OwhThlHWecLYVVHM1kjYi8V9aSZ8xU3My4ogsXdGiuXM011cgIVL-TtPWsFe_yIPiEQAFWS6jaePaTGWVSil9QaXNA"
+              src="https://i.pinimg.com/736x/46/ec/75/46ec759294134b6542a4a2ac3a92172c.jpg"
               style={{
                 width: "100%",
                 height: "420px",
