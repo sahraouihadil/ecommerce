@@ -181,3 +181,21 @@
     transform: translateY(0);
   }
 }
+
+/* before */
+.hero-copy {
+  order: 2 !important;
+}
+
+.hero-image {
+  order: 1 !important;
+}
+
+/* after */
+.hero-copy {
+  order: 1 !important;
+}
+
+.hero-image {
+  order: 2 !important;
+}

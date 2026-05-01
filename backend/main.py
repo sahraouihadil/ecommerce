@@ -44,11 +44,11 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 # ── Router imports (each router handles a group of related endpoints) ──
 from route import user_router                     # Auth: /register, /login, /admin-dash, etc.
-from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries  # Feature routers
+from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries ,reviews # Feature routers
 import shutil
 import os
 import uuid
-from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles 
 
 # ── Logging setup ──
 logger = logging.getLogger(__name__)
@@ -103,6 +103,7 @@ app.include_router(campaign.router, prefix="/api")
 app.include_router(promotion.router, prefix="/api")
 app.include_router(newsletter.router, prefix="/api")
 app.include_router(blog.router)
+app.include_router(reviews.router)   
 
 # ── Type alias for protected endpoints ──
 # Any endpoint that uses "user: user_dependency" will require a valid JWT token.
