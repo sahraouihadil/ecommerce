@@ -249,19 +249,33 @@ def set_password(data: SetPassword, db: Session = Depends(database.get_db)):
 # SEARCH
 # ======================================================================
 
-@app.get("/search")
-async def search_products(keyword: str, db: db_dependency):
-    """
-    Searches products by name or description.
-    Returns all products that contain the keyword (case-insensitive).
+from sqlalchemy import or_
 
-    Called by: Search.jsx → GET /search?keyword=lamp
+@app.get("/search")
+def search_products(keyword: str, db: db_dependency):
     """
-    products = db.query(models.Products).all()
-    results = [
-        p for p in products
-        if keyword.lower() in p.name.lower() or keyword.lower() in p.description.lower()
-    ]
+    Search products by name or description (DB level)
+    """
+
+    products = db.query(models.Products).filter(
+        or_(
+            models.Products.name.ilike(f"%{keyword}%"),
+            models.Products.description.ilike(f"%{keyword}%")
+        ),
+        models.Products.is_active == True
+    ).all()
+
+    results = []
+    for p in products:
+        results.append({
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "price": p.price,
+            "category": p.category,
+            "image": p.images[0].image_url if p.images else None,
+        })
+
     return results
 
 

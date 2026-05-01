@@ -24,7 +24,7 @@ export default function ProductCard({ product }) {
             className="transition-transform duration-500 group-hover:scale-105"
           />
           <span className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 bg-charcoal text-cream text-[0.7rem] font-semibold tracking-wide px-4 py-1 rounded-full whitespace-nowrap shadow-md">
-            ${product.price.toLocaleString()}
+            {product.price.toLocaleString()}DA
           </span>
         </div>
 
