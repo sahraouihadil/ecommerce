@@ -24,13 +24,13 @@ export default function PromotionsPage() {
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600)
 
   const marketingmanagerLinks = [
-    { to: "/marketing-manager-dash",              label: "Dashboard",     icon: <LayoutDashboard size={18} />, end: true },
-    { to: "/marketing-manager-dash/ar",           label: "AR Management", icon: <Bot size={18} /> },
-    { to: "/marketing-manager-dash/campaigns",    label: "Campaigns",     icon: <Megaphone size={18} /> },
-    { to: "/marketing-manager-dash/promotions",   label: "Promotions",    icon: <BadgePercent size={18} /> },
-    { to: "/marketing-manager-dash/newsletters",  label: "Newsletters",   icon: <Mail size={18} /> },
-    { to: "/marketing-manager-dash/blogs",        label: "Blogs",         icon: <FileText size={18} /> },
+    { to: "/marketing-manager-dash",             label: "Dashboard",     icon: <LayoutDashboard size={18} />, end: true },
+    { to: "/marketing-manager-dash/campaigns",   label: "Campaigns",     icon: <Megaphone size={18} /> },
+    { to: "/marketing-manager-dash/promotions",  label: "Promotions",    icon: <BadgePercent size={18} /> },
+    { to: "/marketing-manager-dash/newsletters", label: "Newsletters",   icon: <Mail size={18} /> },
+    { to: "/marketing-manager-dash/blogs",       label: "Blogs",         icon: <FileText size={18} /> },
   ]
+
 
   useEffect(() => {
     api.get('/api/promotions')

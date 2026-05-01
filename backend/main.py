@@ -26,29 +26,37 @@ import logging
 from typing import Annotated
 
 # ── FastAPI imports ──
-from fastapi import FastAPI, status, HTTPException, Depends,File, UploadFile, Form
+from fastapi import FastAPI, status, HTTPException, Depends, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 
 # ── SQLAlchemy imports ──
-from sqlalchemy.orm import Session,aliased
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy import or_, func, text
 
 # ── Our project imports ──
 import models
 import database
 from database import db_dependency
-from schema import CreateUser, VerifyCode, SetPassword, UpdateUser
-from email_utils import send_email
+from schema import (
+    CreateUser, VerifyCode, SetPassword, UpdateUser,
+    ForgotPasswordRequest, VerifyResetCodeRequest, ResetPasswordRequest,
+)
+from email_utils import send_verification_email, send_reset_email
 from user_crud import get_current_user, create_user_by_admin
 from security.settings import validate_password, hash_password, admin_required, verify_token
 
-# ── Router imports (each router handles a group of related endpoints)
-from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries,deliveryman,reviews,users  # Feature routers
+# ── Router imports ──
+from routers import (
+    chat, cart, orders, favorites,
+    campaign, promotion, newsletter, blog,
+    complaints, product, profile, deliveries,
+    deliveryman, reviews, users,
+)
 from routers.users import router as user_router
 import shutil
 import os
 import uuid
-from fastapi.staticfiles import StaticFiles 
+from fastapi.staticfiles import StaticFiles
 
 # ── Logging setup ──
 logger = logging.getLogger(__name__)
@@ -58,57 +66,47 @@ logger = logging.getLogger(__name__)
 # APP SETUP
 # ======================================================================
 
-# Create the FastAPI application instance
 app = FastAPI(title="ARoom API")
 
-# for pictures 
+# Static files (uploaded images, etc.)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── CORS Configuration ──
-# CORS (Cross-Origin Resource Sharing) allows the frontend (localhost:5173)
-# to make requests to the backend (localhost:8000).
-# Without this, the browser would block all API calls from the frontend.
 origins = [
-    "http://localhost:5173",    # Vite dev server (default port)
-    "http://localhost:5174",    # Vite dev server (alternate port)
-    "https://aroom.com"        # Production domain (future)
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://aroom.com",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,          # Which frontend URLs can make requests
-    allow_credentials=True,         # Allow cookies/auth headers
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
-# ── Database Setup ──
-# This creates all database tables defined in models.py if they don't exist yet.
-# NOTE: It won't add new columns to existing tables — use migrate.py for that.
+# ── Create database tables ──
 models.Base.metadata.create_all(bind=database.engine)
 
-# ── Register Routers ──
-# Each router handles a group of related API endpoints.
-# Think of routers like chapters in a book — each one covers a topic.
-app.include_router(users.router)                   # Auth & role verification endpoints
-app.include_router(chat.router, prefix="/api")    # AI chatbot: /api/chat
-app.include_router(cart.router)                   # Shopping cart: /api/cart
-app.include_router(orders.router)                 # Orders: /api/orders
-app.include_router(favorites.router)              # Favorites: /api/favorites
-app.include_router(complaints.router) 
-app.include_router(product.router) 
+# ── Register routers ──
+app.include_router(users.router)
+app.include_router(chat.router,       prefix="/api")
+app.include_router(cart.router)
+app.include_router(orders.router)
+app.include_router(favorites.router)
+app.include_router(complaints.router)
+app.include_router(product.router)
 app.include_router(profile.router)
-app.include_router(deliveries.router) 
-app.include_router(deliveryman.router) 
-app.include_router(campaign.router, prefix="/api")
-app.include_router(promotion.router, prefix="/api")
+app.include_router(deliveries.router)
+app.include_router(deliveryman.router)
+app.include_router(campaign.router,   prefix="/api")
+app.include_router(promotion.router,  prefix="/api")
 app.include_router(newsletter.router, prefix="/api")
 app.include_router(blog.router)
-app.include_router(reviews.router)   
+app.include_router(reviews.router)
 
-# ── Type alias for protected endpoints ──
-# Any endpoint that uses "user: user_dependency" will require a valid JWT token.
-# The get_current_user function extracts {username, id} from the token.
+# ── Auth dependency shortcut ──
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
@@ -118,85 +116,98 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 
 @app.get("/", status_code=status.HTTP_200_OK)
 async def home_page(db: db_dependency):
-    """
-    Health check endpoint — just confirms the API is running.
-    Visit http://localhost:8000/ to see this.
-    """
+    """Health check — confirms the API is running."""
     return {"message": "ARoom API is running"}
 
 
-# Add this endpoint to your existing route.py
-# It is called by AuthProvider on every route change to validate the token.
+# ======================================================================
+# TOKEN VALIDATION  (/me)
+# ======================================================================
 
 @app.get("/me")
 async def get_me(payload: dict = Depends(verify_token)):
     """
-    Called by the frontend AuthProvider to validate the current token.
-    Returns the user's basic info so the frontend can sync the role.
-    
-    - If token is valid   → 200 + { sub, role }
-    - If token is expired → verify_token raises 401 automatically
+    Called by the frontend AuthProvider on every route change.
+    Validates the JWT and returns the user's sub + role.
+
+    - Valid token   → 200 { sub, role }
+    - Expired token → verify_token raises 401 automatically
     """
     return {
-        "sub": payload.get("sub"),
+        "sub":  payload.get("sub"),
         "role": payload.get("role"),
     }
+
+
 # ======================================================================
-# USER MANAGEMENT (Admin only)
+# USER MANAGEMENT  (Admin only)
 # ======================================================================
-# These endpoints let admins create, view, edit, and delete user accounts.
-# All require admin_required — only users with role="admin" can access them.
 
 @app.get("/api/users")
-def get_users(db: Session = Depends(database.get_db), payload: dict = Depends(admin_required)):
-    """Returns a list of ALL users. Used by the admin AccountsPage."""
+def get_users(
+    db: Session = Depends(database.get_db),
+    payload: dict = Depends(admin_required),
+):
+    """Returns all users. Used by the admin AccountsPage."""
     return db.query(models.Users).all()
 
 
 @app.get("/api/users/{user_id}")
-def get_users_by_id(user_id: int, db: Session = Depends(database.get_db), payload: dict = Depends(admin_required)):
-    """Returns a single user by their ID. Used when editing a user."""
+def get_users_by_id(
+    user_id: int,
+    db: Session = Depends(database.get_db),
+    payload: dict = Depends(admin_required),
+):
+    """Returns a single user by ID."""
     return db.query(models.Users).filter(models.Users.id == user_id).first()
 
 
 @app.post("/api/users")
-def create_user(user: CreateUser, db: Session = Depends(database.get_db), payload: dict = Depends(admin_required)):
+def create_user(
+    user: CreateUser,
+    db: Session = Depends(database.get_db),
+    payload: dict = Depends(admin_required),
+):
     """
     Admin creates a new user account.
-    The new user gets a verification code by email to set their password.
+    Sends a verification code by email so the user can set their password.
     """
     new_user = create_user_by_admin(db, user)
-
-    # Generate a random 6-digit verification code
-    verification_code = random.randint(100000, 999999)
-    new_user.verification_code = str(verification_code)
+    verification_code = str(random.randint(100000, 999999))
+    new_user.verification_code = verification_code
     db.commit()
-
-    # Send the code to the user's email
-    send_email(user.email, f"Your verification code is: {verification_code}")
-
+    send_verification_email(user.email, verification_code)
     return user
 
 
 @app.put("/api/users/{user_id}")
-def update_user(user_id: int, user: UpdateUser, db: Session = Depends(database.get_db), payload: dict = Depends(admin_required)):
+def update_user(
+    user_id: int,
+    user: UpdateUser,
+    db: Session = Depends(database.get_db),
+    payload: dict = Depends(admin_required),
+):
     """Admin updates a user's username, email, or role."""
     db_user = db.query(models.Users).filter(models.Users.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
     db_user.username = user.username
-    db_user.email = user.email
-    db_user.role = user.role
+    db_user.email    = user.email
+    db_user.role     = user.role
 
     db.commit()
-    db.refresh(db_user)   # Reload from DB to get updated values
+    db.refresh(db_user)
     return db_user
 
 
 @app.delete("/api/users/{user_id}")
-def delete_users_by_id(user_id: int, db: Session = Depends(database.get_db), payload: dict = Depends(admin_required)):
-    """Admin deletes a user account permanently."""
+def delete_users_by_id(
+    user_id: int,
+    db: Session = Depends(database.get_db),
+    payload: dict = Depends(admin_required),
+):
+    """Admin permanently deletes a user account."""
     db_user = db.query(models.Users).filter(models.Users.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -207,54 +218,74 @@ def delete_users_by_id(user_id: int, db: Session = Depends(database.get_db), pay
 
 
 # ======================================================================
-# EMAIL VERIFICATION (Part of the signup flow)
+# EMAIL VERIFICATION  (Registration flow)
 # ======================================================================
-# Flow: Register → Receive email code → Enter code at /verify-code → Set password
+# Flow: Register → Receive email code → /verify-code → /set-password
 
 @app.get("/verify-code")
 def verify_code(email: str, code: str, db: Session = Depends(database.get_db)):
     """
-    Verifies the 6-digit code sent to the user's email during registration.
-    If the code matches, the user's account is marked as verified.
+    Verifies the 6-digit code sent during registration.
+    Marks the account as verified on success.
 
     Called by: VerifyCode.jsx → GET /verify-code?email=...&code=...
     """
-    # Find the user by email
-    user = db.query(models.Users).filter(models.Users.email == email).first()
+    # Case-insensitive lookup so "User@Email.com" matches "user@email.com"
+    user = db.query(models.Users).filter(
+        func.lower(models.Users.email) == email.strip().lower()
+    ).first()
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Compare the submitted code with the stored one
-    if str(user.verification_code) != str(code):
+    if str(user.verification_code) != str(code).strip():
         raise HTTPException(status_code=400, detail="Invalid verification code")
 
-    # Mark as verified and clear the code (one-time use)
-    user.is_verified = True
-    user.verification_code = None
+    user.is_verified       = True
+    user.verification_code = None   # one-time use
     db.commit()
 
     return {"msg": "Email verified successfully", "user_name": user.username}
+
+
+@app.post("/resend-code")
+def resend_code(request: ForgotPasswordRequest, db: Session = Depends(database.get_db)):
+    """
+    Resends a fresh 6-digit verification code to an unverified user's email.
+    Called by: VerifyCode.jsx → POST /resend-code
+    """
+    user = db.query(models.Users).filter(
+        func.lower(models.Users.email) == request.email.strip().lower()
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found for this email.")
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="This account is already verified.")
+
+    code = str(random.randint(100000, 999999))
+    user.verification_code = code
+    db.commit()
+    send_verification_email(user.email, code)   # ← correct function for registration flow
+
+    return {"message": "A new verification code has been sent."}
 
 
 @app.post("/set-password")
 def set_password(data: SetPassword, db: Session = Depends(database.get_db)):
     """
     Sets the user's password after email verification.
-    The password is validated for strength, then hashed before storing.
+    Password is validated for strength, then hashed before saving.
 
     Called by: SetPassword.jsx → POST /set-password
     """
     user = db.query(models.Users).filter(models.Users.username == data.user_name).first()
-
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.is_verified:
         raise HTTPException(status_code=400, detail="User not verified")
 
-    # Validate password strength (throws HTTPException if too weak)
     validate_password(data.password)
-
-    # Hash the password and save
     user.password = hash_password(data.password)
     db.commit()
 
@@ -262,94 +293,161 @@ def set_password(data: SetPassword, db: Session = Depends(database.get_db)):
 
 
 # ======================================================================
+# FORGOT PASSWORD  (3-step flow)
+# ======================================================================
+# Step 1 → POST /forgot-password     (send code)
+# Step 2 → POST /verify-reset-code   (verify code)
+# Step 3 → POST /reset-password      (set new password)
+
+@app.post("/forgot-password")
+def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(database.get_db),
+):
+    """
+    Looks up the user by email, generates a 6-digit reset code,
+    saves it to verification_code, and emails it via send_reset_email().
+
+    Always returns 200 even if the email isn't found — prevents
+    attackers from learning which emails are registered.
+    """
+    user = db.query(models.Users).filter(
+        func.lower(models.Users.email) == request.email.strip().lower()
+    ).first()
+
+    if user:
+        code = str(random.randint(100000, 999999))
+        user.verification_code = code
+        db.commit()
+        send_reset_email(request.email, code)
+
+    return {"message": "If that email is registered, a reset code has been sent."}
+
+
+@app.post("/verify-reset-code")
+def verify_reset_code(
+    request: VerifyResetCodeRequest,
+    db: Session = Depends(database.get_db),
+):
+    """
+    Validates the 6-digit code against what's stored in verification_code.
+    Does NOT clear the code — that happens only after a successful reset,
+    so the user isn't stuck if they go back.
+    """
+    user = db.query(models.Users).filter(
+        func.lower(models.Users.email) == request.email.strip().lower()
+    ).first()
+
+    if not user or not user.verification_code or user.verification_code != request.code:
+        raise HTTPException(status_code=400, detail="Invalid or expired code.")
+
+    return {"message": "Code verified. You may now set a new password."}
+
+
+@app.post("/reset-password")
+def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(database.get_db),
+):
+    """
+    Re-validates the code (prevents bypassing step 2 with direct calls),
+    validates password strength, hashes with hash_password() (same as
+    /set-password), saves to Users.password, then clears the code.
+    """
+    user = db.query(models.Users).filter(
+        func.lower(models.Users.email) == request.email.strip().lower()
+    ).first()
+
+    if not user or not user.verification_code or user.verification_code != request.code:
+        raise HTTPException(status_code=400, detail="Invalid or expired code.")
+
+    validate_password(request.new_password)
+
+    user.password          = hash_password(request.new_password)
+    user.verification_code = None   # invalidate — one-time use
+
+    db.commit()
+
+    return {"message": "Password reset successfully."}
+
+
+# ======================================================================
 # SEARCH
 # ======================================================================
 
-from sqlalchemy import or_
-
 @app.get("/search")
 def search_products(keyword: str, db: db_dependency):
-    """
-    Search products by name or description (DB level)
-    """
-
+    """Searches products by name or description (case-insensitive)."""
     products = db.query(models.Products).filter(
         or_(
             models.Products.name.ilike(f"%{keyword}%"),
-            models.Products.description.ilike(f"%{keyword}%")
+            models.Products.description.ilike(f"%{keyword}%"),
         ),
-        models.Products.is_active == True
+        models.Products.is_active == True,
     ).all()
 
-    results = []
-    for p in products:
-        results.append({
-            "id": p.id,
-            "name": p.name,
+    return [
+        {
+            "id":          p.id,
+            "name":        p.name,
             "description": p.description,
-            "price": p.price,
-            "category": p.category,
-            "image": p.images[0].image_url if p.images else None,
-        })
-
-    return results
+            "price":       p.price,
+            "category":    p.category,
+            "image":       p.images[0].image_url if p.images else None,
+        }
+        for p in products
+    ]
 
 
 @app.get("/search-users")
 def search_users(keyword: str, db: db_dependency):
-    """
-    Searches users by username or email (admin feature).
-    Uses SQL ILIKE for case-insensitive matching.
-
-    Called by: AccountsPage.jsx → GET /search-users?keyword=hadil
-    """
+    """Searches users by username or email (admin feature)."""
     return db.query(models.Users).filter(
         or_(
             models.Users.username.ilike(f"%{keyword}%"),
-            models.Users.email.ilike(f"%{keyword}%")
+            models.Users.email.ilike(f"%{keyword}%"),
         )
     ).all()
 
 
 # ======================================================================
-# USER PROFILE (Requires authentication)
+# USER PROFILE  (Requires authentication)
 # ======================================================================
 
 @app.get("/profile")
 async def user(user: user_dependency, db: db_dependency):
     """
-    Returns the current user's profile information.
-    Requires a valid JWT token (sent automatically by the frontend).
+    Returns the authenticated user's profile.
+    Requires a valid JWT token.
 
     Called by: ProfilePage.jsx → GET /profile
     """
     if user is None:
         raise HTTPException(status_code=401, detail="Authentication Failed")
 
-    # Look up the full user record from the database
     db_user = db.query(models.Users).filter(models.Users.id == user["id"]).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
     return {
-        "id": db_user.id,
-        "username": db_user.username,
-        "email": db_user.email,
+        "id":        db_user.id,
+        "username":  db_user.username,
+        "email":     db_user.email,
         "phone_num": db_user.phone_num,
-        "role": db_user.role,
-        "active": db_user.active,
+        "role":      db_user.role,
+        "active":    db_user.active,
     }
 
 
-
 # ======================================================================
-# DATA ENDPOINTS (Public — used by admin dashboard)
+# DATA ENDPOINTS  (Dashboard / admin)
 # ======================================================================
 
 @app.get("/api/order-items")
 def get_order_items(db: Session = Depends(database.get_db)):
-    """Returns all order items. Used by the admin dashboard for revenue calculations."""
+    """Returns all order items. Used by the admin dashboard."""
     return db.query(models.OrderItems).all()
+
 
 @app.get("/stats")
 def get_stats(db: Session = Depends(database.get_db)):
@@ -357,7 +455,7 @@ def get_stats(db: Session = Depends(database.get_db)):
         db.query(
             func.date(models.Orders.orderdate).label("day"),
             func.count(models.Orders.id).label("orders_count"),
-            func.sum(models.Orders.totalamount).label("orders_totalamount")
+            func.sum(models.Orders.totalamount).label("orders_totalamount"),
         )
         .group_by(func.date(models.Orders.orderdate))
         .all()
@@ -366,38 +464,35 @@ def get_stats(db: Session = Depends(database.get_db)):
     users = (
         db.query(
             func.date(models.Users.created_at).label("day"),
-            func.count(models.Users.id).label("users_count")
+            func.count(models.Users.id).label("users_count"),
         )
         .group_by(func.date(models.Users.created_at))
         .all()
     )
-    orders_data = [
-    {
-        "day": str(o.day),
-        "orders_count": o.orders_count,
-        "orders_totalamount":o.orders_totalamount
-    }
-    for o in orders
-           ]
-    users_data = [
-    {
-        "day": str(u.day),
-        "users_count": u.users_count
-    }
-    for u in users
-]
+
     return {
-        "orders": orders_data,
-        "users": users_data
+        "orders": [
+            {
+                "day":                str(o.day),
+                "orders_count":       o.orders_count,
+                "orders_totalamount": o.orders_totalamount,
+            }
+            for o in orders
+        ],
+        "users": [
+            {
+                "day":         str(u.day),
+                "users_count": u.users_count,
+            }
+            for u in users
+        ],
     }
 
 
 @app.get("/api/returns")
 def get_returns(db: Session = Depends(database.get_db)):
-
     CustomerUser = aliased(models.Users)
 
-    # Subquery: ONE image per product
     first_image = (
         db.query(
             models.ProductImage.product_id,
@@ -421,11 +516,10 @@ def get_returns(db: Session = Depends(database.get_db)):
             models.OrderItems.return_reason.label("reason"),
             CustomerUser.username.label("customer_name"),
         )
-        # Start from canceled items
-        .join(models.Orders,   models.Orders.id      == models.OrderItems.order_id)
-        .join(models.Products, models.Products.id    == models.OrderItems.product_id)
+        .join(models.Orders,   models.Orders.id   == models.OrderItems.order_id)
+        .join(models.Products, models.Products.id == models.OrderItems.product_id)
         .outerjoin(first_image, first_image.c.product_id == models.Products.id)
-        .join(CustomerUser,    CustomerUser.id        == models.Orders.user_id)
+        .join(CustomerUser,    CustomerUser.id    == models.Orders.user_id)
         .filter(func.lower(models.OrderItems.status) == "canceled")
         .order_by(models.Orders.orderdate.desc())
         .all()
@@ -448,6 +542,7 @@ def get_returns(db: Session = Depends(database.get_db)):
         for r in results
     ]
 
+
 @app.get("/api/deliverymen")
 def get_deliverymen(db: Session = Depends(database.get_db)):
     deliverymen = (
@@ -455,25 +550,24 @@ def get_deliverymen(db: Session = Depends(database.get_db)):
         .filter(models.Users.role == "deliveryman")
         .all()
     )
-
     return [
         {
-            "id": u.id,
-            "username": u.username,
-            "email": u.email,
-            "phone_num": u.phone_num,
-            "active": u.active,
-            "activeCount": 14
+            "id":          u.id,
+            "username":    u.username,
+            "email":       u.email,
+            "phone_num":   u.phone_num,
+            "active":      u.active,
+            "activeCount": 14,
         }
         for u in deliverymen
     ]
 
+
 @app.get("/api/overview", tags=["Overview"])
 def get_overview(db: Session = Depends(database.get_db)):
-
-    all_campaigns = db.query(models.Campaigns).all()
+    all_campaigns   = db.query(models.Campaigns).all()
     all_newsletters = db.query(models.Newsletters).all()
-    all_ar = db.query(models.Products).filter(models.Products.able_ar == True).all()
+    all_ar          = db.query(models.Products).filter(models.Products.able_ar == True).all()
 
     return {
         "total_revenue":    248400,
@@ -507,6 +601,7 @@ def get_overview(db: Session = Depends(database.get_db)):
             {"channel": "Display", "value": 3200},
         ],
     }
+
 
 @app.get("/api/health", tags=["System"])
 def health(db: Session = Depends(database.get_db)):

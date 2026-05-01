@@ -37,7 +37,7 @@ from security.roles import (
     stock_manager_required, deliveryman_required,
 )
 import random
-from email_utils import send_email
+from email_utils import send_reset_email
 # Load .env variables (for ACCESS_TOKEN_EXPIRE_MINUTES)
 load_dotenv()
 
@@ -62,7 +62,7 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
         db_user_by_username.verification_code = str(verification_code)
         db.commit()
 
-        send_email(user.email, f"Your verification code is: {verification_code}")
+        send_reset_email(user.email, verification_code)
 
         return {
             "action": "verify",
@@ -97,7 +97,7 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
     db.commit()
 
     # 📧 Send email
-    send_email(user.email, f"Your verification code is: {verification_code}")
+    send_reset_email(user.email, verification_code)
 
     # 🚫 ما نعطيوش token هنا
     return {

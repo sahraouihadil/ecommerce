@@ -35,6 +35,7 @@ export function VerifyCode() {
   const [loading, setLoading] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [resending, setResending] = useState(false); // ← new
   const inputRefs = useRef([]);
 
   const location = useLocation();
@@ -93,11 +94,27 @@ export function VerifyCode() {
     }
   };
 
-  const handleResend = () => {
-    setDigits(Array(DIGITS).fill(""));
+  // ── Resend: calls backend, then resets inputs ──────────────────────
+  const handleResend = async () => {
+    if (resending) return;
+    setResending(true);
     setMessage("");
-    inputRefs.current[0]?.focus();
+    setIsError(false);
+
+    try {
+      await api.post("/resend-code", { email });
+      setDigits(Array(DIGITS).fill(""));
+      setIsError(false);
+      setMessage("A new code has been sent to your email.");
+      inputRefs.current[0]?.focus();
+    } catch (err) {
+      setIsError(true);
+      setMessage(err?.response?.data?.detail || "Failed to resend code. Please try again.");
+    } finally {
+      setResending(false);
+    }
   };
+  // ──────────────────────────────────────────────────────────────────
 
   const filledCount = digits.filter(Boolean).length;
 
@@ -149,7 +166,6 @@ export function VerifyCode() {
 
         {/* Header */}
         <AnimatedItem delay={80} style={{ textAlign: "center", marginBottom: "3rem" }}>
-          {/* Eyebrow */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.875rem", marginBottom: "1.5rem" }}>
             <div style={{ height: "1px", width: "2rem", background: GOLD, opacity: 0.55 }} />
             <span style={{
@@ -176,7 +192,6 @@ export function VerifyCode() {
             Enter Code
           </h1>
 
-          {/* Ornament */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.625rem", marginBottom: "1.25rem" }}>
             <div style={{ height: "1px", width: "1.75rem", background: GOLD, opacity: 0.35 }} />
             <div style={{ width: "3px", height: "3px", background: GOLD, transform: "rotate(45deg)", opacity: 0.5 }} />
@@ -265,22 +280,23 @@ export function VerifyCode() {
         <AnimatedItem delay={400} style={{ textAlign: "center", marginTop: "1.75rem" }}>
           <button
             onClick={handleResend}
+            disabled={resending}
             style={{
               background: "none",
               border: "none",
-              cursor: "pointer",
+              cursor: resending ? "not-allowed" : "pointer",
               fontFamily: "sans-serif",
               fontSize: "0.5625rem",
               letterSpacing: "0.3em",
               textTransform: "uppercase",
-              color: MUTED,
+              color: resending ? `rgba(200,169,106,0.4)` : MUTED,
               padding: "0.5rem 0",
               transition: "color 0.25s ease",
             }}
-            onMouseEnter={e => e.target.style.color = GOLD}
-            onMouseLeave={e => e.target.style.color = MUTED}
+            onMouseEnter={e => { if (!resending) e.target.style.color = GOLD; }}
+            onMouseLeave={e => { if (!resending) e.target.style.color = MUTED; }}
           >
-            Resend Code
+            {resending ? "Sending…" : "Resend Code"}
           </button>
         </AnimatedItem>
 

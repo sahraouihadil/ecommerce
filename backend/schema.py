@@ -16,11 +16,12 @@ NAMING CONVENTION:
   - No suffix = data going TO the frontend or used internally
 """
 
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,EmailStr
 from enums import UserRole
 from fastapi import Form,File
 from datetime import datetime,date
 from typing import Optional, List
+
 
 def today():
     return datetime.today().strftime("%Y-%m-%d")
@@ -366,3 +367,19 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     """The AI's reply sent back to the frontend."""
     reply: str
+
+# forget password _______________________________________________
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyResetCodeRequest(BaseModel):
+    email: EmailStr
+    code: str           # 6-digit string sent to the user's email
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str           # re-validated to prevent skipping step 2
+    new_password: str
+
