@@ -352,3 +352,17 @@ class ReviewOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+class ChatRequest(BaseModel):
+    """
+    The data sent by the frontend when the user sends a chat message.
+    """
+    message: str              # The user's message text
+    context: str = "before_ar"  # Shopping context (before_ar, during_ar, after_ar)
+    product_name: str = ""    # Name of the product being viewed (if any)
+    history: list = []        # Previous messages in the conversation
+
+
+class ChatResponse(BaseModel):
+    """The AI's reply sent back to the frontend."""
+    reply: str

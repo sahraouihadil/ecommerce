@@ -41,14 +41,14 @@ from security.roles import (
 load_dotenv()
 
 # Create the router — all endpoints defined here will be added to the main app
-user_router = APIRouter()
+router = APIRouter()
 
 
 # ======================================================================
 # REGISTRATION
 # ======================================================================
 
-@user_router.post("/register")
+@router.post("/register")
 def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
     """
     Creates a new customer account.
@@ -114,7 +114,7 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
 # LOGIN
 # ======================================================================
 
-@user_router.post("/login")
+@router.post("/login")
 async def login_for_access_token(db: db_dependency, form_data: OAuth2PasswordRequestForm = Depends()):
     """
     Authenticates a user and returns a JWT token + their role.
@@ -158,37 +158,37 @@ async def login_for_access_token(db: db_dependency, form_data: OAuth2PasswordReq
 # Example: When AdminDashboard.jsx loads, it calls GET /admin-dash.
 # If the user isn't an admin, admin_required() throws a 403 error.
 
-@user_router.get("/profile")
+@router.get("/profile")
 async def get_customer(payload: dict = Depends(customer_required)):
     """Verifies the user has the 'customer' role. Called by ProfilePage."""
     return {"sub": payload.get("sub")}
 
 
-@user_router.get("/admin-dash")
+@router.get("/admin-dash")
 async def get_admin(payload: dict = Depends(admin_required)):
     """Verifies the user has the 'admin' role. Called by AdminDashboard."""
     return {"sub": payload.get("sub")}
 
 
-@user_router.get("/accountant-dash")
+@router.get("/accountant-dash")
 async def get_accountant(payload: dict = Depends(accountant_required)):
     """Verifies the user has the 'accountant' role. Called by AccountantDashboard."""
     return {"sub": payload.get("sub")}
 
 
-@user_router.get("/marketing-manager-dash")
+@router.get("/marketing-manager-dash")
 async def get_marketing_manager(payload: dict = Depends(marketing_manager_required)):
     """Verifies the user has the 'marketing manager' role."""
     return {"sub": payload.get("sub")}
 
 
-@user_router.get("/stock-manager-dash")
+@router.get("/stock-manager-dash")
 async def get_stock_manager(payload: dict = Depends(stock_manager_required)):
     """Verifies the user has the 'stock manager' role."""
     return {"sub": payload.get("sub")}
 
 
-@user_router.get("/deliveryman-dash")
+@router.get("/deliveryman-dash")
 async def get_deliveryman(payload: dict = Depends(deliveryman_required)):
     """Verifies the user has the 'deliveryman' role."""
     return {"sub": payload.get("sub")}
@@ -198,7 +198,7 @@ async def get_deliveryman(payload: dict = Depends(deliveryman_required)):
 # ADMIN: CHANGE USER ROLE
 # ======================================================================
 
-@user_router.put("/setrole")
+@router.put("/setrole")
 async def set_user_role(
     user_id: int,
     role_update: UserRoleUpdate,
