@@ -27,6 +27,7 @@ export function Search() {
     try {
       const response = await api.get("/search", { params: { keyword } });
       setResults(response.data);
+      console.log(response.data)
     } catch (error) {
       console.error("Error during search:", error);
       setResults([]);
@@ -224,7 +225,7 @@ export function Search() {
               gap: "1rem",
             }}>
               {results.map((product, i) => {
-                const imageUrl = product.images?.[0] ?? product.image_url ?? null;
+                const imageUrl = product.image;
                 return (
                   <div
                     key={product.id}

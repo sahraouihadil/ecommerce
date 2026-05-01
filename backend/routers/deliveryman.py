@@ -93,7 +93,7 @@ def _build_order(order: Orders, db: Session) -> dict:
         delta = order.deliverydate - datetime.utcnow()
         eta = max(0, int(delta.total_seconds() / 60))
 
-    # Order items with product info
+    # Order items with product info — explicit query instead of lazy relationship
     items_rows = db.query(OrderItems).filter(OrderItems.order_id == order.id).all()
     items = []
     for item in items_rows:
@@ -130,7 +130,7 @@ def _build_order(order: Orders, db: Session) -> dict:
         "customer":       customer_name,
         "address":        address,
         "eta":            eta,
-        "km":             0.0,                             # extend later with routing API
+        "km":             0.0,
         "amount":         float(order.totalamount or 0),
         "status":         order.status,
         "date":           order.deliverydate.strftime("%Y-%m-%d") if order.deliverydate else None,
@@ -242,14 +242,14 @@ def get_history_orders(
     order_list = [_build_order(o, db) for o in orders]
 
     delivered    = sum(1 for o in orders if o.status.lower() == "delivered")
-    canceled      = sum(1 for o in orders if o.status.lower() == "canceled")
+    canceled     = sum(1 for o in orders if o.status.lower() == "canceled")
     total_earned = sum(float(o.totalamount or 0) for o in orders if o.status.lower() == "delivered")
 
     return {
         "stats": {
             "total":        len(orders),
             "delivered":    delivered,
-            "canceled":       canceled,
+            "canceled":     canceled,
             "total_earned": round(total_earned, 2),
         },
         "orders": order_list,
@@ -391,14 +391,14 @@ def update_status(
     target_status = target_status.lower().strip()
 
     order = db.query(Orders).filter(
-        Orders.id == order_id,
+        Orders.id             == order_id,
         Orders.deliveryman_id == driver_id,
     ).first()
 
     if not order:
         raise HTTPException(status_code=404, detail="Order not found or not assigned to you")
 
-    current = order.status.lower().strip()
+    current      = order.status.lower().strip()
     allowed_next = TRANSITIONS.get(current, [])
 
     if target_status not in allowed_next:
@@ -408,16 +408,16 @@ def update_status(
                    f"Allowed: {', '.join(allowed_next)}",
         )
 
-    # update order
+    # Update order status
     order.status = target_status
 
-    # update items 
-    for item in order.items:
+    # Bulk-update all non-canceled items in one SQL statement — fast and atomic
+    db.query(OrderItems).filter(
+        OrderItems.order_id == order_id,
+        OrderItems.status   != "canceled",
+    ).update({"status": target_status}, synchronize_session=False)
 
-        if item.status != "canceled":
-            item.status = target_status
-
-    # delivery date
+    # Stamp delivery date when order is marked delivered
     if target_status == "delivered":
         order.deliverydate = datetime.utcnow()
 
@@ -425,46 +425,50 @@ def update_status(
     db.refresh(order)
 
     return {
-        "message": "Status updated",
+        "message":  "Status updated",
         "order_id": order_id,
-        "status": order.status
+        "status":   order.status,
     }
+
+
 # ── PUT /orders/{order_id}/items/{item_id}/status ─────────────────────────────
 
 ALLOWED_ITEM_STATUSES = {"pending", "delivered", "canceled", "problem"}
 
 ORDER_STATUS_PRIORITY = ["problem", "canceled", "pending", "processing", "shipped", "delivered"]
 
-def _recalculate_order_status(order, db):
-    statuses = [item.status for item in order.items]
 
-    total = len(statuses)
+def _recalculate_order_status(order: Orders, db: Session) -> str:
+    # Fetch fresh item statuses directly from DB to avoid stale session cache
+    statuses = [
+        row[0]
+        for row in db.query(OrderItems.status)
+                     .filter(OrderItems.order_id == order.id)
+                     .all()
+    ]
 
+    total          = len(statuses)
     delivered_count = statuses.count("delivered")
     canceled_count  = statuses.count("canceled")
-    pending_count   = statuses.count("pending")
     problem_count   = statuses.count("problem")
-
 
     if canceled_count == total:
         return "canceled"
 
-    
     if delivered_count == total:
         return "delivered"
-
 
     if delivered_count > 0 or canceled_count > 0 or problem_count > 0:
         return "partial"
 
-
     return "processing"
+
 
 @router.put("/orders/{order_id}/items/{item_id}/status")
 def update_item_status(
     order_id: int,
     item_id:  int,
-    body:     dict,                        # { "status": "..." }
+    body:     dict,
     db:       Session = Depends(get_db),
     payload:  dict    = Depends(verify_token),
 ):
@@ -509,10 +513,11 @@ def update_item_status(
             detail=f"Invalid status. Allowed: {sorted(ALLOWED_ITEM_STATUSES)}",
         )
 
-    # 4. Apply item status
+    # 4. Apply item status and flush so _recalculate sees the new value
     item.status = target_status
-    
-    # 5. Recalculate and apply parent order status
+    db.flush()  # writes to DB within the transaction without committing
+
+    # 5. Recalculate and apply parent order status (reads fresh from DB post-flush)
     new_order_status = _recalculate_order_status(order, db)
     order.status = new_order_status
 
@@ -529,6 +534,8 @@ def update_item_status(
         "item_status":  item.status,
         "order_status": order.status,
     }
+
+
 # ── PUT /orders/{order_id}/cancel ─────────────────────────────────────────────
 
 @router.put("/orders/{order_id}/cancel", response_model=StatusUpdateOut)
@@ -553,21 +560,23 @@ def cancel_order(
             detail=f"Cannot cancel an order with status '{order.status}'.",
         )
 
-    # update order
+    # Update order status
     order.status = "canceled"
 
-    # update ALL items
-    for item in order.items:
-        item.status = "canceled"
+    # Bulk-update all items in one SQL statement — fast and atomic
+    db.query(OrderItems).filter(
+        OrderItems.order_id == order_id,
+    ).update({"status": "canceled"}, synchronize_session=False)
 
     db.commit()
     db.refresh(order)
 
     return {
-        "message": "Order canceled",
+        "message":  "Order canceled",
         "order_id": order_id,
-        "status": order.status
+        "status":   order.status,
     }
+
 
 # ── POST /orders/{order_id}/problem ───────────────────────────────────────────
 
@@ -609,6 +618,12 @@ def report_problem(
     order.status         = "problem"
     order.problem_reason = body.reason
     order.problem_notes  = body.notes
+
+    # Bulk-update all non-canceled items to "problem" as well
+    db.query(OrderItems).filter(
+        OrderItems.order_id == order_id,
+        OrderItems.status   != "canceled",
+    ).update({"status": "problem"}, synchronize_session=False)
 
     driver = db.query(Users).filter(Users.id == driver_id).first()
     driver_name = driver.username if driver else f"Driver #{driver_id}"

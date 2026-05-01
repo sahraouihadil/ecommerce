@@ -9,13 +9,8 @@ import api from "../../services/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API helpers
-// All calls go through the shared axios instance (Content-Type + baseURL set).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * PUT /api/deliveryman/orders/{order_id}/status
- * Body: { status }   pending → processing → shipped → delivered
- */
 export async function updateOrderStatus(orderId, targetStatus) {
   try {
     const { data } = await api.put(`/api/deliveryman/orders/${orderId}/status`, {
@@ -30,9 +25,6 @@ export async function updateOrderStatus(orderId, targetStatus) {
   }
 }
 
-/**
- * PUT /api/deliveryman/orders/{order_id}/cancel
- */
 export async function cancelOrder(orderId) {
   try {
     const { data } = await api.put(`/api/deliveryman/orders/${orderId}/cancel`);
@@ -45,10 +37,6 @@ export async function cancelOrder(orderId) {
   }
 }
 
-/**
- * POST /api/deliveryman/orders/{order_id}/problem
- * Body: { reason, notes }   matches ProblemReportBody
- */
 export async function reportProblem(orderId, reason, notes = "") {
   try {
     const { data } = await api.post(`/api/deliveryman/orders/${orderId}/problem`, {
@@ -64,18 +52,13 @@ export async function reportProblem(orderId, reason, notes = "") {
   }
 }
 
-/**
- * PUT /api/deliveryman/orders/{order_id}/items/{item_id}/status
- * Body: { status }   "delivered" | "canceled"
- * Returns: { order_status, item_status, ... }
- */
 export async function updateItemStatus(orderId, itemId, targetStatus) {
   try {
     const { data } = await api.put(
       `/api/deliveryman/orders/${orderId}/items/${itemId}/status`,
       { status: targetStatus }
     );
-    return data; // { order_id, item_id, item_status, order_status }
+    return data;
   } catch (err) {
     throw new Error(
       err.response?.data?.detail ||
@@ -84,35 +67,39 @@ export async function updateItemStatus(orderId, itemId, targetStatus) {
   }
 }
 
+/**
+ * Fetches the full fresh order from the backend.
+ * Used after any mutation to get up-to-date items.
+ */
+async function fetchOrder(orderId) {
+  const { data } = await api.get(`/api/deliveryman/orders/${orderId}`);
+  return data;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Constants (kept in sync with routers/deliveryman.py)
+// Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const STATUS_META = {
-  pending:    { label: "Pending",    cls: "bg-amber-100  text-amber-700  border border-amber-200"   },
-  processing: { label: "In Transit", cls: "bg-blue-100   text-blue-700   border border-blue-200"    },
-  shipped:    { label: "Shipped",    cls: "bg-indigo-100 text-indigo-700 border border-indigo-200"  },
-  delivered:  { label: "Delivered",  cls: "bg-emerald-100 text-emerald-700 border border-emerald-200" },
-  canceled:   { label: "Canceled",   cls: "bg-slate-100  text-slate-500  border border-slate-200"   },
-  problem:    { label: "Problem",    cls: "bg-rose-100   text-rose-700   border border-rose-200"    },
-  // ← new: mixed delivered + canceled items
-  partial:    { label: "Partial",    cls: "bg-orange-100 text-orange-700 border border-orange-200"  },
+  pending:    { label: "Pending",    cls: "bg-amber-100  text-amber-700  border border-amber-200"    },
+  processing: { label: "In Transit", cls: "bg-blue-100   text-blue-700   border border-blue-200"     },
+  shipped:    { label: "Shipped",    cls: "bg-indigo-100 text-indigo-700 border border-indigo-200"   },
+  delivered:  { label: "Delivered",  cls: "bg-emerald-100 text-emerald-700 border border-emerald-200"},
+  canceled:   { label: "Canceled",   cls: "bg-slate-100  text-slate-500  border border-slate-200"    },
+  problem:    { label: "Problem",    cls: "bg-rose-100   text-rose-700   border border-rose-200"     },
+  partial:    { label: "Partial",    cls: "bg-orange-100 text-orange-700 border border-orange-200"   },
 };
 
-/** Mirrors TRANSITIONS in deliveryman.py */
 export const TRANSITIONS = {
   pending:    "processing",
   processing: "shipped",
   shipped:    "delivered",
 };
 
-/** Mirrors TERMINAL_STATUSES in deliveryman.py */
 export const TERMINAL = new Set(["delivered", "canceled", "problem", "partial"]);
 
-/** Item-level terminal statuses */
 export const ITEM_TERMINAL = new Set(["delivered", "canceled"]);
 
-/** Mirrors ALLOWED_PROBLEM_REASONS in deliveryman.py */
 export const PROBLEM_REASONS = [
   "Customer not reachable",
   "Wrong address",
@@ -199,17 +186,16 @@ export function ErrorBanner({ message, onRetry }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ItemRow — one row inside the OrderModal items list
+// ItemRow
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ItemRow({ item, orderId, isOrderTerminal, onItemMutated }) {
   const [busy,  setBusy]  = useState(false);
   const [error, setError] = useState(null);
 
-  const itemStatus   = (item.status || "pending").toLowerCase();
-  const isTerminal   = ITEM_TERMINAL.has(itemStatus);
-  // Only allow item edits when the parent order is active or partial
-  const canAct       = !isOrderTerminal && !isTerminal;
+  const itemStatus = (item.status || "pending").toLowerCase();
+  const isTerminal = ITEM_TERMINAL.has(itemStatus);
+  const canAct     = !isOrderTerminal && !isTerminal;
 
   async function act(targetStatus) {
     setBusy(true);
@@ -227,24 +213,17 @@ function ItemRow({ item, orderId, isOrderTerminal, onItemMutated }) {
 
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50 overflow-hidden">
-      {/* Main row */}
       <div className="flex items-center gap-3 px-3 py-2.5">
-        {/* Product info */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-800 truncate">{item.product_name}</p>
           <p className="text-xs text-slate-500">Qty: {item.quantity}</p>
         </div>
-
-        {/* Price */}
         <p className="text-sm font-semibold text-slate-700 shrink-0">
           {(item.price * item.quantity).toFixed(2)}DA
         </p>
-
-        {/* Item status badge */}
         <StatusBadge status={itemStatus} />
       </div>
 
-      {/* Action buttons — only when item is still actionable */}
       {canAct && (
         <div className="flex border-t border-slate-100">
           <button
@@ -278,10 +257,7 @@ function ItemRow({ item, orderId, isOrderTerminal, onItemMutated }) {
         </div>
       )}
 
-      {/* Per-item error */}
-      {error && (
-        <p className="text-xs text-rose-600 px-3 pb-2">{error}</p>
-      )}
+      {error && <p className="text-xs text-rose-600 px-3 pb-2">{error}</p>}
     </div>
   );
 }
@@ -290,17 +266,8 @@ function ItemRow({ item, orderId, isOrderTerminal, onItemMutated }) {
 // OrderModal
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Props:
- *   order     — OrderOut object from backend
- *   onClose   — () => void
- *   onMutated — (updatedOrder) => void   called after any successful mutation
- */
 export function OrderModal({ order, onClose, onMutated }) {
-  // localOrder tracks all mutations that happen while the modal is open
-  // so item badges + order status badge stay in sync without closing the modal.
   const [localOrder, setLocalOrder] = useState(order);
-
   const [showProblem, setShowProblem] = useState(false);
   const [reason,      setReason]      = useState(PROBLEM_REASONS[0]);
   const [notes,       setNotes]       = useState("");
@@ -309,9 +276,24 @@ export function OrderModal({ order, onClose, onMutated }) {
 
   const status     = localOrder.status?.toLowerCase();
   const isTerminal = TERMINAL.has(status);
-  // "partial" orders allow item edits but block order-level advance/cancel
   const isPartial  = status === "partial";
   const nextStatus = TRANSITIONS[status];
+
+  // ── Shared helper: refetch order then sync state + parent ─────────────────
+  // This is the KEY fix — instead of building a stale local copy, we always
+  // pull the fresh order (with updated items) straight from the backend.
+  async function syncFromServer() {
+    try {
+      const fresh = await fetchOrder(localOrder.id_raw);
+      setLocalOrder(fresh);
+      onMutated(fresh);
+      return fresh;
+    } catch {
+      // Non-fatal: at minimum the order-level status was already updated.
+      // Fall back to optimistic local state — parent will still get updated
+      // on the next natural refetch.
+    }
+  }
 
   // ── Order-level mutations ──────────────────────────────────────────────────
 
@@ -321,9 +303,8 @@ export function OrderModal({ order, onClose, onMutated }) {
     setError(null);
     try {
       await updateOrderStatus(localOrder.id_raw, nextStatus);
-      const updated = { ...localOrder, status: nextStatus };
-      setLocalOrder(updated);
-      onMutated(updated);
+      // Refetch so items reflect the new status immediately
+      await syncFromServer();
       onClose();
     } catch (e) {
       setError(e.message);
@@ -337,9 +318,8 @@ export function OrderModal({ order, onClose, onMutated }) {
     setError(null);
     try {
       await cancelOrder(localOrder.id_raw);
-      const updated = { ...localOrder, status: "canceled" };
-      setLocalOrder(updated);
-      onMutated(updated);
+      // Refetch so all items show "canceled" immediately
+      await syncFromServer();
       onClose();
     } catch (e) {
       setError(e.message);
@@ -353,14 +333,8 @@ export function OrderModal({ order, onClose, onMutated }) {
     setError(null);
     try {
       await reportProblem(localOrder.id_raw, reason, notes);
-      const updated = {
-        ...localOrder,
-        status: "problem",
-        problem_reason: reason,
-        problem_notes:  notes,
-      };
-      setLocalOrder(updated);
-      onMutated(updated);
+      // Refetch so items reflect "problem" status immediately
+      await syncFromServer();
       onClose();
     } catch (e) {
       setError(e.message);
@@ -370,17 +344,19 @@ export function OrderModal({ order, onClose, onMutated }) {
   }
 
   // ── Item-level mutation callback ───────────────────────────────────────────
-  // Called by ItemRow after a successful API call.
-  // Updates the matching item's status and syncs the order-level status
-  // returned by the backend (may flip to "partial", "delivered", "canceled").
-
-  function handleItemMutated(itemId, newItemStatus, newOrderStatus) {
-    const updatedItems = localOrder.items.map((it) =>
+  // After a single item is updated, refetch the whole order so the items list
+  // and order-level status badge are always in perfect sync with the DB.
+  async function handleItemMutated(itemId, newItemStatus, newOrderStatus) {
+    // Optimistic update first — feels instant to the user
+    const optimisticItems = localOrder.items.map((it) =>
       it.id === itemId ? { ...it, status: newItemStatus } : it
     );
-    const updated = { ...localOrder, items: updatedItems, status: newOrderStatus };
-    setLocalOrder(updated);
-    onMutated(updated); // keep parent list in sync too
+    const optimistic = { ...localOrder, items: optimisticItems, status: newOrderStatus };
+    setLocalOrder(optimistic);
+    onMutated(optimistic);
+
+    // Then confirm with a real refetch to catch any discrepancy
+    await syncFromServer();
   }
 
   const advanceLabel = {
@@ -460,12 +436,11 @@ export function OrderModal({ order, onClose, onMutated }) {
             )}
           </div>
 
-          {/* ── Items with per-item status controls ── */}
+          {/* ── Items ── */}
           {localOrder.items?.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Items</p>
-                {/* Show a legend only when items are actionable */}
                 {!isTerminal && (
                   <p className="text-xs text-slate-400">Tap to mark each item</p>
                 )}
@@ -476,15 +451,12 @@ export function OrderModal({ order, onClose, onMutated }) {
                     key={item.id}
                     item={item}
                     orderId={localOrder.id_raw}
-                    // Pass `isTerminal` but exclude "partial" — partial orders
-                    // still allow item-level edits.
                     isOrderTerminal={isTerminal && !isPartial}
                     onItemMutated={handleItemMutated}
                   />
                 ))}
               </div>
 
-              {/* Partial order explainer */}
               {isPartial && (
                 <div className="mt-3 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">
                   <svg className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -508,7 +480,7 @@ export function OrderModal({ order, onClose, onMutated }) {
             </div>
           )}
 
-          {/* ── Existing problem details ── */}
+          {/* ── Problem details ── */}
           {localOrder.problem_reason && (
             <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
               <p className="text-sm font-semibold text-rose-700 mb-1">Problem Reported</p>
@@ -519,7 +491,7 @@ export function OrderModal({ order, onClose, onMutated }) {
             </div>
           )}
 
-          {/* ── Order-level error ── */}
+          {/* ── Error ── */}
           {error && <ErrorBanner message={error} />}
 
           {/* ── Problem form ── */}
@@ -558,12 +530,7 @@ export function OrderModal({ order, onClose, onMutated }) {
             </div>
           )}
 
-          {/* ── Order-level actions ──
-               Hidden when:
-                 • order is fully terminal (delivered / canceled / problem)
-                 • order is partial (items drive the status — no manual advance)
-                 • problem form is open
-          ── */}
+          {/* ── Order-level actions ── */}
           {!isTerminal && !isPartial && !showProblem && (
             <div className="space-y-2 pt-1">
               <div className="flex gap-2">
@@ -662,7 +629,7 @@ export function OrderRow({ order, onClick, showDate = false, showRating = false 
         )}
         {showRating && order.rating && <StarRating rating={order.rating} />}
         <span className="font-bold text-sm text-violet-700">
-           {Number(order.amount).toFixed(2)}DA
+          {Number(order.amount).toFixed(2)}DA
         </span>
         <StatusBadge status={order.status} />
         <svg
