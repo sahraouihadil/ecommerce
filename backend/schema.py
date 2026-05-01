@@ -210,3 +210,126 @@ class PatchDeliveryRequest(BaseModel):
     deliveryman: Optional[str] = None 
     status: Optional[str] = None
     deliverydate: Optional[date] = None 
+
+# ── Deliveryman ───────────────────────────────────────────────────────────────
+ 
+class ProblemReportBody(BaseModel):
+    reason: str
+    notes:  str = ""
+ 
+ 
+class StatusUpdateBody(BaseModel):
+    status: str
+ 
+ 
+# ── Order item (nested inside order response) ─────────────────────────────────
+ 
+class OrderItemOut(BaseModel):
+    id:           int
+    product_id:   int
+    product_name: str
+    image:        Optional[str]
+    price:        float
+    quantity:     int
+    status:       str
+ 
+    class Config:
+        from_attributes = True
+ 
+ 
+# ── Order response ────────────────────────────────────────────────────────────
+ 
+class OrderOut(BaseModel):
+    id:             str          # "ORD-001"
+    id_raw:         int
+    customer:       str
+    address:        str
+    eta:            int          # minutes remaining (0 if not pending)
+    km:             float
+    amount:         float
+    status:         str
+    date:           Optional[str]
+    rating:         Optional[float]
+    problem_reason: Optional[str]
+    problem_notes:  Optional[str]
+    items:          List[OrderItemOut]
+ 
+    class Config:
+        from_attributes = True
+ 
+ 
+# ── Stats (embedded in today / schedule responses) ────────────────────────────
+ 
+class TodayStatsOut(BaseModel):
+    total:      int
+    delivered:  int
+    in_transit: int
+    pending:    int
+ 
+ 
+class TodayOrdersOut(BaseModel):
+    stats:  TodayStatsOut
+    orders: List[OrderOut]
+    date:   str
+ 
+ 
+# ── Schedule ──────────────────────────────────────────────────────────────────
+ 
+class ScheduleDayOut(BaseModel):
+    dot:    str          # "pending" | "delivered" | "problem"
+    count:  int
+    orders: List[OrderOut]
+ 
+ 
+class ScheduleOut(BaseModel):
+    year:     int
+    month:    int
+    schedule: dict       # date string → ScheduleDayOut
+ 
+ 
+# ── History stats ─────────────────────────────────────────────────────────────
+ 
+class HistoryStatsOut(BaseModel):
+    total:        int
+    delivered:    int
+    canceled:       int
+    total_earned: float
+ 
+ 
+class HistoryOut(BaseModel):
+    stats:  HistoryStatsOut
+    orders: List[OrderOut]
+ 
+ 
+# ── Profile ───────────────────────────────────────────────────────────────────
+ 
+class ProfileStatsOut(BaseModel):
+    total_orders: int
+    delivered:    int
+    issues:       int
+    total_earned: float
+ 
+ 
+class ProfileOut(BaseModel):
+    id:           int
+    name:         str
+    phone:        Optional[str]
+    vehicle:      Optional[str]
+    member_since: Optional[str]
+    avg_rating:   Optional[float]
+    stats:        ProfileStatsOut
+ 
+ 
+# ── Status update response ────────────────────────────────────────────────────
+ 
+class StatusUpdateOut(BaseModel):
+    message:  str
+    order_id: int
+    status:   str
+
+# ── Problem report response ───────────────────────────────────────────────────
+ 
+class ProblemReportOut(BaseModel):
+    order_id:       int
+    problem_reason: str
+    problem_notes:  str

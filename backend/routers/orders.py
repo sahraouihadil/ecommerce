@@ -79,7 +79,8 @@ def create_order(data: OrderCreate,db: Session = Depends(get_db), payload: dict 
             order_id=order.id,
             product_id=item.product_id,
             quantity=item.quantity,
-            price=product.price if product else 0  # Save price at time of purchase
+            price=product.price if product else 0, # Save price at time of purchase
+            status=order.status
         )
         db.add(order_item)
         db.delete(item)     # Remove from cart
@@ -230,11 +231,22 @@ def get_order(order_id: int, db: Session = Depends(get_db), payload: dict = Depe
     }
 
 @router.put("/{order_id}/status")
-def update_order_status(order_id: int, status: str, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
-    """Updates order status. For stock manager and deliveryman."""
+def update_order_status(
+    order_id: int,
+    status: str,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(verify_token)
+):
+    """Updates order status and syncs all order items to the same status."""
     order = db.query(Orders).filter(Orders.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
     order.status = status
+
+    db.query(OrderItems).filter(OrderItems.order_id == order_id).update(
+        {"status": status}, synchronize_session=False
+    )
+
     db.commit()
     return {"message": "Status updated", "order_id": order_id, "status": status}
