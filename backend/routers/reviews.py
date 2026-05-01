@@ -5,28 +5,9 @@ from datetime import datetime
 from database import get_db
 from models import Review, Users
 from user_crud import get_current_user
+from schema import ReviewCreate,ReviewOut
 
 router = APIRouter()
-
-
-# ── Pydantic schemas ──────────────────────────────────────────────────────────
-
-class ReviewCreate(BaseModel):
-    rating: int = Field(..., ge=1, le=5)
-    comment: str = Field(..., min_length=3, max_length=500)
-
-
-class ReviewOut(BaseModel):
-    id: int
-    product_id: int
-    user_name: str
-    rating: int
-    comment: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
 
 # ── GET /api/products/{product_id}/reviews ────────────────────────────────────
 
@@ -52,7 +33,7 @@ def create_review(
 ):
     existing = db.query(Review).filter(
         Review.product_id == product_id,
-        Review.user_id == current_user["id"],         # ✅ dict access
+        Review.user_id == current_user["id"],         # dict access
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="You have already reviewed this product.")
@@ -62,7 +43,7 @@ def create_review(
 
     review = Review(
         product_id=product_id,
-        user_id=current_user["id"],                   # ✅ dict access
+        user_id=current_user["id"],                   # dict access
         user_name=user.username if user else "Anonymous",
         rating=body.rating,
         comment=body.comment,

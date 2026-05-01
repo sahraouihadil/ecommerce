@@ -44,11 +44,8 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 # ── Router imports (each router handles a group of related endpoints) ──
 from route import user_router                     # Auth: /register, /login, /admin-dash, etc.
-<<<<<<< HEAD
-from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries,deliveryman  # Feature routers
-=======
-from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries ,reviews # Feature routers
->>>>>>> b4f60ff30b565ddc2759ef4399af573ca6719762
+from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries,deliveryman,reviews  # Feature routers
+
 import shutil
 import os
 import uuid
