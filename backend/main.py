@@ -44,7 +44,7 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 # ── Router imports (each router handles a group of related endpoints)
 from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries,deliveryman,reviews,users  # Feature routers
-
+from routers.users import router as user_router
 import shutil
 import os
 import uuid
