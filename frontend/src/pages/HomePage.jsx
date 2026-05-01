@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Section, Divider } from '../components/ui';
 import api from '../services/api';
+import { Search } from '../components/Search';
 
 const steps = [
   { num: '01', title: 'Browse', desc: 'Explore the full furniture catalog — filter by category, style, or room.' },
@@ -45,7 +46,7 @@ export function HomePage() {
     setSubLoading(true);
     try {
       await api.post('/api/newsletter', { email });
-    } catch (err) {}
+    } catch (err) { }
     finally {
       setSubMsg("You're in! Welcome to the family 🤍");
       setEmail('');
@@ -85,7 +86,6 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full py-20 md:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
-            {/* Copy — order-1 so it's always first on mobile */}
             <div className="order-1">
               <p className="font-cormorant italic text-muted text-lg font-light uppercase tracking-[0.2em] mb-8">
                 AR-Powered Furniture Shopping
@@ -103,7 +103,6 @@ export function HomePage() {
               </Button>
             </div>
 
-            {/* Image — order-2 so it's always second on mobile */}
             <div className="order-2 relative flex justify-center lg:justify-end">
               <div className="relative w-full max-w-[480px]">
                 <div className="rounded-3xl overflow-hidden aspect-[3/4] bg-surface shadow-[0_8px_40px_rgba(26,26,26,0.06)]">
@@ -137,6 +136,18 @@ export function HomePage() {
           Shop Furniture
         </h2>
 
+        {/* ── SEARCH BAR ── */}
+        <div style={{
+          background: "#EDE7D9",
+          border: "1px solid rgba(200,169,106,0.22)",
+          borderRadius: "20px",
+          padding: "2rem 2.5rem",
+          marginBottom: "2.5rem",
+        }}>
+          <Search />
+        </div>
+
+        {/* ── CATEGORY FILTERS ── */}
         <div className="flex flex-wrap gap-3 mb-16">
           {categories.map((cat) => (
             <Button
@@ -152,6 +163,7 @@ export function HomePage() {
           ))}
         </div>
 
+        {/* ── PRODUCTS GRID ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
           {filtered.map((product) => (
             <div
