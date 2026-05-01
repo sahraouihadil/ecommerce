@@ -31,7 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # ── SQLAlchemy imports ──
 from sqlalchemy.orm import Session,aliased
-from sqlalchemy import or_,func
+from sqlalchemy import or_, func, text
 
 # ── Our project imports ──
 import models
@@ -477,14 +477,6 @@ def get_overview(db: Session = Depends(database.get_db)):
     }
 
 @app.get("/api/health", tags=["System"])
-def health():
-    return {
-        "status": "ok",
-        "counts": {
-            "ar":          len(ar_db),
-            "campaigns":   len(campaign_db),
-            "promotions":  len(promotion_db),
-            "subscribers": len(subscriber_db),
-            "blogs":       len(blog_db),
-        },
-    }
+def health(db: Session = Depends(database.get_db)):
+    db.execute(text("SELECT 1"))
+    return {"status": "ok"}
