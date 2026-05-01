@@ -138,7 +138,7 @@ export function HomePage() {
 
         {/* ── SEARCH BAR ── */}
         <div style={{
-          background: "#EDE7D9",
+          background: "#ebe8e0ff",
           border: "1px solid rgba(200,169,106,0.22)",
           borderRadius: "20px",
           padding: "2rem 2.5rem",
@@ -289,5 +289,4 @@ export function HomePage() {
     </div>
   );
 }
-//comment to fix the pushing prblm
 export default HomePage;
