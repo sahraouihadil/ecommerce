@@ -25,15 +25,25 @@ const CHARCOAL = "#1C1916";
 const MUTED = "#9E8E7A";
 const CREAM = "#FAF8F4";
 
+const SUBJECTS = [
+  "Delivery",
+  "Content",
+  "Interior Design Advice",
+  "AR Preview",
+  "Returns & Exchanges",
+  "Partnerships",
+];
+
 export function ContactusPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
   const [focused, setFocused] = useState(null);
 
   const handleSubmit = () => {
-    if (!name || !email || !message) return;
+    if (!name || !email || !subject || !message) return;
     setSent(true);
   };
 
@@ -63,6 +73,15 @@ export function ContactusPage() {
     transition: "color 0.25s ease",
   });
 
+  const selectStyle = (key) => ({
+    ...inputStyle(key),
+    appearance: "none",
+    WebkitAppearance: "none",
+    cursor: "pointer",
+    paddingRight: "1.5rem",
+    color: subject ? CHARCOAL : "rgba(158,142,122,0.6)",
+  });
+
   return (
     <div style={{
       fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -83,18 +102,21 @@ export function ContactusPage() {
           from { stroke-dashoffset: 40; }
           to   { stroke-dashoffset: 0; }
         }
+        .contact-select option { color: #1C1916; font-style: normal; }
+        .contact-select option[value=""] { color: rgba(158,142,122,0.6); font-style: italic; }
       `}</style>
 
-      <div style={{
-        maxWidth: "1100px",
-        margin: "0 auto",
-        padding: "0 2rem",
-        minHeight: "100vh",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "0",
-        alignItems: "stretch",
-      }}
+      <div
+        style={{
+          maxWidth: "1100px",
+          margin: "0 auto",
+          padding: "0 2rem",
+          minHeight: "100vh",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "0",
+          alignItems: "stretch",
+        }}
         className="contact-grid"
       >
 
@@ -165,7 +187,7 @@ export function ContactusPage() {
           {/* Contact info list */}
           {[
             { label: "Email", value: "hello@aroom.com" },
-            { label: "Location", value: "Algiers, Algeria" },
+            { label: "Location", value: "Constantine, Algeria" },
             { label: "Hours", value: "Mon–Fri, 9am–6pm" },
           ].map(({ label, value }, i) => (
             <AnimatedItem key={label} delay={280 + i * 70}>
@@ -204,7 +226,7 @@ export function ContactusPage() {
                 textTransform: "uppercase",
                 color: `rgba(200,169,106,0.3)`,
               }}>
-                Aroom · Est. MMXV
+                Aroom ready to answer your questions.
               </span>
             </div>
           </AnimatedItem>
@@ -320,8 +342,40 @@ export function ContactusPage() {
                 </div>
               </AnimatedItem>
 
+              {/* Subject */}
+              <AnimatedItem delay={240}>
+                <div style={{ marginBottom: "2.5rem", position: "relative" }}>
+                  <label style={labelStyle("subject")}>Subject</label>
+                  <select
+                    className="contact-select"
+                    value={subject}
+                    onChange={e => setSubject(e.target.value)}
+                    onFocus={() => setFocused("subject")}
+                    onBlur={() => setFocused(null)}
+                    style={selectStyle("subject")}
+                  >
+                    <option value="" disabled>Select a topic…</option>
+                    {SUBJECTS.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  {/* Custom arrow */}
+                  <span style={{
+                    position: "absolute",
+                    right: 0,
+                    bottom: "14px",
+                    pointerEvents: "none",
+                    color: focused === "subject" ? GOLD : MUTED,
+                    fontSize: "0.7rem",
+                    transition: "color 0.25s ease",
+                  }}>
+                    ▾
+                  </span>
+                </div>
+              </AnimatedItem>
+
               {/* Message */}
-              <AnimatedItem delay={260}>
+              <AnimatedItem delay={320}>
                 <div style={{ marginBottom: "3rem" }}>
                   <label style={labelStyle("message")}>Message</label>
                   <textarea
@@ -342,8 +396,11 @@ export function ContactusPage() {
               </AnimatedItem>
 
               {/* Submit */}
-              <AnimatedItem delay={340}>
-                <SendButton onClick={handleSubmit} disabled={!name || !email || !message} />
+              <AnimatedItem delay={400}>
+                <SendButton
+                  onClick={handleSubmit}
+                  disabled={!name || !email || !subject || !message}
+                />
               </AnimatedItem>
             </>
           )}
@@ -377,8 +434,8 @@ function SendButton({ onClick, disabled }) {
         gap: "0.75rem",
         padding: "0 2.25rem",
         height: "52px",
-        background: disabled ? "transparent" : "transparent",
-        color: disabled ? "rgba(200,169,106,0.35)" : hovered ? "#1C1916" : GOLD,
+        background: "transparent",
+        color: disabled ? "rgba(200,169,106,0.35)" : hovered ? "#1C1916" : "#C8A96A",
         border: `1px solid ${disabled ? "rgba(200,169,106,0.2)" : hovered ? "#1C1916" : "rgba(200,169,106,0.55)"}`,
         borderRadius: 0,
         fontFamily: "sans-serif",
