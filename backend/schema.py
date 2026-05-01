@@ -333,3 +333,22 @@ class ProblemReportOut(BaseModel):
     order_id:       int
     problem_reason: str
     problem_notes:  str
+
+# ── Pydantic schemas ──────────────────────────────────────────────────────────
+
+class ReviewCreate(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: str = Field(..., min_length=3, max_length=500)
+
+
+class ReviewOut(BaseModel):
+    id: int
+    product_id: int
+    user_name: str
+    rating: int
+    comment: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
