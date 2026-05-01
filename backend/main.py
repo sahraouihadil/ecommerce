@@ -31,7 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # ── SQLAlchemy imports ──
 from sqlalchemy.orm import Session,aliased
-from sqlalchemy import or_,func
+from sqlalchemy import or_, func, text
 
 # ── Our project imports ──
 import models
@@ -44,11 +44,15 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 # ── Router imports (each router handles a group of related endpoints) ──
 from route import user_router                     # Auth: /register, /login, /admin-dash, etc.
+<<<<<<< HEAD
 from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries,deliveryman  # Feature routers
+=======
+from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries ,reviews # Feature routers
+>>>>>>> b4f60ff30b565ddc2759ef4399af573ca6719762
 import shutil
 import os
 import uuid
-from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles 
 
 # ── Logging setup ──
 logger = logging.getLogger(__name__)
@@ -104,6 +108,7 @@ app.include_router(campaign.router, prefix="/api")
 app.include_router(promotion.router, prefix="/api")
 app.include_router(newsletter.router, prefix="/api")
 app.include_router(blog.router)
+app.include_router(reviews.router)   
 
 # ── Type alias for protected endpoints ──
 # Any endpoint that uses "user: user_dependency" will require a valid JWT token.
@@ -478,14 +483,6 @@ def get_overview(db: Session = Depends(database.get_db)):
     }
 
 @app.get("/api/health", tags=["System"])
-def health():
-    return {
-        "status": "ok",
-        "counts": {
-            "ar":          len(ar_db),
-            "campaigns":   len(campaign_db),
-            "promotions":  len(promotion_db),
-            "subscribers": len(subscriber_db),
-            "blogs":       len(blog_db),
-        },
-    }
+def health(db: Session = Depends(database.get_db)):
+    db.execute(text("SELECT 1"))
+    return {"status": "ok"}

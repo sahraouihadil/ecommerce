@@ -17,7 +17,7 @@ TABLE RELATIONSHIPS:
   Orders ── OrderItems (one order contains many items)
 """
 
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey,Text
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 from database import Base
@@ -266,3 +266,15 @@ class Notifications(Base):
     message    = Column(String, nullable=False)
     is_read    = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Review(Base):
+    __tablename__ = "reviews"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_name  = Column(String, nullable=False)
+    rating     = Column(Integer, nullable=False)
+    comment    = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False) 
