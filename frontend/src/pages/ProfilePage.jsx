@@ -37,6 +37,7 @@ const STATUS_COLORS = {
   shipped:   { bg: "#FFFBEB", text: "#D97706" },
   canceled:  { bg: "#FEE2E2", text: "#EF4444" },
   pending:   { bg: "#F5F5F5", text: "#666666" },
+  partial :  { bg: "#F0FDF4", text: "#4ADE80" },
 };
 
 function formatDate(dateStr) {

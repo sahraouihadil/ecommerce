@@ -17,7 +17,7 @@ def run_migrations():
         # ── Fix PostgreSQL userrole enum type ──
         # The DB enum may be missing values that were added to enums.py later.
         # PostgreSQL enums are strict - we must add any missing values.
-        expected_roles = ['admin', 'accountant', 'marketing manager', 'stock manager',
+        expected_roles = ['admin', 'accountant', 'marketing_manager', 'stock_manager',
                           'deliveryman', 'customer', 'bot']
         try:
             result = conn.execute(text(

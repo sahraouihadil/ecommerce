@@ -208,31 +208,6 @@ def get_today_orders(
         "date":   datetime.utcnow().strftime("%a, %b %d, %Y"),
     }
 
-
-# ── GET /orders/upcoming ──────────────────────────────────────────────────────
-
-@router.get("/orders/upcoming", response_model=list[OrderOut])
-def get_upcoming_orders(
-    db:      Session = Depends(get_db),
-    payload: dict    = Depends(verify_token),
-):
-    """Returns future (not yet today) active orders assigned to the driver."""
-    driver_id = payload["id"]
-    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
-
-    orders = (
-        db.query(Orders)
-        .filter(
-            Orders.deliveryman_id == driver_id,
-            Orders.deliverydate   >  today_end,
-            Orders.status.notin_(list(TERMINAL_STATUSES)),
-        )
-        .order_by(Orders.deliverydate.asc())
-        .all()
-    )
-    return [_build_order(o, db) for o in orders]
-
-
 # ── GET /orders/history ───────────────────────────────────────────────────────
 
 @router.get("/orders/history", response_model=HistoryOut)

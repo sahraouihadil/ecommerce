@@ -112,9 +112,142 @@ export function TrackingPage() {
       </div>
     );
 
-  const steps = ["pending", "confirmed", "shipped", "delivered"];
-  const currentStep = steps.indexOf(order.status) >= 0 ? steps.indexOf(order.status) : 0;
-  const progressPct = (currentStep / (steps.length - 1)) * 100;
+  // ─── Status normalisation ───────────────────────────────────────────────────
+  // "problem" is shown to the customer as "in transit" (maps to the shipped step)
+  // "partial" maps to the "delivered" step but is displayed as "Partial" in light green
+  const isCanceled = order.status === "canceled";
+  const isProblem  = order.status === "problem";
+  const isPartial  = order.status === "partial";
+
+  // Last step becomes "canceled" when the order is canceled
+  const steps = isCanceled
+    ? ["pending", "processing", "shipped", "canceled"]
+    : ["pending", "processing", "shipped", "delivered"];
+
+  // Display label overrides per step key
+  const stepLabels = {
+    pending:    "Pending",
+    processing: "Processing",
+    shipped:    isProblem ? "In Transit" : "Shipped",   // hide "problem" from customer
+    delivered:  isPartial ? "Partial" : "Delivered",    // show "Partial" instead of "Delivered"
+    canceled:   "Canceled",
+  };
+
+  // Resolve which step index is "active"
+  // problem → shipped position, partial → delivered position
+  const effectiveStatus = isProblem ? "shipped" : isPartial ? "delivered" : order.status;
+  const currentStep     = steps.indexOf(effectiveStatus) >= 0 ? steps.indexOf(effectiveStatus) : 0;
+  const progressPct     = (currentStep / (steps.length - 1)) * 100;
+
+  // ── Partial palette ─────────────────────────────────────────────────────────
+  // Light green, softer/lighter than a "delivered" gold
+  const PARTIAL_GREEN       = "#7DBF9E";   // dot fill / badge dot
+  const PARTIAL_GREEN_DARK  = "#5A9E7C";   // text / label
+  const PARTIAL_GREEN_ALPHA = "rgba(125,191,158,0.42)"; // border
+  const PARTIAL_GREEN_BG    = "rgba(125,191,158,0.1)";  // badge background
+
+  // ── Step dot colour helpers ─────────────────────────────────────────────────
+  const isCanceledStep = (step) => step === "canceled";
+  const isPartialStep  = (step) => step === "delivered" && isPartial;
+
+  const dotBorder = (step, i) => {
+    if (isCanceledStep(step) && i === currentStep) return "1.5px solid #C06060";
+    if (isPartialStep(step) && i === currentStep)  return `1.5px solid ${PARTIAL_GREEN}`;
+    if (i < currentStep || i === currentStep)       return "1.5px solid #C8A96A";
+    return "1.5px solid rgba(200,169,106,0.25)";
+  };
+
+  const dotBg = (step, i) => {
+    if (isCanceledStep(step) && i === currentStep) return "#1C1916";
+    if (isPartialStep(step) && i === currentStep)  return "#1C1916";
+    if (i === currentStep)                          return "#1C1916";
+    if (i < currentStep) {
+      if (isCanceled && i === steps.length - 1)    return "#C06060";
+      return "#C8A96A";
+    }
+    return "#F5F0E8";
+  };
+
+  const labelColor = (step, i) => {
+    if (isCanceledStep(step) && i <= currentStep) return "#B05555";
+    if (isPartialStep(step) && i <= currentStep)  return PARTIAL_GREEN_DARK;
+    if (i <= currentStep)                         return "#9A7D4A";
+    return "rgba(158,142,122,0.4)";
+  };
+
+  // Active dot inner indicator (checkmark, ×, or half-circle for partial)
+  const dotInner = (step, i) => {
+    const done   = i < currentStep;
+    const active = i === currentStep;
+
+    // Completed steps → gold checkmark
+    if (done && !isCanceledStep(step) && !isPartialStep(step)) {
+      return (
+        <div
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRight: "1.5px solid #F5F0E8",
+            borderBottom: "1.5px solid #F5F0E8",
+            transform: "rotate(45deg) translate(-1px,-1px)",
+          }}
+        />
+      );
+    }
+
+    // Active canceled step → red ×
+    if (active && isCanceledStep(step)) {
+      return (
+        <span
+          style={{
+            color: "#C06060",
+            fontSize: "11px",
+            lineHeight: 1,
+            fontWeight: 700,
+            fontFamily: "sans-serif",
+          }}
+        >
+          ✕
+        </span>
+      );
+    }
+
+    // Active partial step → light-green half-fill dot
+    if (active && isPartialStep(step)) {
+      return (
+        <div
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            background: `linear-gradient(to right, ${PARTIAL_GREEN} 50%, transparent 50%)`,
+            border: `1px solid ${PARTIAL_GREEN}`,
+          }}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const trackFill = isCanceled ? "#C06060" : isPartial ? PARTIAL_GREEN : "#C8A96A";
+
+  // ── Badge colours ────────────────────────────────────────────────────────────
+  const badgeBorder  = isCanceled ? "1px solid rgba(192,96,96,0.42)"
+                     : isPartial  ? `1px solid ${PARTIAL_GREEN_ALPHA}`
+                     :              "1px solid rgba(200,169,106,0.42)";
+  const badgeBg      = isCanceled ? "rgba(192,96,96,0.1)"
+                     : isPartial  ? PARTIAL_GREEN_BG
+                     :              "rgba(200,169,106,0.1)";
+  const badgeDotColor = isCanceled ? "#C06060"
+                      : isPartial  ? PARTIAL_GREEN
+                      :              "#C8A96A";
+  const badgeTextColor = isCanceled ? "#B05555"
+                       : isPartial  ? PARTIAL_GREEN_DARK
+                       :              "#9A7D4A";
+  const badgeLabel = isProblem ? "In Transit"
+                   : isPartial ? "Partial"
+                   :              order.status;
 
   return (
     <div
@@ -178,23 +311,30 @@ export function TrackingPage() {
             alignItems: "center",
             gap: "7px",
             padding: "0.35rem 1.1rem",
-            border: "1px solid rgba(200,169,106,0.42)",
+            border: badgeBorder,
             borderRadius: "2rem",
-            background: "rgba(200,169,106,0.1)",
+            background: badgeBg,
             marginBottom: "2.5rem",
           }}
         >
-          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#C8A96A" }} />
+          <div
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: badgeDotColor,
+            }}
+          />
           <span
             style={{
               fontFamily: "sans-serif",
               fontSize: "0.575rem",
               letterSpacing: "0.22em",
               textTransform: "uppercase",
-              color: "#9A7D4A",
+              color: badgeTextColor,
             }}
           >
-            {order.status}
+            {badgeLabel}
           </span>
         </div>
 
@@ -233,61 +373,56 @@ export function TrackingPage() {
                 top: 11,
                 left: 0,
                 height: "1px",
-                background: "#C8A96A",
+                background: trackFill,
                 width: `${progressPct}%`,
                 zIndex: 1,
                 transition: "width 0.6s ease",
               }}
             />
 
-            {steps.map((step, i) => {
-              const done = i < currentStep;
-              const active = i === currentStep;
-              return (
+            {steps.map((step, i) => (
+              <div
+                key={step}
+                style={{
+                  position: "relative",
+                  zIndex: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px",
+                  flex: 1,
+                }}
+              >
                 <div
-                  key={step}
-                  style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", flex: 1 }}
+                  style={{
+                    width: "22px",
+                    height: "22px",
+                    borderRadius: "50%",
+                    border: dotBorder(step, i),
+                    background: dotBg(step, i),
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.3s",
+                  }}
                 >
-                  <div
-                    style={{
-                      width: "22px",
-                      height: "22px",
-                      borderRadius: "50%",
-                      border: done || active ? "1.5px solid #C8A96A" : "1.5px solid rgba(200,169,106,0.25)",
-                      background: active ? "#1C1916" : done ? "#C8A96A" : "#F5F0E8",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transition: "all 0.3s",
-                    }}
-                  >
-                    {done && (
-                      <div
-                        style={{
-                          width: "8px",
-                          height: "8px",
-                          borderRight: "1.5px solid #F5F0E8",
-                          borderBottom: "1.5px solid #F5F0E8",
-                          transform: "rotate(45deg) translate(-1px,-1px)",
-                        }}
-                      />
-                    )}
-                  </div>
-                  <span
-                    style={{
-                      fontFamily: "sans-serif",
-                      fontSize: "0.55rem",
-                      letterSpacing: "0.18em",
-                      textTransform: "uppercase",
-                      color: done || active ? "#9A7D4A" : "rgba(158,142,122,0.4)",
-                      textAlign: "center",
-                    }}
-                  >
-                    {step}
-                  </span>
+                  {dotInner(step, i)}
                 </div>
-              );
-            })}
+
+                <span
+                  style={{
+                    fontFamily: "sans-serif",
+                    fontSize: "0.55rem",
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: labelColor(step, i),
+                    textAlign: "center",
+                  }}
+                >
+                  {stepLabels[step] ?? step}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 

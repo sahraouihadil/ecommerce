@@ -156,7 +156,7 @@ def patch_delivery(
         # update order status
         order.status = normalized
 
-        # 🔥 update all items status (except canceled ones if you want)
+        # update all items status (except canceled ones if you want)
         for item in order.items:
             if item.status != "canceled":  # optional rule
                 item.status = normalized

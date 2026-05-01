@@ -42,9 +42,8 @@ from email_utils import send_email
 from user_crud import get_current_user, create_user_by_admin
 from security.settings import validate_password, hash_password, admin_required, verify_token
 
-# ── Router imports (each router handles a group of related endpoints) ──
-from route import user_router                     # Auth: /register, /login, /admin-dash, etc.
-from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries,deliveryman,reviews  # Feature routers
+# ── Router imports (each router handles a group of related endpoints)
+from routers import chat, cart, orders, favorites,campaign, promotion, newsletter, blog,complaints,product,profile,deliveries,deliveryman,reviews,users  # Feature routers
 
 import shutil
 import os
@@ -91,7 +90,7 @@ models.Base.metadata.create_all(bind=database.engine)
 # ── Register Routers ──
 # Each router handles a group of related API endpoints.
 # Think of routers like chapters in a book — each one covers a topic.
-app.include_router(user_router)                   # Auth & role verification endpoints
+app.include_router(users.router)                   # Auth & role verification endpoints
 app.include_router(chat.router, prefix="/api")    # AI chatbot: /api/chat
 app.include_router(cart.router)                   # Shopping cart: /api/cart
 app.include_router(orders.router)                 # Orders: /api/orders
