@@ -36,7 +36,8 @@ from security.roles import (
     accountant_required, marketing_manager_required,
     stock_manager_required, deliveryman_required,
 )
-
+import random
+from email_utils import send_email
 # Load .env variables (for ACCESS_TOKEN_EXPIRE_MINUTES)
 load_dotenv()
 
@@ -50,66 +51,62 @@ router = APIRouter()
 
 @router.post("/register")
 def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
-    """
-    Creates a new customer account.
 
-    Called by: SignupPage.jsx → POST /register
-
-    Logic:
-      1. Check if username or email already exists
-      2. If user exists but isn't verified → redirect to verification page
-      3. If user is new → validate password → create account → return JWT token
-
-    Returns either:
-      - {action: "verify", ...} if user needs to verify email first
-      - {access_token: "...", token_type: "bearer"} on successful registration
-    """
-    # Check if username or email is already taken
+    # ── Check if username/email exists ─────────────────────────────
     db_user_by_username = get_user_by_username(db, username=user.username)
     db_user_by_email = get_user_by_email(db, email=user.email)
-    
-    print("INPUT:", user.username)
-    print("DB USER:", db_user_by_username)
 
-    # Case 1: User exists but hasn't verified their email yet
+    # ✔ إذا user موجود ومازال ما verified → نعاودو نبعثولو code
     if db_user_by_username and not db_user_by_username.is_verified:
+        verification_code = random.randint(100000, 999999)
+        db_user_by_username.verification_code = str(verification_code)
+        db.commit()
+
+        send_email(user.email, f"Your verification code is: {verification_code}")
+
         return {
             "action": "verify",
-            "message": "Please verify your email first",
+            "message": "Verification code sent again",
             "redirect_url": "/verify-code",
             "user_name": user.username,
             "email": user.email
         }
-    
 
-    # Case 2: Username already taken (and verified)
+    # ❌ username already exists
     if db_user_by_username:
         raise HTTPException(status_code=400, detail="Username already exists")
 
-    # Case 3: Email already taken
+    # ❌ email already exists
     if db_user_by_email:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    # Case 4: New user — validate password strength
+    # ── Validate password ─────────────────────────────
     if not user.password:
         raise HTTPException(status_code=400, detail="Password required")
+
     validate_password(user.password)
 
-    # Create the user in the database (password gets hashed inside create_user)
+    # ── Create user ─────────────────────────────
     new_user = create_user(db=db, create_user_request=user)
 
-    # Generate a JWT access token so the user is logged in immediately
-    token_expiry = timedelta(minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")))
-    access_token = create_access_token(
-        new_user.username, new_user.id, token_expiry, new_user.role
-    )
+    # 🔥 Generate verification code
+    verification_code = random.randint(100000, 999999)
+    new_user.verification_code = str(verification_code)
+    new_user.is_verified = False
 
+    db.commit()
+
+    # 📧 Send email
+    send_email(user.email, f"Your verification code is: {verification_code}")
+
+    # 🚫 ما نعطيوش token هنا
     return {
-        "access_token": access_token,
-        "token_type": "bearer"
+        "action": "verify",
+        "message": "Account created. Please verify your email.",
+        "redirect_url": "/verify-code",
+        "user_name": user.username,
+        "email": user.email
     }
-
-
 # ======================================================================
 # LOGIN
 # ======================================================================
