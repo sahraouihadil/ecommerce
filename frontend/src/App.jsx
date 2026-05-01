@@ -42,9 +42,11 @@ import CampaignsPage from './dashboards/marketingmanager/CampaignsPage'
 import NewslettersPage from './dashboards/marketingmanager/NewslettersPage'
 import PromotionsPage from './dashboards/marketingmanager/PromotionsPage'
 
-import { DeliverymanDashboard } from './dashboards/deliveryman/DeliverymanDashboard'
-
 import { isAuthenticated } from './services/auth'
+import TodayOrdersPage from './dashboards/deliveryman/TodayOrdersPage'
+import SchedulePage from './dashboards/deliveryman/SchedulePage'
+import DlvProfilePage from './dashboards/deliveryman/DlvProfilePage'
+import DlvHistoryPage from './dashboards/deliveryman/DlvHistoryPage'
 
 // ===================== AUTH =====================
 
@@ -178,8 +180,10 @@ function App() {
 
           {/* ===== DELIVERY ===== */}
           <Route path='/deliveryman-dash' element={<RoleProtectedRoute role="deliveryman" />}>
-            <Route index element={<DeliverymanDashboard />} />
-            <Route path='profile' element={<AProfilePage />} />
+            <Route index element={<TodayOrdersPage />} />
+            <Route path='schedule' element={<SchedulePage />} />
+            <Route path='history' element={<DlvHistoryPage />} />
+            <Route path='profile' element={<DlvProfilePage />} />
           </Route>
 
         </Route>

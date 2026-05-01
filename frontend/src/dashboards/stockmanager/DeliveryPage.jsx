@@ -12,9 +12,8 @@ import Sidebar from "../ui/Sidebar";
 import api from "../../services/api";
 
 const ALLOWED_WILAYAS = [
-  "Constantine","Mila","Guelma","Oum Bouaghi","Skikda","Batna",
-  "Sétif","Jijel","Annaba","Bordj Bou Arréridj",
-  "Khenchela","Souk Ahras","Béjaïa","Tébessa",
+  "Constantine", "Mila", "Guelma", "Oum El Bouaghi", "Skikda", "Batna", "Sétif",
+  "Jijel", "Annaba", "Bordj Bou Arréridj", "Khenchela", "Souk Ahras", "Béjaïa", "Tébessa",
 ];
 function isAllowedWilaya(wilaya = "") {
   return ALLOWED_WILAYAS.some(w => w.toLowerCase() === wilaya.toLowerCase().trim());

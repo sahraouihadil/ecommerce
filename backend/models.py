@@ -45,6 +45,9 @@ class Users(Base):
     created_at        = Column(DateTime, default=datetime.utcnow)
     avatar_url        = Column(String, nullable=True)
 
+    vehicle           = Column(String, nullable=True)
+    credit            = Column(String, nullable=True)
+
     orders     = relationship("Orders", foreign_keys="Orders.user_id")
     deliveries = relationship("Orders", foreign_keys="Orders.deliveryman_id")
 
@@ -119,6 +122,11 @@ class Orders(Base):
     city           = Column(String)
     street_address = Column(String)
     notes          = Column(String, nullable=True)
+    rating         = Column(String)
+
+    problem = Column(String)
+    problem_notes  = Column(String)
+    problem_reason = Column(String)
 
     payment_method = Column(String)                     # cod / cib / pickup
 
@@ -248,3 +256,13 @@ class Blogs(Base):
     status       = Column(String, default="draft")
     published_at = Column(DateTime)
     created_at   = Column(DateTime, default=datetime.utcnow)
+
+class Notifications(Base):
+    __tablename__ = "notifications"
+ 
+    id         = Column(Integer, primary_key=True, index=True)
+    role       = Column(String, index=True, nullable=False)
+    order_id   = Column(Integer, ForeignKey("orders.id"), nullable=True, index=True)
+    message    = Column(String, nullable=False)
+    is_read    = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

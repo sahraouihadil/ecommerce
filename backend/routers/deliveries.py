@@ -144,6 +144,62 @@ def patch_delivery(
 
     # ── Status update ─────────────────────────────────────────────────────────
     if body.status is not None:
+        allowed_statuses = {"pending", "processing", "shipped", "delivered", "canceled","problem"}
+        normalized = body.status.lower()
+
+        if normalized not in allowed_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status '{body.status}'. Allowed: {allowed_statuses}",
+            )
+
+        # update order status
+        order.status = normalized
+
+        # 🔥 update all items status (except canceled ones if you want)
+        for item in order.items:
+            if item.status != "canceled":  # optional rule
+                item.status = normalized
+
+    # ── Delivery date update ──────────────────────────────────────────────────
+    raw = body.model_dump(exclude_unset=True)
+    if "deliverydate" in raw:
+        order.deliverydate = raw["deliverydate"]
+
+    # ── Persist ───────────────────────────────────────────────────────────────
+    db.commit()
+    db.refresh(order)
+
+    return {
+        "message": "Order + items updated successfully",
+        "order_id": order_id
+    }
+    order = db.query(models.Orders).filter(models.Orders.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # ── Deliveryman assignment ────────────────────────────────────────────────
+    if body.deliveryman is not None:
+        if body.deliveryman == "":
+            order.deliveryman_id = None
+        else:
+            dm_user = (
+                db.query(models.Users)
+                .filter(
+                    models.Users.username == body.deliveryman,
+                    models.Users.role == "deliveryman",
+                )
+                .first()
+            )
+            if not dm_user:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Deliveryman '{body.deliveryman}' not found",
+                )
+            order.deliveryman_id = dm_user.id
+
+    # ── Status update ─────────────────────────────────────────────────────────
+    if body.status is not None:
         allowed_statuses = {"pending", "processing", "shipped", "delivered", "canceled"}
         normalized = body.status.lower()
         if normalized not in allowed_statuses:
