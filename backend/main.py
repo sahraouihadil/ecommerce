@@ -125,6 +125,22 @@ async def home_page(db: db_dependency):
     return {"message": "ARoom API is running"}
 
 
+# Add this endpoint to your existing route.py
+# It is called by AuthProvider on every route change to validate the token.
+
+@app.get("/me")
+async def get_me(payload: dict = Depends(verify_token)):
+    """
+    Called by the frontend AuthProvider to validate the current token.
+    Returns the user's basic info so the frontend can sync the role.
+    
+    - If token is valid   → 200 + { sub, role }
+    - If token is expired → verify_token raises 401 automatically
+    """
+    return {
+        "sub": payload.get("sub"),
+        "role": payload.get("role"),
+    }
 # ======================================================================
 # USER MANAGEMENT (Admin only)
 # ======================================================================

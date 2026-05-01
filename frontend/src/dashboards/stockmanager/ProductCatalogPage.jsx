@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Boxes, Truck, RotateCcw, Search, Plus, Pencil,
   Trash2, X, Package, Tag, Palette, DollarSign, Layers, Hash,
@@ -195,7 +194,6 @@ const BLANK_PRODUCT = {
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export function ProductCatalogPage() {
-  const navigate = useNavigate();
 
   const [products,  setProducts]  = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -224,17 +222,6 @@ export function ProductCatalogPage() {
   });
 
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
-
-  // ── auth ───────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const verify = async () => {
-      if (!localStorage.getItem("token")) { navigate("/login"); return; }
-      try { await api.get("/stock-manager-dash"); }
-      catch { localStorage.removeItem("token"); navigate("/"); }
-    };
-    verify();
-  }, [navigate]);
-
   // ── fetch ──────────────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     setLoading(true);

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from "react-router-dom";
 import {
   Eye, Pencil, Trash2, Plus, Layers, LayoutDashboard, Bot,
   Boxes, Truck, RotateCcw, X, Search, CheckCircle2, Loader2,
@@ -610,6 +611,8 @@ function AddARModal({ onClose, onSaved }) {
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ARPage() {
+    const navigate = useNavigate();
+
   const [items,       setItems]       = useState([])
   const [loading,     setLoading]     = useState(true)
   const [openBar,     setOpenBar]     = useState(window.innerWidth >= 600)

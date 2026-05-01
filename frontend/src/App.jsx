@@ -1,7 +1,9 @@
+// App.jsx
 import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import { BrowserRouter, Route, Routes, Navigate, useLocation, Outlet } from 'react-router-dom'
 import ChatWidget from './components/ChatWidget/ChatWidget'
+import AuthProvider from './components/AuthProvider'
 
 import { HomePage } from './pages/HomePage'
 import { ProductPage } from './pages/ProductPage'
@@ -42,54 +44,63 @@ import CampaignsPage from './dashboards/marketingmanager/CampaignsPage'
 import NewslettersPage from './dashboards/marketingmanager/NewslettersPage'
 import PromotionsPage from './dashboards/marketingmanager/PromotionsPage'
 
-import { isAuthenticated } from './services/auth'
 import TodayOrdersPage from './dashboards/deliveryman/TodayOrdersPage'
 import SchedulePage from './dashboards/deliveryman/SchedulePage'
 import DlvProfilePage from './dashboards/deliveryman/DlvProfilePage'
 import DlvHistoryPage from './dashboards/deliveryman/DlvHistoryPage'
 
-// ===================== AUTH =====================
+// ===================== AUTH GUARDS =====================
 
+/**
+ * ProtectedRoute — requires any valid logged-in user.
+ * AuthProvider already removed the token if expired, so we
+ * just check localStorage here as a fast synchronous gate.
+ */
 const ProtectedRoute = ({ children }) => {
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />
+  const token = localStorage.getItem("token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
   }
-  return children
-}
+  return children;
+};
 
+/**
+ * RoleProtectedRoute — requires a specific role.
+ * Wrong role → redirect to home, not login.
+ */
 const RoleProtectedRoute = ({ role }) => {
-  const token = localStorage.getItem("token")
-  const userRole = localStorage.getItem("role")
+  const token = localStorage.getItem("token");
+  const userRole = localStorage.getItem("role");
 
-  if (!token) return <Navigate to="/login" replace />
-  if (role && userRole !== role) return <Navigate to="/" replace />
+  if (!token) return <Navigate to="/login" replace />;
+  if (role && userRole !== role) return <Navigate to="/" replace />;
 
-  return <Outlet />
-}
+  return <Outlet />;
+};
 
 // ===================== LAYOUT =====================
 
 function CustomerChat() {
-  const location = useLocation()
+  const location = useLocation();
   const hiddenPaths = [
     '/admin-dash',
     '/accountant-dash',
     '/marketing-manager-dash',
     '/stock-manager-dash',
-    '/deliveryman-dash'
-  ]
+    '/deliveryman-dash',
+  ];
 
-  const shouldHide = hiddenPaths.some(path =>
+  const shouldHide = hiddenPaths.some((path) =>
     location.pathname.startsWith(path)
-  )
+  );
 
-  if (shouldHide) return null
-  return <ChatWidget />
+  if (shouldHide) return null;
+  return <ChatWidget />;
 }
 
 function CustomerLayout() {
-  const location = useLocation()
-  const isDash = location.pathname.includes('-dash')
+  const location = useLocation();
+  const isDash = location.pathname.includes('-dash');
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -100,7 +111,7 @@ function CustomerLayout() {
       {!isDash && <Footer />}
       <CustomerChat />
     </div>
-  )
+  );
 }
 
 // ===================== APP =====================
@@ -108,88 +119,80 @@ function CustomerLayout() {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<CustomerLayout />}>
+      {/*
+        AuthProvider is INSIDE BrowserRouter so it can use
+        useNavigate() and useLocation() — this is required.
+      */}
+      <AuthProvider>
+        <Routes>
+          <Route element={<CustomerLayout />}>
 
-          {/* ===== PUBLIC ROUTES ===== */}
-          <Route index element={<HomePage />} />
-          <Route path='/furniture' element={<FurniturePage />} />
-          <Route path='/journal' element={<JournalPage />} />
-          <Route path='/product/:productId' element={<ProductPage />} />
-          <Route path='/contactus' element={<ContactusPage />} />
-          <Route path='/aboutus' element={<AboutusPage />} />
-          <Route path='/login' element={<LoginPage />} />
-          <Route path='/register' element={<SignupPage />} />
-          <Route path='/verify-code' element={<VerifyCode />} />
-          <Route path='/set-password' element={<SetPassword />} />
+            {/* ===== PUBLIC ROUTES ===== */}
+            <Route index element={<HomePage />} />
+            <Route path='/furniture' element={<FurniturePage />} />
+            <Route path='/journal' element={<JournalPage />} />
+            <Route path='/product/:productId' element={<ProductPage />} />
+            <Route path='/contactus' element={<ContactusPage />} />
+            <Route path='/aboutus' element={<AboutusPage />} />
+            <Route path='/login' element={<LoginPage />} />
+            <Route path='/register' element={<SignupPage />} />
+            <Route path='/verify-code' element={<VerifyCode />} />
+            <Route path='/set-password' element={<SetPassword />} />
 
-          {/* ===== PROTECTED USER ROUTES ===== */}
-          <Route path='/cart' element={
-            <ProtectedRoute><CartPage /></ProtectedRoute>
-          } />
-          <Route path='/checkout' element={
-            <ProtectedRoute><CheckoutPage /></ProtectedRoute>
-          } />
-          <Route path='/profile' element={
-            <ProtectedRoute><ProfilePage /></ProtectedRoute>
-          } />
-          <Route path='/profile/history' element={
-            <ProtectedRoute><HistoryPage /></ProtectedRoute>
-          } />
-          <Route path='/favorite' element={
-            <ProtectedRoute><FavoritePage /></ProtectedRoute>
-          } />
-          <Route path='/order' element={
-            <ProtectedRoute><OrderPage /></ProtectedRoute>
-          } />
-          <Route path='/order/tracking/:orderId/:productId' element={
-            <ProtectedRoute><TrackingPage /></ProtectedRoute>
-          } />
+            {/* ===== PROTECTED USER ROUTES ===== */}
+            <Route path='/cart' element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+            <Route path='/checkout' element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            <Route path='/profile' element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path='/profile/history' element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+            <Route path='/favorite' element={<ProtectedRoute><FavoritePage /></ProtectedRoute>} />
+            <Route path='/order' element={<ProtectedRoute><OrderPage /></ProtectedRoute>} />
+            <Route path='/order/tracking/:orderId/:productId' element={<ProtectedRoute><TrackingPage /></ProtectedRoute>} />
 
-          {/* ===== ADMIN ===== */}
-          <Route path='/admin-dash' element={<RoleProtectedRoute role="admin" />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path='accounts' element={<AccountsPage />} />
-            <Route path='complaints' element={<ComplaintsPage />} />
-            <Route path='configuration' element={<ConfigurationPage />} />
-            <Route path='engagement' element={<EngagementPage />} />
-            <Route path='reports' element={<ReportPage />} />
-            <Route path='validation' element={<ValidationPage />} />
-            <Route path='profile' element={<AProfilePage />} />
+            {/* ===== ADMIN ===== */}
+            <Route path='/admin-dash' element={<RoleProtectedRoute role="admin" />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path='accounts' element={<AccountsPage />} />
+              <Route path='complaints' element={<ComplaintsPage />} />
+              <Route path='configuration' element={<ConfigurationPage />} />
+              <Route path='engagement' element={<EngagementPage />} />
+              <Route path='reports' element={<ReportPage />} />
+              <Route path='validation' element={<ValidationPage />} />
+              <Route path='profile' element={<AProfilePage />} />
+            </Route>
+
+            {/* ===== MARKETING ===== */}
+            <Route path='/marketing-manager-dash' element={<RoleProtectedRoute role="marketing_manager" />}>
+              <Route index element={<MarketingMngrDashboard />} />
+              <Route path='blogs' element={<BlogsPage />} />
+              <Route path='campaigns' element={<CampaignsPage />} />
+              <Route path='newsletters' element={<NewslettersPage />} />
+              <Route path='promotions' element={<PromotionsPage />} />
+              <Route path='profile' element={<AProfilePage />} />
+            </Route>
+
+            {/* ===== STOCK ===== */}
+            <Route path='/stock-manager-dash' element={<RoleProtectedRoute role="stock_manager" />}>
+              <Route index element={<OverviewPage />} />
+              <Route path='deliveries' element={<DeliveryPage />} />
+              <Route path='returns' element={<ReturnsPage />} />
+              <Route path='inventories' element={<ProductCatalogPage />} />
+              <Route path='ar' element={<ARPage />} />
+              <Route path='profile' element={<AProfilePage />} />
+            </Route>
+
+            {/* ===== DELIVERY ===== */}
+            <Route path='/deliveryman-dash' element={<RoleProtectedRoute role="deliveryman" />}>
+              <Route index element={<TodayOrdersPage />} />
+              <Route path='schedule' element={<SchedulePage />} />
+              <Route path='history' element={<DlvHistoryPage />} />
+              <Route path='profile' element={<DlvProfilePage />} />
+            </Route>
+
           </Route>
-
-          {/* ===== MARKETING ===== */}
-          <Route path='/marketing-manager-dash' element={<RoleProtectedRoute role="marketing_manager" />}>
-            <Route index element={<MarketingMngrDashboard />} />
-            <Route path='blogs' element={<BlogsPage />} />
-            <Route path='campaigns' element={<CampaignsPage />} />
-            <Route path='newsletters' element={<NewslettersPage />} />
-            <Route path='promotions' element={<PromotionsPage />} />
-            <Route path='profile' element={<AProfilePage />} />
-          </Route>
-
-          {/* ===== STOCK ===== */}
-          <Route path='/stock-manager-dash' element={<RoleProtectedRoute role="stock_manager" />}>
-            <Route index element={<OverviewPage />} />
-            <Route path='deliveries' element={<DeliveryPage />} />
-            <Route path='returns' element={<ReturnsPage />} />
-            <Route path='inventories' element={<ProductCatalogPage />} />
-            <Route path='ar' element={<ARPage />} />
-            <Route path='profile' element={<AProfilePage />} />
-          </Route>
-
-          {/* ===== DELIVERY ===== */}
-          <Route path='/deliveryman-dash' element={<RoleProtectedRoute role="deliveryman" />}>
-            <Route index element={<TodayOrdersPage />} />
-            <Route path='schedule' element={<SchedulePage />} />
-            <Route path='history' element={<DlvHistoryPage />} />
-            <Route path='profile' element={<DlvProfilePage />} />
-          </Route>
-
-        </Route>
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

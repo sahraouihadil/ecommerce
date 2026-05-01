@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   LayoutDashboard, Boxes, Truck, RotateCcw, Search, X, MapPin, Calendar,
   Clock, CheckCircle2, Loader2, ChevronDown, ChevronUp, Users, Eye,
@@ -234,7 +235,7 @@ function DeliveryDateCell({ orderId, deliverydate, status, onSave, saving }) {
 }
 
 // ─── STATUS DROPDOWN — portal-based to escape overflow clipping ───────────────
-import { createPortal } from "react-dom";
+
 
 function StatusDropdown({ orderId, currentStatus, onUpdate, updatingId }) {
   const [open, setOpen]       = useState(false);
@@ -751,15 +752,6 @@ export function DeliveryPage() {
   const [updatingDateId,      setUpdatingDateId]      = useState(null);
   const [message,             setMessage]             = useState("");
   const [messageType,         setMessageType]         = useState("");
-
-  useEffect(() => {
-    const verify = async () => {
-      if (!localStorage.getItem("token")) { navigate("/login"); return; }
-      try { await api.get("/stock-manager-dash"); }
-      catch { localStorage.removeItem("token"); navigate("/"); }
-    };
-    verify();
-  }, [navigate]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);

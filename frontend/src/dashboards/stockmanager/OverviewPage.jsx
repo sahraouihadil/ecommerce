@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Line, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -51,7 +50,6 @@ const Stat = ({ title, value, change, color, icon }) => (
 );
 
 export function OverviewPage() {
-  const navigate = useNavigate();
 
   const [inventory, setInventory] = useState([]);
   const [orders,setOrders]= useState([]);
@@ -59,27 +57,6 @@ export function OverviewPage() {
   const [categoryData, setCategoryData] = useState({ labels: [], datasets: [] });
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
   const [categoryList, setCategoryList] = useState([]);
-
-
-  // AUTH
-  useEffect(() => {
-    const verify = async () => {
-      if (!localStorage.getItem("token")) {
-        navigate("/login", { replace: true });
-        return;
-      }
-      try {
-        await api.get("/stock-manager-dash");
-      } catch {
-        localStorage.removeItem("token");
-        navigate("/");
-      }
-    };
-
-    verify();
-    const id = setInterval(verify, 10000);
-    return () => clearInterval(id);
-  }, [navigate]);
 
   // FETCH DATA
   useEffect(() => {

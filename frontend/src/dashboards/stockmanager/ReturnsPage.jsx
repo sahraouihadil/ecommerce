@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { RotateCcw, LayoutDashboard, Boxes, Truck, Bot, DollarSign } from "lucide-react";
 
 import Header from "../ui/Header";
@@ -101,28 +100,8 @@ const Avatar = ({ name }) => {
 };
 
 export function ReturnsPage() {
-  const navigate = useNavigate();
   const [returns, setReturns] = useState([]);
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
-
-  // AUTH
-  useEffect(() => {
-    const verify = async () => {
-      if (!localStorage.getItem("token")) {
-        navigate("/login", { replace: true });
-        return;
-      }
-      try {
-        await api.get("/stock-manager-dash");
-      } catch {
-        localStorage.removeItem("token");
-        navigate("/");
-      }
-    };
-    verify();
-    const id = setInterval(verify, 10000);
-    return () => clearInterval(id);
-  }, [navigate]);
 
   // FETCH
   useEffect(() => {
