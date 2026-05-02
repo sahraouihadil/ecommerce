@@ -40,6 +40,7 @@ const socials = [
   },
 ];
 
+// ── Social Icon ──────────────────────────────────────────────────────────────
 function SocialIcon({ name, href, gradient, d }) {
   const [hovered, setHovered] = useState(false);
 
@@ -55,7 +56,9 @@ function SocialIcon({ name, href, gradient, d }) {
       style={{
         background: hovered ? gradient : "rgba(255,255,255,0.5)",
         color: hovered ? "#fff" : "#7a6e65",
-        transform: hovered ? "translateY(-5px) scale(1.1)" : "translateY(0) scale(1)",
+        transform: hovered
+          ? "translateY(-5px) scale(1.1)"
+          : "translateY(0) scale(1)",
         boxShadow: hovered ? "0 16px 32px rgba(0,0,0,0.12)" : "none",
         transition: "all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
         display: "flex",
@@ -81,77 +84,174 @@ function SocialIcon({ name, href, gradient, d }) {
   );
 }
 
+// ── Trust Badges ─────────────────────────────────────────────────────────────
+const badges = [
+  {
+    label: "AR Preview",
+    sub: "See it in your room",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    ),
+  },
+  {
+    label: "Free Returns",
+    sub: "30-day hassle-free",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+      </svg>
+    ),
+  },
+  {
+    label: "Secure Payment",
+    sub: "SSL encrypted checkout",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    ),
+  },
+  {
+    label: "AI Stylist",
+    sub: "Roomie helps you decide",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+        <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5V11h1a7 7 0 0 1 7 7H2a7 7 0 0 1 7-7h1V9.5A4 4 0 0 1 8 6a4 4 0 0 1 4-4z" />
+      </svg>
+    ),
+  },
+];
+
+function TrustBadge({ icon, label, sub }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "12px 18px",
+        borderRadius: "14px",
+        border: "1px solid rgba(200,185,170,0.3)",
+        background: "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(4px)",
+        flex: "1 1 180px",
+        minWidth: 0,
+      }}
+    >
+      <span style={{ color: "#b89a7e", flexShrink: 0 }}>{icon}</span>
+      <div>
+        <p style={{ fontSize: "0.78rem", fontWeight: 500, color: "#3a3330", letterSpacing: "0.01em", lineHeight: 1.2 }}>
+          {label}
+        </p>
+        <p style={{ fontSize: "0.68rem", color: "#9E8E7A", marginTop: "2px", lineHeight: 1.3 }}>
+          {sub}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
 export function Footer() {
   return (
-    <footer className="bg-cream pt-20 pb-10">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-10 mb-16">
-          <div>
-            <Link
-              to="/"
-              style={{ fontFamily: "'Cinzel Decorative', cursive" }}
-              className="text-2xl font-bold text-primary hover:text-accent2 transition-colors duration-300 select-none"
-            >
-              ARoom
-            </Link>
-            <p
-              style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontStyle: "italic",
-                fontWeight: 300,
-                fontSize: "1rem",
-                lineHeight: 1.85,
-                color: "#9E8E7A",
-                marginTop: "0.75rem",
-                maxWidth: "18rem",
-              }}
-            >
-              AR-powered furniture shopping. Preview any piece in your real room before you buy, with AI styling help from Roomie.
-            </p>
-          </div>
-
-          <nav className="flex flex-wrap gap-x-10 gap-y-3">
-            {[
-              { label: "Shop", to: "/furniture" },
-              { label: "Journal", to: "/journal" },
-              { label: "How It Works", to: "/aboutus" },
-              { label: "Contact", to: "/contactus" },
-            ].map((link) => (
+    <>
+      <footer className="bg-cream pt-20 pb-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          {/* — Top row: brand + nav — */}
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-10 mb-16">
+            <div>
               <Link
-                key={link.label}
-                to={link.to}
-                className="text-muted text-sm hover:text-charcoal transition-colors duration-300"
+                to="/"
+                style={{ fontFamily: "'Cinzel Decorative', cursive" }}
+                className="text-2xl font-bold text-primary hover:text-accent2 transition-colors duration-300 select-none"
               >
-                {link.label}
+                ARoom
               </Link>
-            ))}
-          </nav>
-        </div>
+              <p
+                style={{
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontStyle: "italic",
+                  fontWeight: 300,
+                  fontSize: "1rem",
+                  lineHeight: 1.85,
+                  color: "#9E8E7A",
+                  marginTop: "0.75rem",
+                  maxWidth: "18rem",
+                }}
+              >
+                AR-powered furniture shopping. Preview any piece in your real
+                room before you buy, with AI styling help from Roomie.
+              </p>
+            </div>
 
-        {/* ── Follow Us ── */}
-        <div className="mb-14">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-muted/70 mb-5">
-            Follow us
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {socials.map((social) => (
-              <SocialIcon key={social.name} {...social} />
-            ))}
+            <nav className="flex flex-wrap gap-x-10 gap-y-3">
+              {[
+                { label: "Shop", to: "/furniture" },
+                { label: "Journal", to: "/journal" },
+                { label: "How It Works", to: "/aboutus" },
+                { label: "Contact", to: "/contactus" },
+              ].map((link) => (
+                <Link
+                  key={link.label}
+                  to={link.to}
+                  className="text-muted text-sm hover:text-charcoal transition-colors duration-300"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          {/* — Trust Badges — */}
+          <div className="mb-14">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+              {badges.map((b) => (
+                <TrustBadge key={b.label} {...b} />
+              ))}
+            </div>
+          </div>
+
+          {/* — Follow Us — */}
+          <div className="mb-14">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-muted/70 mb-5">
+              Follow us
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {socials.map((social) => (
+                <SocialIcon key={social.name} {...social} />
+              ))}
+            </div>
+          </div>
+
+          {/* — Divider — */}
+          <div className="h-px bg-blush mb-8" />
+
+          {/* — Bottom row — */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+            <p className="text-muted text-xs">
+              &copy; {new Date().getFullYear()} ARoom. All rights reserved.
+            </p>
+            <div className="flex items-center gap-6">
+              <a
+                href="#"
+                className="text-muted text-xs hover:text-charcoal transition-colors duration-300"
+              >
+                Privacy
+              </a>
+              <a
+                href="#"
+                className="text-muted text-xs hover:text-charcoal transition-colors duration-300"
+              >
+                Terms
+              </a>
+            </div>
           </div>
         </div>
-
-        <div className="h-px bg-blush mb-8" />
-
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-          <p className="text-muted text-xs">
-            &copy; {new Date().getFullYear()} ARoom. All rights reserved.
-          </p>
-          <div className="flex items-center gap-6">
-            <a href="#" className="text-muted text-xs hover:text-charcoal transition-colors duration-300">Privacy</a>
-            <a href="#" className="text-muted text-xs hover:text-charcoal transition-colors duration-300">Terms</a>
-          </div>
-        </div>
-      </div>
-    </footer>
+      </footer>
+    </>
   );
 }
