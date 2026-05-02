@@ -23,7 +23,8 @@ import { HistoryPage } from './pages/HistoryPage'
 import { VerifyCode } from './pages/VerifyCode'
 import { SetPassword } from './pages/SetPassword'
 import SearchPage from './pages/SearchPage'
-
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfService from './pages/TermsOfService'
 import { AdminDashboard } from './dashboards/admin/AdminDashboard'
 import AccountsPage from './dashboards/admin/AccountsPage'
 import ConfigurationPage from './dashboards/admin/ConfigurationPage'
@@ -127,6 +128,8 @@ function App() {
             <Route path='/register' element={<SignupPage />} />
             <Route path='/verify-code' element={<VerifyCode />} />
             <Route path='/set-password' element={<SetPassword />} />
+            <Route path='/privacy' element={<PrivacyPolicy />} />
+            <Route path='/terms' element={<TermsOfService />} />
 
             {/* ===== PROTECTED USER ROUTES ===== */}
             <Route path='/cart' element={<ProtectedRoute><CartPage /></ProtectedRoute>} />

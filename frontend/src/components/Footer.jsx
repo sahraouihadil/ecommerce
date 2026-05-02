@@ -236,18 +236,18 @@ export function Footer() {
               &copy; {new Date().getFullYear()} ARoom. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <a
-                href="#"
+              <Link
+                to="/privacy"
                 className="text-muted text-xs hover:text-charcoal transition-colors duration-300"
               >
-                Privacy
-              </a>
-              <a
-                href="#"
+                Privacy Policy
+              </Link>
+              <Link
+                to="/terms"
                 className="text-muted text-xs hover:text-charcoal transition-colors duration-300"
               >
-                Terms
-              </a>
+                Terms of Service
+              </Link>
             </div>
           </div>
         </div>
