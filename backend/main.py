@@ -49,7 +49,7 @@ from security.settings import validate_password, hash_password, admin_required, 
 from routers import (
     chat, cart, orders, favorites,
     campaign, promotion, newsletter, blog,
-    complaints, product, profile, deliveries,
+    complaints, product, profile,stafProfile, deliveries,
     deliveryman, reviews, users,
 )
 from routers.users import router as user_router
@@ -99,6 +99,7 @@ app.include_router(favorites.router)
 app.include_router(complaints.router)
 app.include_router(product.router)
 app.include_router(profile.router)
+app.include_router(stafProfile.router)
 app.include_router(deliveries.router)
 app.include_router(deliveryman.router)
 app.include_router(campaign.router)
