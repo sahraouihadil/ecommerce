@@ -1,77 +1,101 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from typing import Optional, List
+from pydantic import BaseModel, field_validator, EmailStr
 from models import Newsletters
-from schema import NewsletterCreate, NewsletterUpdate
 from database import get_db
+from schema import NewsletterCreate,NewsletterUpdate
 
-router = APIRouter(prefix="/newsletters", tags=["Newsletters"])
+router = APIRouter(prefix="/api/newsletters", tags=["Newsletters"])
 
+# ======================================================================
+# SERIALIZER
+# ======================================================================
+
+def newsletter_dict(n: Newsletters) -> dict:
+    return {
+        "id":         n.id,
+        "name":       n.name,
+        "email":      n.email,
+        "status":     n.status,
+        # Always return tags as a plain string so the frontend .split(',') works
+        "tags":       n.tags or "",
+        "created_at": n.created_at.isoformat() if n.created_at else None,
+    }
+
+
+# ======================================================================
+# ROUTES
+# ======================================================================
 
 @router.get("/")
 def list_newsletters(db: Session = Depends(get_db)):
-    newsletters = db.query(Newsletters).all()
-    return [
-        {
-            "id": n.id,
-            "name": n.name,
-            "email": n.email,
-            "status": n.status,
-            "tags": n.tags,
-            "created_at": n.created_at,
-        }
-        for n in newsletters
-    ]
+    """Returns all subscribers ordered newest first."""
+    rows = db.query(Newsletters).order_by(Newsletters.created_at.desc()).all()
+    return [newsletter_dict(n) for n in rows]
 
 
-@router.post("/")
-def create_newsletter(body: NewsletterCreate, db: Session = Depends(get_db)):  # ← Pydantic in
-    data = body.model_dump()
-    data["tags"] = ",".join(data.get("tags", []))           # ← tags is stored as a string in the DB
-    newsletter = Newsletters(**data)
-    db.add(newsletter)
+@router.get("/{newsletter_id}")
+def get_newsletter(newsletter_id: int, db: Session = Depends(get_db)):
+    n = db.query(Newsletters).filter(Newsletters.id == newsletter_id).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+    return newsletter_dict(n)
+
+
+@router.post("/", status_code=201)
+def create_newsletter(body: NewsletterCreate, db: Session = Depends(get_db)):
+    # Prevent duplicate emails
+    existing = db.query(Newsletters).filter(Newsletters.email == body.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Email '{body.email}' is already subscribed.")
+
+    n = Newsletters(
+        name   = body.name.strip(),
+        email  = body.email,
+        status = body.status,
+        tags   = ",".join(body.tags),   # stored as comma-separated string in DB
+    )
+    db.add(n)
     db.commit()
-    db.refresh(newsletter)
-    return {
-        "id": newsletter.id,
-        "name": newsletter.name,
-        "email": newsletter.email,
-        "status": newsletter.status,
-        "tags": newsletter.tags,
-        "created_at": newsletter.created_at,
-    }
+    db.refresh(n)
+    return newsletter_dict(n)
 
 
 @router.put("/{newsletter_id}")
 def update_newsletter(newsletter_id: int, data: NewsletterUpdate, db: Session = Depends(get_db)):
-    newsletter = db.query(Newsletters).filter(Newsletters.id == newsletter_id).first()
-    if not newsletter:
-        raise HTTPException(404, "Newsletter not found")
+    n = db.query(Newsletters).filter(Newsletters.id == newsletter_id).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
 
-    update_data = data.model_dump(exclude_unset=True)
-    if "tags" in update_data:
-        update_data["tags"] = ",".join(update_data["tags"])  # ← same conversion on update
+    updates = data.model_dump(exclude_unset=True)
 
-    for k, v in update_data.items():
-        setattr(newsletter, k, v)
+    # Check email uniqueness if email is being changed
+    if "email" in updates and updates["email"] != n.email:
+        conflict = db.query(Newsletters).filter(
+            Newsletters.email == updates["email"],
+            Newsletters.id    != newsletter_id,
+        ).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail=f"Email '{updates['email']}' is already in use.")
+
+    # Convert tags list → comma-separated string for DB storage
+    if "tags" in updates:
+        updates["tags"] = ",".join(updates["tags"])
+
+    for k, v in updates.items():
+        setattr(n, k, v)
 
     db.commit()
-    db.refresh(newsletter)
-    return {
-        "id": newsletter.id,
-        "name": newsletter.name,
-        "email": newsletter.email,
-        "status": newsletter.status,
-        "tags": newsletter.tags,
-        "created_at": newsletter.created_at,
-    }
+    db.refresh(n)
+    return newsletter_dict(n)
 
 
 @router.delete("/{newsletter_id}")
 def delete_newsletter(newsletter_id: int, db: Session = Depends(get_db)):
-    newsletter = db.query(Newsletters).filter(Newsletters.id == newsletter_id).first()
-    if not newsletter:
-        raise HTTPException(404, "Newsletter not found")
-
-    db.delete(newsletter)
+    n = db.query(Newsletters).filter(Newsletters.id == newsletter_id).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+    db.delete(n)
     db.commit()
-    return {"msg": "Deleted"}
+    return {"msg": "Subscriber removed successfully"}

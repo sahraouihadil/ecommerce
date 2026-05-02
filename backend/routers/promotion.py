@@ -1,83 +1,106 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from typing import Optional
+from datetime import date
 from models import Promotions
 from database import get_db
-from schema import PromotionCreate, PromotionUpdate
+from schema import PromotionCreate,PromotionUpdate
 
-router = APIRouter(prefix="/promotions", tags=["Promotions"])
+router = APIRouter(prefix="/api/promotions", tags=["Promotions"])
 
+
+# ======================================================================
+# SERIALIZER
+# ======================================================================
+
+def promo_dict(p: Promotions) -> dict:
+    return {
+        "id":            p.id,
+        "title":         p.title,
+        "code":          p.code,
+        "discount":      float(p.discount      or 0),
+        "discount_type": p.discount_type,
+        "usage_max":     int(p.usage_max       or 0),
+        "usage_current": int(p.usage_current   or 0),
+        "expiry":        str(p.expiry)         if p.expiry     else None,
+        "status":        p.status,
+        "created_at":    p.created_at.isoformat() if p.created_at else None,
+    }
+
+
+# ======================================================================
+# ROUTES
+# ======================================================================
 
 @router.get("/")
 def list_promotions(db: Session = Depends(get_db)):
-    promotions = db.query(Promotions).all()
-    return [
-        {
-            "id": p.id,
-            "title": p.title,
-            "code": p.code,
-            "discount": p.discount,
-            "discount_type": p.discount_type,
-            "usage_max": p.usage_max,
-            "usage_current": p.usage_current,
-            "expiry": p.expiry,
-            "status": p.status,
-            "created_at": p.created_at,
-        }
-        for p in promotions
-    ]
+    """Returns all promotions ordered newest first."""
+    promos = db.query(Promotions).order_by(Promotions.created_at.desc()).all()
+    return [promo_dict(p) for p in promos]
 
 
-@router.post("/")
+@router.get("/{promo_id}")
+def get_promotion(promo_id: int, db: Session = Depends(get_db)):
+    p = db.query(Promotions).filter(Promotions.id == promo_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    return promo_dict(p)
+
+
+@router.post("/", status_code=201)
 def create_promotion(body: PromotionCreate, db: Session = Depends(get_db)):
-    promo = Promotions(**body.model_dump())
-    db.add(promo)
+    # Prevent duplicate codes
+    existing = db.query(Promotions).filter(Promotions.code == body.code.upper()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Code '{body.code}' already exists.")
+
+    data = body.model_dump()
+    p = Promotions(
+        title         = data["title"],
+        code          = data["code"],
+        discount      = data["discount"],
+        discount_type = data["discount_type"],
+        usage_max     = data["usage_max"],
+        usage_current = data["usage_current"],
+        expiry        = data["expiry"],
+        status        = data["status"],
+    )
+    db.add(p)
     db.commit()
-    db.refresh(promo)
-    return {
-        "id": promo.id,
-        "title": promo.title,
-        "code": promo.code,
-        "discount": promo.discount,
-        "discount_type": promo.discount_type,
-        "usage_max": promo.usage_max,
-        "usage_current": promo.usage_current,
-        "expiry": promo.expiry,
-        "status": promo.status,
-        "created_at": promo.created_at,
-    }
+    db.refresh(p)
+    return promo_dict(p)
 
 
 @router.put("/{promo_id}")
 def update_promotion(promo_id: int, data: PromotionUpdate, db: Session = Depends(get_db)):
-    promo = db.query(Promotions).filter(Promotions.id == promo_id).first()
-    if not promo:
-        raise HTTPException(404, "Promotion not found")
+    p = db.query(Promotions).filter(Promotions.id == promo_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Promotion not found")
 
-    for k, v in data.model_dump(exclude_unset=True).items():
-        setattr(promo, k, v)
+    updates = data.model_dump(exclude_unset=True)
+
+    # Check code uniqueness if code is being changed
+    if "code" in updates and updates["code"] != p.code:
+        conflict = db.query(Promotions).filter(
+            Promotions.code == updates["code"],
+            Promotions.id   != promo_id,
+        ).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail=f"Code '{updates['code']}' already exists.")
+
+    for k, v in updates.items():
+        setattr(p, k, v)
 
     db.commit()
-    db.refresh(promo)
-    return {
-        "id": promo.id,
-        "title": promo.title,
-        "code": promo.code,
-        "discount": promo.discount,
-        "discount_type": promo.discount_type,
-        "usage_max": promo.usage_max,
-        "usage_current": promo.usage_current,
-        "expiry": promo.expiry,
-        "status": promo.status,
-        "created_at": promo.created_at,
-    }
+    db.refresh(p)
+    return promo_dict(p)
 
 
 @router.delete("/{promo_id}")
 def delete_promotion(promo_id: int, db: Session = Depends(get_db)):
-    promo = db.query(Promotions).filter(Promotions.id == promo_id).first()
-    if not promo:
-        raise HTTPException(404, "Promotion not found")
-
-    db.delete(promo)
+    p = db.query(Promotions).filter(Promotions.id == promo_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    db.delete(p)
     db.commit()
-    return {"msg": "Deleted"}
+    return {"msg": "Promotion deleted successfully"}

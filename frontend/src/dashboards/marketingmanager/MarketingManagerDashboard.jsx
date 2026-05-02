@@ -91,7 +91,7 @@ export default function MarketingManagerDashboard() {
 
           {/* Stat cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <StatCard icon={<DollarSign size={22} className="text-white" />} iconBg="bg-[#5B47E0]" title="Total Revenue" value={`$${(data.total_revenue / 1000).toFixed(1)}k`} change={data.revenue_change} up />
+            <StatCard icon={<span className='text-white font-bold'>DA</span>} iconBg="bg-[#5B47E0]" title="Total Revenue" value={`${(data.total_revenue / 1000).toFixed(1)}K DA`} change={data.revenue_change} up />
             <StatCard icon={<Megaphone size={22} className="text-white" />} iconBg="bg-green-500" title="Active Campaigns" value={data.active_campaigns} change={data.campaigns_change} up />
             <StatCard icon={<Mail size={22} className="text-white" />} iconBg="bg-violet-500" title="Newsletter Subs" value={data.newsletter_subs.toLocaleString()} change={data.subs_change} up />
             <StatCard icon={<Layers size={22} className="text-white" />} iconBg="bg-orange-400" title="AR Experiences" value={data.ar_experiences} change={data.ar_change} up={false} />

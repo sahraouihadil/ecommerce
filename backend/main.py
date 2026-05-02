@@ -57,6 +57,7 @@ import shutil
 import os
 import uuid
 from fastapi.staticfiles import StaticFiles
+from datetime import datetime
 
 # ── Logging setup ──
 logger = logging.getLogger(__name__)
@@ -100,9 +101,9 @@ app.include_router(product.router)
 app.include_router(profile.router)
 app.include_router(deliveries.router)
 app.include_router(deliveryman.router)
-app.include_router(campaign.router,   prefix="/api")
-app.include_router(promotion.router,  prefix="/api")
-app.include_router(newsletter.router, prefix="/api")
+app.include_router(campaign.router)
+app.include_router(promotion.router)
+app.include_router(newsletter.router)
 app.include_router(blog.router)
 app.include_router(reviews.router)
 
@@ -565,41 +566,117 @@ def get_deliverymen(db: Session = Depends(database.get_db)):
 
 @app.get("/api/overview", tags=["Overview"])
 def get_overview(db: Session = Depends(database.get_db)):
-    all_campaigns   = db.query(models.Campaigns).all()
-    all_newsletters = db.query(models.Newsletters).all()
-    all_ar          = db.query(models.Products).filter(models.Products.able_ar == True).all()
+    now = datetime.utcnow()
+
+    # ── month boundaries ──────────────────────────────────────────────────────
+    cur_start = datetime(now.year, now.month, 1)
+    prev_month = now.month - 1 if now.month > 1 else 12
+    prev_year  = now.year      if now.month > 1 else now.year - 1
+    prv_start  = datetime(prev_year, prev_month, 1)
+    prv_end    = cur_start
+
+    # ── revenue ───────────────────────────────────────────────────────────────
+    def revenue_in(start, end) -> float:
+        val = (
+            db.query(func.coalesce(func.sum(models.Orders.totalamount), 0))
+            .filter(models.Orders.orderdate >= start,
+                    models.Orders.orderdate <  end,
+                    models.Orders.status    == "delivered")
+            .scalar()
+        )
+        return float(val)
+
+    cur_rev = revenue_in(cur_start, now)
+    prv_rev = revenue_in(prv_start, prv_end)
+
+    def pct(cur, prv):
+        if prv == 0:
+            return "+0.0%"
+        p = (cur - prv) / prv * 100
+        return f"{'+' if p >= 0 else ''}{p:.1f}%"
+
+    # ── campaigns ─────────────────────────────────────────────────────────────
+    all_campaigns = db.query(models.Campaigns).all()
+
+    cur_active = sum(1 for c in all_campaigns if c.status == "active")
+    prv_active = (
+        db.query(func.count(models.Campaigns.id))
+        .filter(models.Campaigns.status     == "active",
+                models.Campaigns.created_at <  cur_start)
+        .scalar() or 0
+    )
+
+    # ── newsletters ───────────────────────────────────────────────────────────
+    cur_subs = (
+        db.query(func.count(models.Newsletters.id))
+        .filter(models.Newsletters.status == "subscribed")
+        .scalar() or 0
+    )
+    prv_subs = (
+        db.query(func.count(models.Newsletters.id))
+        .filter(models.Newsletters.status     == "subscribed",
+                models.Newsletters.created_at <  cur_start)
+        .scalar() or 0
+    )
+
+    # ── AR products ───────────────────────────────────────────────────────────
+    cur_ar = (
+        db.query(func.count(models.Products.id))
+        .filter(models.Products.able_ar == True)
+        .scalar() or 0
+    )
+    prv_ar = (
+        db.query(func.count(models.Products.id))
+        .filter(models.Products.able_ar    == True,
+                models.Products.created_at <  cur_start)
+        .scalar() or 0
+    )
+
+    # ── 7-month performance ───────────────────────────────────────────────────
+    performance = []
+    for offset in range(6, -1, -1):
+        m, y = now.month - offset, now.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        m_start = datetime(y, m, 1)
+        m_end   = datetime(y + 1, 1, 1) if m == 12 else datetime(y, m + 1, 1)
+
+        m_rev = revenue_in(m_start, m_end)
+        m_eng = (
+            db.query(func.count(models.Newsletters.id))
+            .filter(models.Newsletters.created_at >= m_start,
+                    models.Newsletters.created_at <  m_end)
+            .scalar() or 0
+        )
+        performance.append({"month": m_start.strftime("%b"), "revenue": round(m_rev, 2), "engagement": m_eng})
+
+    # ── channel engagement ────────────────────────────────────────────────────
+    channel_rows = (
+        db.query(models.Campaigns.channel,
+                 func.coalesce(func.sum(models.Campaigns.clicks), 0))
+        .group_by(models.Campaigns.channel)
+        .all()
+    )
+    channel_engagement = [{"channel": ch, "value": int(clicks)} for ch, clicks in channel_rows]
 
     return {
-        "total_revenue":    248400,
-        "revenue_change":   "+12.5%",
-        "active_campaigns": len([c for c in all_campaigns if c.status == "active"]),
-        "campaigns_change": "+3",
-        "newsletter_subs":  len(all_newsletters),
-        "subs_change":      "+8.2%",
-        "ar_experiences":   len(all_ar),
-        "ar_change":        "-1",
-        "performance": [
-            {"month": "Jan", "revenue": 3900, "engagement": 2100},
-            {"month": "Feb", "revenue": 3200, "engagement": 1500},
-            {"month": "Mar", "revenue": 4500, "engagement": 3800},
-            {"month": "Apr", "revenue": 5100, "engagement": 4200},
-            {"month": "May", "revenue": 5800, "engagement": 3900},
-            {"month": "Jun", "revenue": 5400, "engagement": 4000},
-            {"month": "Jul", "revenue": 6200, "engagement": 4100},
-        ],
+        "total_revenue":      round(cur_rev, 2),
+        "revenue_change":     pct(cur_rev,    prv_rev),
+        "active_campaigns":   cur_active,
+        "campaigns_change":   pct(cur_active, prv_active),
+        "newsletter_subs":    cur_subs,
+        "subs_change":        pct(cur_subs,   prv_subs),
+        "ar_experiences":     cur_ar,
+        "ar_change":          pct(cur_ar,     prv_ar),
         "campaign_status": {
-            "active":    len([c for c in all_campaigns if c.status == "active"]),
-            "draft":     len([c for c in all_campaigns if c.status == "draft"]),
-            "paused":    len([c for c in all_campaigns if c.status == "paused"]),
-            "completed": len([c for c in all_campaigns if c.status == "completed"]),
+            "active":    sum(1 for c in all_campaigns if c.status == "active"),
+            "draft":     sum(1 for c in all_campaigns if c.status == "draft"),
+            "paused":    sum(1 for c in all_campaigns if c.status == "paused"),
+            "completed": sum(1 for c in all_campaigns if c.status == "completed"),
         },
-        "channel_engagement": [
-            {"channel": "AR",      "value": 4200},
-            {"channel": "Email",   "value": 3600},
-            {"channel": "Social",  "value": 5100},
-            {"channel": "Search",  "value": 2800},
-            {"channel": "Display", "value": 3200},
-        ],
+        "performance":        performance,
+        "channel_engagement": channel_engagement,
     }
 
 

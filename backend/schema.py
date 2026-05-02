@@ -16,7 +16,7 @@ NAMING CONVENTION:
   - No suffix = data going TO the frontend or used internally
 """
 
-from pydantic import BaseModel,Field,EmailStr
+from pydantic import BaseModel,Field,EmailStr, field_validator
 from enums import UserRole
 from fastapi import Form,File
 from datetime import datetime,date
@@ -112,19 +112,58 @@ class ProfileUpdate(BaseModel):
 
 # ── Campaigns ───────────────────────────────
 
+VALID_CHANNELS = [
+    "Email",
+    "Facebook",
+    "Instagram",
+    "TikTok",
+    "YouTube",
+    "Twitter / X",
+    "LinkedIn",
+    "Snapchat",
+    "Pinterest",
+    "WhatsApp",
+    "Telegram",
+    "AR",
+    "Search",
+    "Display",
+]
+
+VALID_Cam_STATUSES = ["active", "draft", "paused", "completed"]
+
 class CampaignCreate(BaseModel):
     name:        str
     channel:     str
-    status:      str   = "draft"
-    budget:      float = 0
-    spent:       float = 0
-    impressions: str   = "0"
-    clicks:      str   = "0"
-    start_date:  str
-    end_date:    str
+    status:      str        = "draft"
+    budget:      float      = 0.0
+    spent:       float      = 0.0
+    impressions: int        = 0
+    clicks:      int        = 0
+    start_date:  date
+    end_date:    date
 
-class Campaign(CampaignCreate):
-    id: int
+    @field_validator("channel")
+    @classmethod
+    def validate_channel(cls, v):
+        if v not in VALID_CHANNELS:
+            raise ValueError(f"Invalid channel '{v}'. Must be one of: {', '.join(VALID_CHANNELS)}")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v):
+        if v not in VALID_Cam_STATUSES:
+            raise ValueError(f"Invalid status '{v}'. Must be one of: {', '.join(VALID_Cam_STATUSES)}")
+        return v
+
+    @field_validator("end_date")
+    @classmethod
+    def end_after_start(cls, v, info):
+        start = info.data.get("start_date")
+        if start and v < start:
+            raise ValueError("end_date must be on or after start_date")
+        return v
+
 
 class CampaignUpdate(BaseModel):
     name:        Optional[str]   = None
@@ -132,73 +171,177 @@ class CampaignUpdate(BaseModel):
     status:      Optional[str]   = None
     budget:      Optional[float] = None
     spent:       Optional[float] = None
-    impressions: Optional[str]   = None
-    clicks:      Optional[str]   = None
-    start_date:  Optional[str]   = None
-    end_date:    Optional[str]   = None
+    impressions: Optional[int]   = None
+    clicks:      Optional[int]   = None
+    start_date:  Optional[date]  = None
+    end_date:    Optional[date]  = None
+
+    @field_validator("channel")
+    @classmethod
+    def validate_channel(cls, v):
+        if v is not None and v not in VALID_CHANNELS:
+            raise ValueError(f"Invalid channel '{v}'. Must be one of: {', '.join(VALID_CHANNELS)}")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v):
+        if v is not None and v not in VALID_Cam_STATUSES:
+            raise ValueError(f"Invalid status '{v}'. Must be one of: {', '.join(VALID_Cam_STATUSES)}")
+        return v
+
 
 # ── Promotions ──────────────────────────────
+VALID_TYPES    = ["Percentage", "Fixed"]
+VALID_Prom_STATUSES = ["active", "upcoming", "expired"]
 
 class PromotionCreate(BaseModel):
     title:         str
     code:          str
-    discount:      str
-    type:          str
-    usage:         str = "0/0"
-    usage_max:     int = 0
-    usage_current: int = 0
-    expiry:        str
-    status:        str = "upcoming"
+    discount:      float       = 0.0
+    discount_type: str         = "Percentage"
+    usage_max:     int         = 0
+    usage_current: int         = 0
+    expiry:        date
+    status:        str         = "upcoming"
+
+    @field_validator("code")
+    @classmethod
+    def uppercase_code(cls, v):
+        return v.strip().upper()
+
+    @field_validator("discount_type")
+    @classmethod
+    def validate_type(cls, v):
+        if v not in VALID_TYPES:
+            raise ValueError(f"discount_type must be one of: {', '.join(VALID_TYPES)}")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v):
+        if v not in VALID_Prom_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(VALID_Prom_STATUSES)}")
+        return v
+
+    @field_validator("discount")
+    @classmethod
+    def validate_discount(cls, v):
+        if v < 0:
+            raise ValueError("discount must be >= 0")
+        return v
+
 
 class PromotionUpdate(BaseModel):
-    title:         Optional[str] = None
-    code:          Optional[str] = None
-    discount:      Optional[str] = None
-    type:          Optional[str] = None
-    usage:         Optional[str] = None
-    usage_max:     Optional[int] = None
-    usage_current: Optional[int] = None
-    expiry:        Optional[str] = None
-    status:        Optional[str] = None
+    title:         Optional[str]   = None
+    code:          Optional[str]   = None
+    discount:      Optional[float] = None
+    discount_type: Optional[str]   = None
+    usage_max:     Optional[int]   = None
+    usage_current: Optional[int]   = None
+    expiry:        Optional[date]  = None
+    status:        Optional[str]   = None
 
+    @field_validator("code")
+    @classmethod
+    def uppercase_code(cls, v):
+        return v.strip().upper() if v else v
+
+    @field_validator("discount_type")
+    @classmethod
+    def validate_type(cls, v):
+        if v is not None and v not in VALID_TYPES:
+            raise ValueError(f"discount_type must be one of: {', '.join(VALID_TYPES)}")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v):
+        if v is not None and v not in VALID_Prom_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(VALID_Prom_STATUSES)}")
+        return v
 # ── Subscribers ─────────────────────────────
-
+ 
+VALID_Sub_STATUSES = ["subscribed", "unsubscribed"]
+VALID_TAGS     = ["VIP", "Deals", "New Arrivals", "Sales"]
+ 
 class NewsletterCreate(BaseModel):
     name:   str
     email:  str
     status: str       = "subscribed"
     tags:   List[str] = []
-    date:   str       = Field(default_factory=today)
-
+ 
+    @field_validator("email")
+    @classmethod
+    def normalise_email(cls, v: str) -> str:
+        return v.strip().lower()
+ 
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        if v not in VALID_Sub_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(VALID_Sub_STATUSES)}")
+        return v
+ 
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: List[str]) -> List[str]:
+        for tag in v:
+            if tag not in VALID_TAGS:
+                raise ValueError(f"Invalid tag '{tag}'. Must be one of: {', '.join(VALID_TAGS)}")
+        return v
+ 
+ 
 class NewsletterUpdate(BaseModel):
     name:   Optional[str]       = None
     email:  Optional[str]       = None
     status: Optional[str]       = None
     tags:   Optional[List[str]] = None
-
+ 
+    @field_validator("email")
+    @classmethod
+    def normalise_email(cls, v: Optional[str]) -> Optional[str]:
+        return v.strip().lower() if v else v
+ 
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in VALID_Sub_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(VALID_Sub_STATUSES)}")
+        return v
+ 
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is not None:
+            for tag in v:
+                if tag not in VALID_TAGS:
+                    raise ValueError(f"Invalid tag '{tag}'. Must be one of: {', '.join(VALID_TAGS)}")
+        return v
+ 
 # ── Blogs ────────────────────────────────────
 
 class BlogCreate(BaseModel):
     title:    str
-    category: str
     excerpt:  str
+    category: str
+    status:   str
     author:   str
-    views:    str = "0"
-    status:   str = "draft"
-    date:     str = Field(default_factory=today)
+    image:    Optional[str] = None
+    tag:      Optional[str] = None
+    content:  Optional[str] = None
 
-class Blog(BlogCreate):
-    id: int
 
 class BlogUpdate(BaseModel):
     title:    Optional[str] = None
-    category: Optional[str] = None
     excerpt:  Optional[str] = None
-    author:   Optional[str] = None
-    views:    Optional[str] = None
+    category: Optional[str] = None
     status:   Optional[str] = None
-    date:     Optional[str] = None
-
+    author:   Optional[str] = None
+    image:    Optional[str] = None
+    tag:      Optional[str] = None
+    content:  Optional[str] = None
+    
 class OrderCreate(BaseModel):
     deliverydate: date
     delivery_type :  str
@@ -382,4 +525,3 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     code: str           # re-validated to prevent skipping step 2
     new_password: str
-

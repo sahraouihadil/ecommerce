@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   "/journal",
   "/contactus",
   "/aboutus",
+  "/product"
 ];
 
 const isPublicPath = (pathname) =>
