@@ -29,7 +29,7 @@ export function Header() {
         setUser(null);
       }
     } else {
-      setUser(null); 
+      setUser(null);
     }
   }, [location.pathname]);
 
@@ -52,23 +52,42 @@ export function Header() {
   }, [menuOpen]);
 
   const handleLogout = () => {
-    logout();        // removes token + role
-    setUser(null);   // resets header UI immediately
-    navigate('/');   // triggers the useEffect as a bonus safety net
+    logout();
+    setUser(null);
+    navigate('/');
   };
 
   const navLinks = [
     { to: '/furniture', label: 'Shop' },
     { to: '/aboutus', label: 'How It Works' },
+    { to: '/journal', label: 'Journal' },
     { to: '/contactus', label: 'Contact' },
+  ];
+
+  const drawerIconLinks = [
+    {
+      to: '/search',
+      label: 'Search',
+      icon: <span className="material-symbols-outlined text-[18px]">search</span>,
+    },
+    {
+      to: '/favorite',
+      label: 'Favourites',
+      icon: <span className="material-symbols-outlined text-[18px]">favorite</span>,
+    },
+    {
+      to: '/cart',
+      label: 'Cart',
+      icon: <span className="material-symbols-outlined text-[18px]">shopping_bag</span>,
+    },
   ];
 
   return (
     <>
       <header
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled
-          ? 'bg-white/90 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05)]'
-          : 'bg-transparent'
+            ? 'bg-white/90 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05)]'
+            : 'bg-transparent'
           }`}
       >
         <div className={`transition-all duration-500 ${scrolled ? 'py-4' : 'py-6'}`}>
@@ -91,8 +110,8 @@ export function Header() {
                     key={link.to}
                     to={link.to}
                     className={`text-[0.8125rem] uppercase tracking-[0.1em] font-semibold transition-colors duration-300 ${location.pathname === link.to
-                      ? 'text-primary'
-                      : 'text-muted hover:text-primary'
+                        ? 'text-primary'
+                        : 'text-muted hover:text-primary'
                       }`}
                   >
                     {link.label}
@@ -102,10 +121,26 @@ export function Header() {
 
               {/* Right icons - desktop */}
               <div className="hidden lg:flex items-center gap-5">
+
+                {/* Search icon — desktop */}
+                <Link
+                  to="/search"
+                  title="Search"
+                  className={`transition-colors duration-300 ${location.pathname === '/search'
+                      ? 'text-primary'
+                      : 'text-muted hover:text-primary'
+                    }`}
+                >
+                  <span className="material-symbols-outlined text-[22px]">search</span>
+                </Link>
+
                 <Link
                   to="/favorite"
                   title="Favorites"
-                  className="text-muted hover:text-primary transition-colors duration-300"
+                  className={`transition-colors duration-300 ${location.pathname === '/favorite'
+                      ? 'text-primary'
+                      : 'text-muted hover:text-primary'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[22px]">favorite</span>
                 </Link>
@@ -113,7 +148,10 @@ export function Header() {
                 <Link
                   to="/cart"
                   title="Cart"
-                  className="text-muted hover:text-primary transition-colors duration-300"
+                  className={`transition-colors duration-300 ${location.pathname === '/cart'
+                      ? 'text-primary'
+                      : 'text-muted hover:text-primary'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[22px]">shopping_bag</span>
                 </Link>
@@ -134,10 +172,7 @@ export function Header() {
                     </button>
                   </div>
                 ) : (
-                  <Link
-                    to="/login"
-                    className="btn-pill btn-pill-black text-[0.75rem] py-2.5 px-6 ml-4"
-                  >
+                  <Link to="/login" className="btn-pill btn-pill-black text-[0.75rem] py-2.5 px-6 ml-4">
                     Sign in
                   </Link>
                 )}
@@ -159,7 +194,6 @@ export function Header() {
                 >
                   <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
                 </Link>
-
                 <button
                   className="text-primary hover:text-accent2 transition-colors duration-300"
                   onClick={() => setMenuOpen(true)}
@@ -168,35 +202,61 @@ export function Header() {
                   <span className="material-symbols-outlined text-[22px]">menu</span>
                 </button>
               </div>
+
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile drawer overlay */}
+      {/* ── Mobile drawer ── */}
       {menuOpen && (
         <div className="fixed inset-0 z-[200] lg:hidden">
-          {/* Backdrop */}
+
           <div
             className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"
             onClick={() => setMenuOpen(false)}
           />
 
-          {/* Drawer */}
-          <div className="absolute top-0 right-0 h-full w-64 bg-cream flex flex-col shadow-2xl">
+          <div className="absolute top-0 right-0 h-full w-72 bg-cream flex flex-col shadow-2xl">
 
-            {/* Header */}
+            {/* Top bar */}
             <div className="flex items-center justify-between px-6 py-5">
-              <span style={{ fontFamily: "'Cinzel Decorative', cursive" }} className="text-sm font-bold text-primary">ARoom</span>
-              <button onClick={() => setMenuOpen(false)} className="text-muted hover:text-primary transition-colors" aria-label="Close menu">
+              <span style={{ fontFamily: "'Cinzel Decorative', cursive" }} className="text-sm font-bold text-primary">
+                ARoom
+              </span>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="text-muted hover:text-primary transition-colors"
+                aria-label="Close menu"
+              >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
 
             <div className="h-px bg-blush/40 mx-6" />
 
-            {/* Nav + Auth — unified list */}
-            <nav className="flex flex-col px-6 pt-5">
+            {/* Quick-access icons */}
+            <div className="flex items-center justify-around px-6 py-4">
+              {drawerIconLinks.map(({ to, label, icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex flex-col items-center gap-1 transition-colors duration-200 ${location.pathname === to ? 'text-accent2' : 'text-muted hover:text-primary'
+                    }`}
+                >
+                  {icon}
+                  <span style={{ fontFamily: "'Cormorant Garamond', serif" }} className="text-[0.62rem] uppercase tracking-[0.12em]">
+                    {label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            <div className="h-px bg-blush/40 mx-6" />
+
+            {/* Nav links */}
+            <nav className="flex flex-col px-6 pt-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
@@ -240,7 +300,7 @@ export function Header() {
 
             <div className="flex-1" />
 
-            {/* Follow us — pinned to bottom */}
+            {/* Follow us */}
             <div className="px-6 py-5 border-t border-blush/30">
               <p className="text-[0.6rem] uppercase tracking-[0.15em] text-muted mb-3">Follow us</p>
               <div className="flex items-center gap-4">

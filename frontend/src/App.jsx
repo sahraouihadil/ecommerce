@@ -22,6 +22,7 @@ import { JournalPage } from './pages/JournalPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { VerifyCode } from './pages/VerifyCode'
 import { SetPassword } from './pages/SetPassword'
+import SearchPage from './pages/SearchPage'
 
 import { AdminDashboard } from './dashboards/admin/AdminDashboard'
 import AccountsPage from './dashboards/admin/AccountsPage'
@@ -51,11 +52,6 @@ import DlvHistoryPage from './dashboards/deliveryman/DlvHistoryPage'
 
 // ===================== AUTH GUARDS =====================
 
-/**
- * ProtectedRoute — requires any valid logged-in user.
- * AuthProvider already removed the token if expired, so we
- * just check localStorage here as a fast synchronous gate.
- */
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -64,10 +60,6 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-/**
- * RoleProtectedRoute — requires a specific role.
- * Wrong role → redirect to home, not login.
- */
 const RoleProtectedRoute = ({ role }) => {
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("role");
@@ -119,10 +111,6 @@ function CustomerLayout() {
 function App() {
   return (
     <BrowserRouter>
-      {/*
-        AuthProvider is INSIDE BrowserRouter so it can use
-        useNavigate() and useLocation() — this is required.
-      */}
       <AuthProvider>
         <Routes>
           <Route element={<CustomerLayout />}>
@@ -131,6 +119,7 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path='/furniture' element={<FurniturePage />} />
             <Route path='/journal' element={<JournalPage />} />
+            <Route path='/search' element={<SearchPage />} />
             <Route path='/product/:productId' element={<ProductPage />} />
             <Route path='/contactus' element={<ContactusPage />} />
             <Route path='/aboutus' element={<AboutusPage />} />
