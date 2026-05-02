@@ -1,14 +1,63 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 
+// ── Google Fonts loader (same as AboutUs) ─────────────────────────
+function useLuxuryFonts() {
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap";
+    document.head.appendChild(link);
+    return () => document.head.removeChild(link);
+  }, []);
+}
+
+// ── Shared ornamental dividers (identical to AboutUs) ────────────
+const GoldRule = () => (
+  <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0" }}>
+    <div style={{ height: "1px", flex: 1, background: "linear-gradient(to right, transparent, rgba(200,169,106,0.5))" }} />
+    <div style={{ width: "5px", height: "5px", background: "#C8A96A", transform: "rotate(45deg)", flexShrink: 0 }} />
+    <div style={{ height: "1px", flex: 1, background: "linear-gradient(to left, transparent, rgba(200,169,106,0.5))" }} />
+  </div>
+);
+
+const GoldRuleShort = ({ maxWidth = "14rem" }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "6px", maxWidth }}>
+    <div style={{ height: "1px", flex: 1, background: "#C8A96A", opacity: 0.55 }} />
+    <div style={{ width: "4px", height: "4px", background: "#C8A96A", transform: "rotate(45deg)", opacity: 0.7, flexShrink: 0 }} />
+    <div style={{ height: "1px", flex: 1, background: "#C8A96A", opacity: 0.55 }} />
+  </div>
+);
+
 // ── Tag colour map ────────────────────────────────────────────────
 const TAG_STYLES = {
-  Technology: { bg: "rgba(59,130,246,0.1)", color: "#2563eb" },
-  Insight: { bg: "rgba(16,185,129,0.1)", color: "#059669" },
-  Design: { bg: "rgba(245,158,11,0.1)", color: "#d97706" },
+  Technology: { bg: "rgba(59,130,246,0.08)", color: "#2563eb", border: "rgba(59,130,246,0.2)" },
+  Insight: { bg: "rgba(200,169,106,0.12)", color: "#9E6E20", border: "rgba(200,169,106,0.35)" },
+  Design: { bg: "rgba(92,74,58,0.08)", color: "#5c4a3a", border: "rgba(92,74,58,0.2)" },
 };
 
-// ── Animated entry wrapper ────────────────────────────────────────
+function TagPill({ tag, small }) {
+  const s = TAG_STYLES[tag] || TAG_STYLES.Insight;
+  return (
+    <span style={{
+      background: s.bg,
+      color: s.color,
+      border: `1px solid ${s.border}`,
+      fontSize: small ? "0.55rem" : "0.575rem",
+      fontFamily: "sans-serif",
+      fontWeight: "700",
+      letterSpacing: "0.3em",
+      textTransform: "uppercase",
+      padding: small ? "3px 10px" : "4px 13px",
+      borderRadius: "999px",
+    }}>
+      {tag}
+    </span>
+  );
+}
+
+// ── Fade-up entry (kept light, no delay bloat) ───────────────────
 function FadeUp({ children, delay = 0 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -18,7 +67,7 @@ function FadeUp({ children, delay = 0 }) {
   return (
     <div style={{
       opacity: visible ? 1 : 0,
-      transform: visible ? "translateY(0)" : "translateY(24px)",
+      transform: visible ? "translateY(0)" : "translateY(20px)",
       transition: `opacity 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
     }}>
       {children}
@@ -28,26 +77,18 @@ function FadeUp({ children, delay = 0 }) {
 
 // ── Main Journal listing ──────────────────────────────────────────
 export function JournalPage() {
+  useLuxuryFonts();
+
   const [activeBlog, setActiveBlog] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
-  const [listVisible, setListVisible] = useState(false);
   const [blogs, setBlogs] = useState([]);
 
   useEffect(() => {
-    setTimeout(() => setListVisible(true), 40);
+    api.get("/api/blogs/")
+      .then(res => setBlogs(res.data))
+      .catch(err => console.error("FAILED:", err));
   }, []);
 
-  useEffect(() => {
-    api.get("/api/blogs")
-      .then((res) => {
-        setBlogs(res.data);
-      })
-      .catch((err) => {
-        console.error("FAILED:", err);
-      });
-  }, []);
-
-  // ── Article view ─────────────────────────────────────────────────
   if (activeBlog) {
     return <ArticleView blog={activeBlog} onBack={() => setActiveBlog(null)} />;
   }
@@ -57,157 +98,219 @@ export function JournalPage() {
 
   return (
     <div style={{
-      opacity: listVisible ? 1 : 0,
-      transform: listVisible ? "translateY(0)" : "translateY(20px)",
-      transition: "all 0.6s ease"
+      background: "#F5F0E8",
+      color: "#1C1916",
+      fontFamily: "'Cormorant Garamond', Georgia, serif",
+      overflowX: "hidden",
     }}>
-      <div style={{
-        fontFamily: "Georgia, 'Times New Roman', serif",
-        minHeight: "100vh",
-        background: "#FAF8F4",
-        color: "#1a1a1a",
-      }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "96px 28px 96px" }}>
 
-          {/* ── HEADER ── */}
+      {/* ── HERO HEADER ── */}
+      <section style={{ maxWidth: "1200px", margin: "0 auto", padding: "clamp(7rem, 14vw, 10rem) 1.5rem 5rem" }}>
+        <FadeUp delay={0}>
+          <p style={{
+            fontFamily: "sans-serif", fontSize: "0.575rem",
+            letterSpacing: "0.38em", textTransform: "uppercase",
+            color: "#9E8E7A", marginBottom: "1.25rem",
+          }}>
+            Stories &amp; Perspectives
+          </p>
+        </FadeUp>
+
+        <FadeUp delay={80}>
+          <h1 style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            fontSize: "clamp(2rem, 7vw, 5rem)",
+            fontWeight: 700,
+            letterSpacing: "0.035em",
+            lineHeight: 1.05,
+            color: "#1C1916",
+            marginBottom: "1.5rem",
+          }}>
+            The Journal
+          </h1>
+        </FadeUp>
+
+        <FadeUp delay={140}>
+          <GoldRuleShort maxWidth="16rem" />
+        </FadeUp>
+
+        <FadeUp delay={200}>
+          <p style={{
+            fontFamily: "'Cormorant Garamond', serif",
+            fontSize: "1.2rem",
+            fontStyle: "italic",
+            fontWeight: 300,
+            color: "#6B5F52",
+            maxWidth: "34rem",
+            lineHeight: 1.9,
+            marginTop: "1.5rem",
+          }}>
+            Reflections on design, craftsmanship, and the art of creating spaces that tell your story.
+          </p>
+        </FadeUp>
+      </section>
+
+      {/* ── DIVIDER ── */}
+      <div style={{ padding: "0 1.5rem" }}>
+        <GoldRule />
+      </div>
+
+      {/* ── FEATURED POST ── */}
+      {featured && (
+        <section style={{ maxWidth: "1200px", margin: "0 auto", padding: "5rem 1.5rem" }}>
           <FadeUp delay={0}>
             <p style={{
-              fontSize: "0.72rem", letterSpacing: "0.22em", textTransform: "uppercase",
-              fontWeight: "700", color: "#8b6f5e", marginBottom: "14px",
+              fontFamily: "sans-serif", fontSize: "0.575rem",
+              letterSpacing: "0.38em", textTransform: "uppercase",
+              color: "#9E8E7A", marginBottom: "2rem",
             }}>
-              Stories
+              Featured
             </p>
           </FadeUp>
 
           <FadeUp delay={80}>
-            <h1 style={{
-              fontSize: "clamp(3rem, 9vw, 6rem)",
-              fontWeight: "800", letterSpacing: "-0.035em", lineHeight: 0.95,
-              marginBottom: "20px", color: "#1a1a1a",
-            }}>
-              Journal
-            </h1>
-          </FadeUp>
+            <article
+              onClick={() => setActiveBlog(featured)}
+              onMouseEnter={() => setHoveredId(featured.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                borderRadius: "4px",
+                overflow: "hidden",
+                cursor: "pointer",
+                border: "1px solid rgba(200,169,106,0.2)",
+                boxShadow: hoveredId === featured.id
+                  ? "0 24px 64px rgba(28,25,22,0.12)"
+                  : "0 4px 24px rgba(28,25,22,0.06)",
+                transition: "box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1)",
+                transform: hoveredId === featured.id ? "translateY(-4px)" : "none",
+              }}
+            >
+              {/* Image */}
+              <div style={{ overflow: "hidden", minHeight: "340px" }}>
+                <img
+                  src={featured.image}
+                  alt={featured.title}
+                  style={{
+                    width: "100%", height: "100%", objectFit: "cover",
+                    transform: hoveredId === featured.id ? "scale(1.04)" : "scale(1)",
+                    transition: "transform 0.8s cubic-bezier(0.16,1,0.3,1)",
+                    filter: "brightness(0.92)",
+                  }}
+                />
+              </div>
 
-          <FadeUp delay={160}>
+              {/* Text */}
+              <div style={{
+                background: "#FAF7F2",
+                padding: "clamp(2rem, 5vw, 3.5rem)",
+                display: "flex", flexDirection: "column", justifyContent: "center",
+                gap: "1.25rem",
+              }}>
+                {/* Top ornament line */}
+                <div style={{ width: "2rem", height: "1px", background: "#C8A96A", opacity: 0.7 }} />
+
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                  <TagPill tag={featured.tag} />
+                  <span style={{
+                    fontFamily: "sans-serif", fontSize: "0.55rem",
+                    letterSpacing: "0.2em", textTransform: "uppercase", color: "#9E8E7A",
+                  }}>
+                    {featured.readTime}
+                  </span>
+                </div>
+
+                <h2 style={{
+                  fontFamily: "'Cinzel Decorative', serif",
+                  fontSize: "clamp(1.2rem, 2.8vw, 1.85rem)",
+                  fontWeight: 700,
+                  letterSpacing: "0.025em",
+                  lineHeight: 1.15,
+                  color: hoveredId === featured.id ? "#9E6E20" : "#1C1916",
+                  transition: "color 0.25s",
+                }}>
+                  {featured.title}
+                </h2>
+
+                <GoldRuleShort maxWidth="8rem" />
+
+                <p style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  fontSize: "1.1rem",
+                  fontStyle: "italic",
+                  fontWeight: 300,
+                  color: "#6B5F52",
+                  lineHeight: 1.9,
+                }}>
+                  {featured.excerpt}
+                </p>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.5rem" }}>
+                  <span style={{
+                    fontFamily: "sans-serif", fontSize: "0.55rem",
+                    letterSpacing: "0.2em", textTransform: "uppercase", color: "#9E8E7A",
+                  }}>
+                    {new Date(featured.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                  </span>
+                  <span style={{
+                    fontFamily: "sans-serif", fontSize: "0.55rem",
+                    letterSpacing: "0.28em", textTransform: "uppercase",
+                    color: "#C8A96A", fontWeight: "700",
+                    transform: hoveredId === featured.id ? "translateX(5px)" : "none",
+                    transition: "transform 0.3s",
+                    display: "inline-block",
+                  }}>
+                    Read →
+                  </span>
+                </div>
+              </div>
+            </article>
+          </FadeUp>
+        </section>
+      )}
+
+      {/* ── DIVIDER ── */}
+      <div style={{ padding: "0 1.5rem" }}>
+        <GoldRule />
+      </div>
+
+      {/* ── REST OF POSTS ── */}
+      {rest.length > 0 && (
+        <section style={{ maxWidth: "1200px", margin: "0 auto", padding: "5rem 1.5rem 6rem" }}>
+          <FadeUp delay={0}>
             <p style={{
-              color: "#7a6b5d", fontSize: "1.05rem", lineHeight: 1.7,
-              maxWidth: "480px", marginBottom: "96px",
+              fontFamily: "sans-serif", fontSize: "0.575rem",
+              letterSpacing: "0.38em", textTransform: "uppercase",
+              color: "#9E8E7A", marginBottom: "2.5rem",
             }}>
-              Reflections on design, craftsmanship, and the art of creating spaces that tell your story.
+              More Stories
             </p>
           </FadeUp>
 
-          {/* ── FEATURED POST ── */}
-          {featured && (
-            <FadeUp delay={240}>
-              <article
-                onClick={() => setActiveBlog(featured)}
-                onMouseEnter={() => setHoveredId(featured.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "0",
-                  borderRadius: "24px",
-                  overflow: "hidden",
-                  cursor: "pointer",
-                  marginBottom: "48px",
-                  boxShadow: hoveredId === featured.id
-                    ? "0 24px 64px rgba(92,74,58,0.18)"
-                    : "0 8px 32px rgba(92,74,58,0.10)",
-                  transition: "box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1)",
-                  transform: hoveredId === featured.id ? "translateY(-4px)" : "none",
-                }}
-              >
-                {/* Image side */}
-                <div style={{ overflow: "hidden", aspectRatio: "4/3" }}>
-                  <img
-                    src={featured.image}
-                    alt={featured.title}
-                    style={{
-                      width: "100%", height: "100%", objectFit: "cover",
-                      transform: hoveredId === featured.id ? "scale(1.05)" : "scale(1)",
-                      transition: "transform 0.7s cubic-bezier(0.16,1,0.3,1)",
-                    }}
-                  />
-                </div>
-
-                {/* Text side */}
-                <div style={{
-                  background: "#ffffff",
-                  padding: "48px 44px",
-                  display: "flex", flexDirection: "column", justifyContent: "center",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
-                    <span style={{
-                      ...TAG_STYLES[featured.tag],
-                      fontSize: "0.65rem", fontWeight: "700", letterSpacing: "0.12em",
-                      textTransform: "uppercase", padding: "4px 12px", borderRadius: "999px",
-                    }}>
-                      {featured.tag}
-                    </span>
-                    <span style={{ fontSize: "0.72rem", color: "#b5a898" }}>{featured.readTime}</span>
-                  </div>
-
-                  <h2 style={{
-                    fontSize: "clamp(1.3rem, 2.5vw, 1.9rem)",
-                    fontWeight: "800", lineHeight: 1.15, letterSpacing: "-0.015em",
-                    marginBottom: "16px",
-                    color: hoveredId === featured.id ? "#8b6f5e" : "#1a1a1a",
-                    transition: "color 0.2s",
-                  }}>
-                    {featured.title}
-                  </h2>
-
-                  <p style={{
-                    fontSize: "0.92rem", lineHeight: 1.75, color: "#7a6b5d",
-                    marginBottom: "28px", fontWeight: "300",
-                  }}>
-                    {featured.excerpt}
-                  </p>
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "0.72rem", color: "#b5a898" }}>
-                      {new Date(featured.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                    </span>
-                    <span style={{
-                      fontSize: "0.78rem", fontWeight: "700", color: "#8b6f5e",
-                      letterSpacing: "0.04em",
-                      transform: hoveredId === featured.id ? "translateX(4px)" : "none",
-                      transition: "transform 0.3s",
-                      display: "inline-block",
-                    }}>
-                      Read →
-                    </span>
-                  </div>
-                </div>
-              </article>
-            </FadeUp>
-          )}
-
-          {/* ── REST OF blogs ── */}
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-            gap: "24px",
+            gap: "2rem",
           }}>
             {rest.map((post, i) => (
-              <FadeUp key={post.id} delay={320 + i * 100}>
+              <FadeUp key={post.id} delay={100 + i * 80}>
                 <article
                   onClick={() => setActiveBlog(post)}
                   onMouseEnter={() => setHoveredId(post.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   style={{
-                    borderRadius: "20px",
+                    background: "#FAF7F2",
+                    border: "1px solid rgba(200,169,106,0.18)",
+                    borderRadius: "4px",
                     overflow: "hidden",
-                    background: "#ffffff",
                     cursor: "pointer",
                     boxShadow: hoveredId === post.id
-                      ? "0 20px 48px rgba(92,74,58,0.16)"
-                      : "0 4px 20px rgba(92,74,58,0.08)",
+                      ? "0 20px 48px rgba(28,25,22,0.1)"
+                      : "0 2px 16px rgba(28,25,22,0.05)",
                     transform: hoveredId === post.id ? "translateY(-5px)" : "none",
                     transition: "box-shadow 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1)",
+                    display: "flex", flexDirection: "column",
                   }}
                 >
                   {/* Card image */}
@@ -217,52 +320,76 @@ export function JournalPage() {
                       alt={post.title}
                       style={{
                         width: "100%", height: "100%", objectFit: "cover",
-                        transform: hoveredId === post.id ? "scale(1.06)" : "scale(1)",
-                        transition: "transform 0.6s cubic-bezier(0.16,1,0.3,1)",
+                        transform: hoveredId === post.id ? "scale(1.05)" : "scale(1)",
+                        transition: "transform 0.7s cubic-bezier(0.16,1,0.3,1)",
+                        filter: "brightness(0.9)",
                       }}
                     />
                   </div>
 
                   {/* Card body */}
-                  <div style={{ padding: "28px 28px 32px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                  <div style={{
+                    padding: "1.75rem",
+                    display: "flex", flexDirection: "column", gap: "0.85rem", flex: 1,
+                    borderTop: "1px solid rgba(200,169,106,0.2)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                      <TagPill tag={post.tag} small />
                       <span style={{
-                        ...TAG_STYLES[post.tag],
-                        fontSize: "0.62rem", fontWeight: "700", letterSpacing: "0.1em",
-                        textTransform: "uppercase", padding: "3px 10px", borderRadius: "999px",
+                        fontFamily: "sans-serif", fontSize: "0.52rem",
+                        letterSpacing: "0.18em", textTransform: "uppercase", color: "#9E8E7A",
                       }}>
-                        {post.tag}
+                        {post.readTime}
                       </span>
-                      <span style={{ fontSize: "0.7rem", color: "#c4b5a8" }}>{post.readTime}</span>
                     </div>
 
                     <h2 style={{
-                      fontSize: "1.15rem", fontWeight: "800", lineHeight: 1.25,
-                      letterSpacing: "-0.01em", marginBottom: "10px",
-                      color: hoveredId === post.id ? "#8b6f5e" : "#1a1a1a",
+                      fontFamily: "'Cinzel Decorative', serif",
+                      fontSize: "1rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.025em",
+                      lineHeight: 1.25,
+                      color: hoveredId === post.id ? "#9E6E20" : "#1C1916",
                       transition: "color 0.2s",
                     }}>
                       {post.title}
                     </h2>
 
                     <p style={{
-                      fontSize: "0.875rem", lineHeight: 1.7, color: "#7a6b5d",
-                      marginBottom: "20px", fontWeight: "300",
-                      display: "-webkit-box", WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical", overflow: "hidden",
+                      fontFamily: "'Cormorant Garamond', serif",
+                      fontSize: "1.05rem",
+                      fontStyle: "italic",
+                      fontWeight: 300,
+                      color: "#6B5F52",
+                      lineHeight: 1.85,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      flex: 1,
                     }}>
                       {post.excerpt}
                     </p>
 
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: "0.7rem", color: "#c4b5a8" }}>
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      paddingTop: "0.75rem",
+                      borderTop: "1px solid rgba(200,169,106,0.15)",
+                      marginTop: "auto",
+                    }}>
+                      <span style={{
+                        fontFamily: "sans-serif", fontSize: "0.52rem",
+                        letterSpacing: "0.18em", textTransform: "uppercase", color: "#9E8E7A",
+                      }}>
                         {new Date(post.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </span>
                       <span style={{
-                        fontSize: "0.75rem", fontWeight: "700", color: "#8b6f5e",
-                        display: "inline-block",
+                        fontFamily: "sans-serif", fontSize: "0.52rem",
+                        letterSpacing: "0.22em", textTransform: "uppercase",
+                        color: "#C8A96A", fontWeight: "700",
                         transform: hoveredId === post.id ? "translateX(4px)" : "none",
                         transition: "transform 0.3s",
+                        display: "inline-block",
                       }}>
                         Read →
                       </span>
@@ -272,15 +399,32 @@ export function JournalPage() {
               </FadeUp>
             ))}
           </div>
+        </section>
+      )}
 
+      {/* ── FOOTER ORNAMENT ── */}
+      <div style={{ padding: "0 1.5rem 5rem" }}>
+        <GoldRule />
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "2.5rem" }}>
+          <span style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            fontSize: "0.575rem",
+            letterSpacing: "0.5em",
+            textTransform: "uppercase",
+            color: "rgba(200,169,106,0.35)",
+          }}>
+            enter your sanctuary
+          </span>
         </div>
       </div>
+
     </div>
   );
 }
 
-// ── Separate Article view component ──────────────────────────────
+// ── Article view ──────────────────────────────────────────────────
 function ArticleView({ blog, onBack }) {
+  useLuxuryFonts();
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 40);
@@ -289,12 +433,13 @@ function ArticleView({ blog, onBack }) {
 
   return (
     <div style={{
-      fontFamily: "Georgia, 'Times New Roman', serif",
+      background: "#F5F0E8",
+      color: "#1C1916",
+      fontFamily: "'Cormorant Garamond', Georgia, serif",
       minHeight: "100vh",
-      background: "#FAF8F4",
-      color: "#1a1a1a",
     }}>
-      {/* Hero image */}
+
+      {/* Hero */}
       <div style={{
         width: "100%",
         height: "clamp(260px, 45vw, 520px)",
@@ -308,88 +453,129 @@ function ArticleView({ blog, onBack }) {
             width: "100%", height: "100%", objectFit: "cover",
             transform: visible ? "scale(1)" : "scale(1.04)",
             transition: "transform 1.2s cubic-bezier(0.16,1,0.3,1)",
-            filter: "brightness(0.82)",
+            filter: "brightness(0.78)",
           }}
         />
-        {/* Gradient overlay */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, transparent 40%, rgba(250,248,244,0.95) 100%)",
+          background: "linear-gradient(to bottom, transparent 40%, rgba(245,240,232,0.97) 100%)",
         }} />
       </div>
 
-      {/* Article content */}
-      <div style={{ maxWidth: "680px", margin: "0 auto", padding: "0 28px 96px" }}>
+      {/* Content */}
+      <div style={{ maxWidth: "680px", margin: "0 auto", padding: "0 1.5rem 7rem" }}>
         <div style={{
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(20px)",
           transition: "opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s",
         }}>
-          {/* Meta row */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", marginTop: "32px", flexWrap: "wrap" }}>
+
+          {/* Meta */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1.5rem", marginTop: "2.5rem", flexWrap: "wrap" }}>
+            <TagPill tag={blog.tag} />
             <span style={{
-              ...TAG_STYLES[blog.tag],
-              fontSize: "0.68rem", fontWeight: "700", letterSpacing: "0.1em",
-              textTransform: "uppercase", padding: "4px 12px", borderRadius: "999px",
+              fontFamily: "sans-serif", fontSize: "0.55rem",
+              letterSpacing: "0.2em", textTransform: "uppercase", color: "#9E8E7A",
             }}>
-              {blog.tag}
-            </span>
-            <span style={{ fontSize: "0.78rem", color: "#a89585" }}>
               {new Date(blog.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </span>
-            <span style={{ fontSize: "0.78rem", color: "#c4b5a8" }}>·</span>
-            <span style={{ fontSize: "0.78rem", color: "#a89585" }}>{blog.readTime}</span>
+            <span style={{ color: "#C8A96A", opacity: 0.6 }}>·</span>
+            <span style={{
+              fontFamily: "sans-serif", fontSize: "0.55rem",
+              letterSpacing: "0.2em", textTransform: "uppercase", color: "#9E8E7A",
+            }}>
+              {blog.readTime}
+            </span>
           </div>
 
           {/* Title */}
           <h1 style={{
-            fontSize: "clamp(1.8rem, 5vw, 2.8rem)",
-            fontWeight: "800", lineHeight: 1.1, letterSpacing: "-0.02em",
-            marginBottom: "32px", color: "#1a1a1a",
+            fontFamily: "'Cinzel Decorative', serif",
+            fontSize: "clamp(1.6rem, 5vw, 2.8rem)",
+            fontWeight: 700,
+            letterSpacing: "0.03em",
+            lineHeight: 1.1,
+            color: "#1C1916",
+            marginBottom: "1.5rem",
           }}>
             {blog.title}
           </h1>
 
-          {/* Excerpt / lead */}
+          <GoldRuleShort maxWidth="12rem" />
+
+          {/* Excerpt */}
           <p style={{
-            fontSize: "1.15rem", lineHeight: 1.7, color: "#6b5d53",
-            fontStyle: "italic", marginBottom: "40px",
-            paddingBottom: "32px",
-            borderBottom: "1px solid rgba(210,196,182,0.4)",
+            fontFamily: "'Cormorant Garamond', serif",
+            fontSize: "1.2rem",
+            fontStyle: "italic",
+            fontWeight: 300,
+            color: "#6B5F52",
+            lineHeight: 1.85,
+            margin: "1.75rem 0 2.5rem",
           }}>
             {blog.excerpt}
           </p>
 
+          <GoldRule />
+
           {/* Body */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div style={{ marginTop: "2.5rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {(blog.body || "No content available.").split("\n\n").filter(Boolean).map((para, i) => (
               <p key={i} style={{
-                fontSize: "1.05rem", lineHeight: 1.85, color: "#3d2f22",
-                fontWeight: i === 0 ? "500" : "300",
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: "1.1rem",
+                fontWeight: i === 0 ? 400 : 300,
+                color: "#3D2F1F",
+                lineHeight: 1.95,
               }}>
                 {para}
               </p>
             ))}
           </div>
 
-          {/* Divider + back */}
-          <div style={{ marginTop: "64px", paddingTop: "32px", borderTop: "1px solid rgba(210,196,182,0.4)" }}>
-            <button
-              onClick={onBack}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: "0.82rem", fontWeight: "700", color: "#8b6f5e",
-                letterSpacing: "0.06em", fontFamily: "Georgia, serif",
-                transition: "color 0.2s", padding: 0,
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = "#5c4a3a"}
-              onMouseLeave={e => e.currentTarget.style.color = "#8b6f5e"}
-            >
-              ← Back to Journal
-            </button>
+          {/* Back */}
+          <div style={{ marginTop: "4rem", paddingTop: "2rem" }}>
+            <GoldRule />
+            <div style={{ marginTop: "2rem" }}>
+              <button
+                onClick={onBack}
+                style={{
+                  background: "none", border: "none", cursor: "pointer", padding: 0,
+                  fontFamily: "sans-serif",
+                  fontSize: "0.575rem",
+                  letterSpacing: "0.28em",
+                  textTransform: "uppercase",
+                  color: "#9E8E7A",
+                  fontWeight: "700",
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = "#C8A96A"}
+                onMouseLeave={e => e.currentTarget.style.color = "#9E8E7A"}
+              >
+                ← Back to Journal
+              </button>
+            </div>
           </div>
+
         </div>
       </div>
+
+      {/* Footer ornament */}
+      <div style={{ padding: "0 1.5rem 5rem" }}>
+        <GoldRule />
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "2.5rem" }}>
+          <span style={{
+            fontFamily: "'Cinzel Decorative', serif",
+            fontSize: "0.575rem",
+            letterSpacing: "0.5em",
+            textTransform: "uppercase",
+            color: "rgba(200,169,106,0.35)",
+          }}>
+            enter your sanctuary
+          </span>
+        </div>
+      </div>
+
     </div>
   );
 }
