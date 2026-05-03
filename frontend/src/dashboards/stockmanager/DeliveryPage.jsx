@@ -6,7 +6,7 @@ import {
   Clock, CheckCircle2, Loader2, ChevronDown, ChevronUp, Users, Eye,
   RefreshCw, SendHorizonal, ChevronsUpDown, AlertTriangle, UserCheck,
   ArrowRight, Package, ChevronLeft, ChevronRight, Bot, Pencil, Save,
-  SplitSquareHorizontal, AlertCircle
+  SplitSquareHorizontal, AlertCircle,TriangleAlert
 } from "lucide-react";
 
 import Header from "../ui/Header";
@@ -912,13 +912,14 @@ export function DeliveryPage() {
     } finally { setUpdatingDateId(null); }
   };
 
-  const stockManagerLinks = [
-    { to:"/stock-manager-dash",             label:"Dashboard",        icon:<LayoutDashboard />, end:true },
-    { to:"/stock-manager-dash/inventories", label:"Product's Catalog", icon:<Boxes />           },
-    { to:"/stock-manager-dash/ar",          label:"AR/3D Management", icon:<Bot size={18}/>     },
-    { to:"/stock-manager-dash/deliveries",  label:"Delivery",         icon:<Truck />            },
-    { to:"/stock-manager-dash/returns",     label:"Returns",          icon:<RotateCcw />        },
-  ];
+const stockManagerLinks = [
+  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
+  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
+]
 
   const TAB_STATUSES = STATUSES;
 

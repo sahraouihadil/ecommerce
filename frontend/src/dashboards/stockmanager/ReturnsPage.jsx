@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RotateCcw, LayoutDashboard, Boxes, Truck, Bot, DollarSign } from "lucide-react";
+import { RotateCcw, LayoutDashboard, Boxes, Truck, Bot, DollarSign,TriangleAlert } from "lucide-react";
 
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
@@ -120,13 +120,14 @@ export function ReturnsPage() {
   const total  = returns.length;
   const refund = returns.reduce((s, r) => s + (r.amount || 0), 0);
 
-  const stockManagerLinks = [
-    { to: "/stock-manager-dash",             label: "Dashboard",        icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes /> },
-    { to: "/stock-manager-dash/ar",          label: "AR/3D Management", icon: <Bot size={18} /> },
-    { to: "/stock-manager-dash/deliveries",  label: "Delivery",         icon: <Truck /> },
-    { to: "/stock-manager-dash/returns",     label: "Returns",          icon: <RotateCcw /> },
-  ];
+const stockManagerLinks = [
+  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
+  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
+]
 
   const cols = ["Return ID", "Order", "Customer", "Product", "Reason", "Amount", "Date", "Status"];
 

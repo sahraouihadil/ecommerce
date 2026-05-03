@@ -15,7 +15,8 @@ import {
   Boxes,
   Truck,
   RotateCcw,
-  Bot
+  Bot,
+  TriangleAlert
 } from "lucide-react";
 
 import Header from "../ui/Header";
@@ -163,13 +164,14 @@ setCategoryList(
   const totalRev    = orders.reduce((s, o) => s + o.totalamount, 0);
   
 
-  const stockManagerLinks = [
-    { to: "/stock-manager-dash", label: "Dashboard", icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes /> },
-    { to: "/stock-manager-dash/ar",          label: "AR/3D Management", icon: <Bot size={18} /> },
-    { to: "/stock-manager-dash/deliveries", label: "Delivery", icon: <Truck /> },
-    { to: "/stock-manager-dash/returns", label: "Returns", icon: <RotateCcw /> }
-  ];
+const stockManagerLinks = [
+  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
+  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
+]
   return (
     <div className="flex min-h-screen bg-[#F4F6FB]">
       

@@ -4,7 +4,7 @@ import {
   Eye, Pencil, Trash2, Plus, Layers, LayoutDashboard, Bot,
   Boxes, Truck, RotateCcw, X, Search, CheckCircle2, Loader2,
   AlertTriangle, Box, Smartphone, Globe, ToggleLeft, ToggleRight,
-  ChevronRight, ExternalLink,
+  ChevronRight, ExternalLink,TriangleAlert
 } from 'lucide-react'
 import api from '../../services/api'
 import Sidebar from '../ui/Sidebar'
@@ -620,13 +620,14 @@ export default function ARPage() {
   const [flash,       setFlash]       = useState('')
   const [activeModal, setActiveModal] = useState(null) // { mode: 'view'|'edit'|'delete', item }
 
-  const stockManagerLinks = [
-    { to: '/stock-manager-dash',             label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
-    { to: '/stock-manager-dash/inventories', label: "Product's Catalog", icon: <Boxes />            },
-    { to: '/stock-manager-dash/ar',          label: 'AR/3D Management',  icon: <Bot size={18} />    },
-    { to: '/stock-manager-dash/deliveries',  label: 'Delivery',          icon: <Truck />            },
-    { to: '/stock-manager-dash/returns',     label: 'Returns',           icon: <RotateCcw />        },
-  ]
+const stockManagerLinks = [
+  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
+  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
+]
 
   const fetchItems = () => {
     setLoading(true)

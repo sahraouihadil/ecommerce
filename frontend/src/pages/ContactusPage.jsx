@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import api from "../services/api";
 
 function AnimatedItem({ children, delay = 0, style = {} }) {
   const [visible, setVisible] = useState(false);
@@ -42,10 +43,26 @@ export function ContactusPage() {
   const [sent, setSent] = useState(false);
   const [focused, setFocused] = useState(null);
 
-  const handleSubmit = () => {
-    if (!name || !email || !subject || !message) return;
+  // ── NEW: API state ──────────────────────────────────────────────────────────
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // ── UPDATED: async submit → POST /api/complaints/ ──────────────────────────
+const handleSubmit = async () => {
+  if (!name || !email || !subject || !message) return;
+  setLoading(true);
+  setError(null);
+  try {
+    await api.post("/api/complaints/", { name, email, subject, message });
     setSent(true);
-  };
+  } catch (e) {
+    setError("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+  // ───────────────────────────────────────────────────────────────────────────
 
   const inputStyle = (key) => ({
     width: "100%",
@@ -90,7 +107,6 @@ export function ContactusPage() {
       color: CHARCOAL,
     }}>
 
-      {/* ── Load Google Fonts ── */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
         ::placeholder { color: rgba(158,142,122,0.45); font-style: italic; }
@@ -129,7 +145,6 @@ export function ContactusPage() {
           justifyContent: "center",
         }}>
 
-          {/* Eyebrow */}
           <AnimatedItem delay={0}>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2rem" }}>
               <div style={{ height: "1px", width: "2rem", background: GOLD, opacity: 0.6 }} />
@@ -145,7 +160,6 @@ export function ContactusPage() {
             </div>
           </AnimatedItem>
 
-          {/* Heading */}
           <AnimatedItem delay={80}>
             <h1 style={{
               fontFamily: "'Cinzel Decorative', serif",
@@ -160,7 +174,6 @@ export function ContactusPage() {
             </h1>
           </AnimatedItem>
 
-          {/* Gold ornament */}
           <AnimatedItem delay={140}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "2rem", maxWidth: "12rem" }}>
               <div style={{ height: "1px", flex: 1, background: GOLD, opacity: 0.45 }} />
@@ -169,7 +182,6 @@ export function ContactusPage() {
             </div>
           </AnimatedItem>
 
-          {/* Subtitle */}
           <AnimatedItem delay={200}>
             <p style={{
               fontSize: "1.125rem",
@@ -184,7 +196,6 @@ export function ContactusPage() {
             </p>
           </AnimatedItem>
 
-          {/* Contact info list */}
           {[
             { label: "Email", value: "hello@aroom.com" },
             { label: "Location", value: "Constantine, Algeria" },
@@ -216,7 +227,6 @@ export function ContactusPage() {
             </AnimatedItem>
           ))}
 
-          {/* Bottom ornament */}
           <AnimatedItem delay={560}>
             <div style={{ marginTop: "2rem" }}>
               <span style={{
@@ -251,7 +261,6 @@ export function ContactusPage() {
                 padding: "5rem 2rem",
                 gap: "1.5rem",
               }}>
-                {/* Animated check circle */}
                 <div style={{
                   width: "72px",
                   height: "72px",
@@ -359,7 +368,6 @@ export function ContactusPage() {
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
-                  {/* Custom arrow */}
                   <span style={{
                     position: "absolute",
                     right: 0,
@@ -376,7 +384,7 @@ export function ContactusPage() {
 
               {/* Message */}
               <AnimatedItem delay={320}>
-                <div style={{ marginBottom: "3rem" }}>
+                <div style={{ marginBottom: "2rem" }}>
                   <label style={labelStyle("message")}>Message</label>
                   <textarea
                     value={message}
@@ -395,11 +403,27 @@ export function ContactusPage() {
                 </div>
               </AnimatedItem>
 
+              {/* ── NEW: Error message ── */}
+              {error && (
+                <AnimatedItem delay={0}>
+                  <p style={{
+                    fontFamily: "sans-serif",
+                    fontSize: "0.75rem",
+                    color: "#c0392b",
+                    marginBottom: "1.25rem",
+                    letterSpacing: "0.02em",
+                  }}>
+                    {error}
+                  </p>
+                </AnimatedItem>
+              )}
+
               {/* Submit */}
               <AnimatedItem delay={400}>
                 <SendButton
                   onClick={handleSubmit}
                   disabled={!name || !email || !subject || !message}
+                  loading={loading}
                 />
               </AnimatedItem>
             </>
@@ -407,7 +431,6 @@ export function ContactusPage() {
         </div>
       </div>
 
-      {/* Responsive styles */}
       <style>{`
         @media (max-width: 768px) {
           .contact-grid {
@@ -419,13 +442,14 @@ export function ContactusPage() {
   );
 }
 
-function SendButton({ onClick, disabled }) {
+// ── UPDATED: loading prop added ───────────────────────────────────────────────
+function SendButton({ onClick, disabled, loading }) {
   const [hovered, setHovered] = useState(false);
 
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -435,28 +459,30 @@ function SendButton({ onClick, disabled }) {
         padding: "0 2.25rem",
         height: "52px",
         background: "transparent",
-        color: disabled ? "rgba(200,169,106,0.35)" : hovered ? "#1C1916" : "#C8A96A",
-        border: `1px solid ${disabled ? "rgba(200,169,106,0.2)" : hovered ? "#1C1916" : "rgba(200,169,106,0.55)"}`,
+        color: (disabled || loading) ? "rgba(200,169,106,0.35)" : hovered ? "#1C1916" : "#C8A96A",
+        border: `1px solid ${(disabled || loading) ? "rgba(200,169,106,0.2)" : hovered ? "#1C1916" : "rgba(200,169,106,0.55)"}`,
         borderRadius: 0,
         fontFamily: "sans-serif",
         fontSize: "0.6rem",
         fontWeight: 600,
         letterSpacing: "0.3em",
         textTransform: "uppercase",
-        cursor: disabled ? "not-allowed" : "pointer",
+        cursor: (disabled || loading) ? "not-allowed" : "pointer",
         transition: "all 0.25s ease",
         outline: "none",
       }}
     >
-      Send Message
-      <span style={{
-        display: "inline-block",
-        transition: "transform 0.3s ease",
-        transform: hovered && !disabled ? "translateX(5px)" : "none",
-        fontSize: "0.875rem",
-      }}>
-        →
-      </span>
+      {loading ? "Sending…" : "Send Message"}
+      {!loading && (
+        <span style={{
+          display: "inline-block",
+          transition: "transform 0.3s ease",
+          transform: hovered && !disabled ? "translateX(5px)" : "none",
+          fontSize: "0.875rem",
+        }}>
+          →
+        </span>
+      )}
     </button>
   );
 }

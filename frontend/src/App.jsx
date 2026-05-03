@@ -50,6 +50,7 @@ import TodayOrdersPage from './dashboards/deliveryman/TodayOrdersPage'
 import SchedulePage from './dashboards/deliveryman/SchedulePage'
 import DlvProfilePage from './dashboards/deliveryman/DlvProfilePage'
 import DlvHistoryPage from './dashboards/deliveryman/DlvHistoryPage'
+import ProblemsPage from './dashboards/stockmanager/ProblemsPage'
 
 // ===================== AUTH GUARDS =====================
 
@@ -168,8 +169,9 @@ function App() {
               <Route path='deliveries' element={<DeliveryPage />} />
               <Route path='returns' element={<ReturnsPage />} />
               <Route path='inventories' element={<ProductCatalogPage />} />
-              <Route path='ar' element={<ARPage />} />
+              <Route path='problems' element={<ProblemsPage/>}/>
               <Route path='profile' element={<AProfilePage />} />
+
             </Route>
 
             {/* ===== DELIVERY ===== */}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard, Boxes, Truck, RotateCcw, Search, Plus, Pencil,
   Trash2, X, Package, Tag, Palette, DollarSign, Layers, Hash,
-  ImagePlus, AlignLeft, AlertTriangle, AlertCircle,Bot
+  ImagePlus, AlignLeft, AlertTriangle, AlertCircle,Bot,TriangleAlert
 } from "lucide-react";
 
 import Header  from "../ui/Header";
@@ -404,13 +404,14 @@ export function ProductCatalogPage() {
   };
 
   // ── nav ────────────────────────────────────────────────────────────────────
-  const stockManagerLinks = [
-    { to: "/stock-manager-dash", label: "Dashboard", icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes /> },
-    { to: "/stock-manager-dash/ar",          label: "AR/3D Management", icon: <Bot size={18} /> },
-    { to: "/stock-manager-dash/deliveries", label: "Delivery", icon: <Truck /> },
-    { to: "/stock-manager-dash/returns", label: "Returns", icon: <RotateCcw /> }
-  ];
+const stockManagerLinks = [
+  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
+  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
+]
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (

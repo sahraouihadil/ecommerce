@@ -16,7 +16,7 @@ NAMING CONVENTION:
   - No suffix = data going TO the frontend or used internally
 """
 
-from pydantic import BaseModel,Field,EmailStr, field_validator
+from pydantic import BaseModel,Field,EmailStr, field_validator,validator
 from enums import UserRole
 from fastapi import Form,File
 from datetime import datetime,date

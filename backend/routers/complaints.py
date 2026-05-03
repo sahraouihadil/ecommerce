@@ -1,11 +1,27 @@
-# routes/complaints.py
+"""
+routes/complaints.py
+"""
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from typing import Optional
 from database import get_db
-from models import Complaints,Users
+from models import Complaints, Users
 
 router = APIRouter(prefix="/api/complaints", tags=["Complaints"])
 
+
+# ── schemas ───────────────────────────────────────────────────────────────────
+
+class ComplaintCreate(BaseModel):
+    name:    str
+    email:   str
+    subject: str          # maps to title AND type_c
+    message: str          # maps to description
+    priority: Optional[str] = "low"
+
+
+# ── endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/")
 def get_complaints(db: Session = Depends(get_db)):
@@ -17,46 +33,77 @@ def get_complaints(db: Session = Depends(get_db)):
 
     return [
         {
-            "id": c.id,
-            "title": c.title,
+            "id":          c.id,
+            "title":       c.title,
             "description": c.description,
-            "date": c.date,
-            "type": c.type_c,
-            "priority": c.priority,
-            "status": c.status,
-            "note": c.internal_note,
-
-          # user info
-            "user": u.username,
+            "date":        c.date,
+            "type":        c.type_c,
+            "priority":    c.priority,
+            "status":      c.status,
+            "note":        c.internal_note,
+            # user info
+            "user":  u.username,
             "email": u.email,
         }
         for c, u in results
     ]
 
 
-# UPDATE status
-@router.put("/{complaint_id}/status")
-def update_complaint_status(complaint_id: int, status: str, db: Session = Depends(get_db)):
-    complaint = db.query(Complaints).filter(Complaints.id == complaint_id).first()
+@router.post("/")
+def create_complaint(payload: ComplaintCreate, db: Session = Depends(get_db)):
+    """
+    Public endpoint — no auth required.
+    Called from the Contact Us page when a visitor submits the form.
+    user_id is left NULL because the visitor may not have an account.
+    """
+    complaint = Complaints(
+        title         = payload.subject,        # subject becomes the title
+        description   = payload.message,        # message is the full description
+        type_c        = payload.subject,        # also used as the complaint type
+        priority      = payload.priority,
+        status        = "pending",
+        internal_note = None,
+        user_id       = None,                   # anonymous / public submission
+    )
+    db.add(complaint)
+    db.commit()
+    db.refresh(complaint)
 
+    return {
+        "id":      complaint.id,
+        "title":   complaint.title,
+        "status":  complaint.status,
+        "message": "Complaint submitted successfully",
+    }
+
+
+@router.put("/{complaint_id}/status")
+def update_complaint_status(
+    complaint_id: int,
+    status: str,
+    db: Session = Depends(get_db),
+):
+    complaint = db.query(Complaints).filter(Complaints.id == complaint_id).first()
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
 
     complaint.status = status
     db.commit()
     db.refresh(complaint)
-
     return complaint
 
-@router.put("/{complaint_id}/note")
-def update_note(complaint_id: int, note: str, db: Session = Depends(get_db)):
-    complaint = db.query(Complaints).filter(Complaints.id == complaint_id).first()
 
+@router.put("/{complaint_id}/note")
+def update_note(
+    complaint_id: int,
+    note: str,
+    db: Session = Depends(get_db),
+):
+    complaint = db.query(Complaints).filter(Complaints.id == complaint_id).first()
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
 
     complaint.internal_note = note
     db.commit()
     db.refresh(complaint)
-
     return complaint
