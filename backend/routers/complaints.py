@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
 from models import Complaints, Users
+from user_crud import get_current_user 
+
 
 router = APIRouter(prefix="/api/complaints", tags=["Complaints"])
 
@@ -50,20 +52,19 @@ def get_complaints(db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def create_complaint(payload: ComplaintCreate, db: Session = Depends(get_db)):
-    """
-    Public endpoint — no auth required.
-    Called from the Contact Us page when a visitor submits the form.
-    user_id is left NULL because the visitor may not have an account.
-    """
+def create_complaint(
+    payload: ComplaintCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user), 
+):
     complaint = Complaints(
-        title         = payload.subject,        # subject becomes the title
-        description   = payload.message,        # message is the full description
-        type_c        = payload.subject,        # also used as the complaint type
+        title         = payload.subject,
+        description   = payload.message,
+        type_c        = payload.subject,
         priority      = payload.priority,
         status        = "pending",
         internal_note = None,
-        user_id       = None,                   # anonymous / public submission
+        user_id       = current_user["id"], 
     )
     db.add(complaint)
     db.commit()
@@ -73,6 +74,7 @@ def create_complaint(payload: ComplaintCreate, db: Session = Depends(get_db)):
         "id":      complaint.id,
         "title":   complaint.title,
         "status":  complaint.status,
+        "user_id": complaint.user_id,
         "message": "Complaint submitted successfully",
     }
 
