@@ -44,21 +44,46 @@ def _serialize(p: Products) -> dict:
         "image_url":   p.images[0].image_url if p.images else None,
         "images":      [img.image_url for img in p.images],
         "colors":      [c.color for c in p.colors],
-        "created_at": p.created_at
-        
+        "created_at":  p.created_at,
     }
 
 
 # =============================================================================
-# GET ALL
+# GET ALL — STOREFRONT (approved/active only)
+# Used by the customer-facing home page / shop page.
+# Only products with is_active=True are returned — meaning admin has approved them.
 # =============================================================================
 @router.get("")
 def get_products(db: Session = Depends(get_db)):
-    products = db.query(Products).order_by(Products.id.desc()).all()
-    result   = [_serialize(p) for p in products]
+    products = (
+        db.query(Products)
+        .filter(Products.is_active == True)          # ← approved products only
+        .order_by(Products.id.desc())
+        .all()
+    )
+    result = [_serialize(p) for p in products]
     if result:
         result[0]["featured"] = True
     return result
+
+
+# =============================================================================
+# GET ALL — MANAGER CATALOG (every product, regardless of approval status)
+# Used exclusively by the stock-manager dashboard so managers can see pending
+# products and submit them for validation.
+# =============================================================================
+@router.get("/all")
+def get_all_products_manager(db: Session = Depends(get_db)):
+    """
+    Returns ALL products (active and inactive / pending approval).
+    Intended for the stock-manager catalog page only — not the storefront.
+    """
+    products = (
+        db.query(Products)
+        .order_by(Products.id.desc())
+        .all()
+    )
+    return [_serialize(p) for p in products]
 
 
 # =============================================================================
@@ -74,6 +99,8 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
 
 # =============================================================================
 # CREATE
+# New products are created with is_active=False by default so they must go
+# through the validation / approval flow before appearing on the storefront.
 # =============================================================================
 @router.post("")
 def add_product(
@@ -91,7 +118,8 @@ def add_product(
     ios_src:     Optional[str] = Form(None),
     able_3d:     bool           = Form(False),
     able_ar:     bool           = Form(False),
-    is_active:   bool           = Form(True),
+    # is_active is intentionally NOT accepted from the form —
+    # products start as inactive and are activated only by admin approval.
     image_1:     UploadFile     = File(None),
     image_2:     UploadFile     = File(None),
     image_3:     UploadFile     = File(None),
@@ -99,13 +127,14 @@ def add_product(
 ):
     import json
 
-    # 1 — create product row
+    # 1 — create product row; always starts inactive (pending admin approval)
     product = Products(
         name=name, description=description, price=price,
         quantity=quantity, sku=sku, category=category,
         min_stock=min_stock, badge=badge or "new",
         model_src=model_src, model_3d=model_3d, ios_src=ios_src,
-        able_3d=able_3d, able_ar=able_ar, is_active=is_active,
+        able_3d=able_3d, able_ar=able_ar,
+        is_active=False,                             # ← always starts as inactive
     )
     db.add(product)
     db.commit()
@@ -132,6 +161,7 @@ def add_product(
     db.refresh(product)
     return _serialize(product)
 
+
 @router.get("/by-sku/{sku}")
 def get_product_by_sku(sku: str, db: Session = Depends(get_db)):
     """
@@ -148,8 +178,11 @@ def get_product_by_sku(sku: str, db: Session = Depends(get_db)):
 
     return _serialize(product)
 
+
 # =============================================================================
 # UPDATE
+# Editing a product resets is_active to False so it must be re-approved after
+# significant changes. This prevents unapproved edits from going live silently.
 # =============================================================================
 @router.put("/{product_id}")
 def update_product(
@@ -191,6 +224,7 @@ def update_product(
     product.ios_src     = ios_src
     product.able_3d     = able_3d
     product.able_ar     = able_ar
+    product.is_active   = False      # ← reset to inactive; must be re-approved
 
     # — replace colors
     if colors is not None:

@@ -7,7 +7,7 @@ import {
   BarChart, Activity, Settings,
   Boxes, Truck, RotateCcw, Bot,
   Megaphone, BadgePercent, Mail, FileText,
-  Loader2,
+  Loader2,TriangleAlert
 } from "lucide-react";
 import api from "../services/api";
 
@@ -51,11 +51,12 @@ const ROLE_CONFIG = {
     role: "Stock Manager",
     badgeColor: "bg-green-100 text-green-700",
     links: [
-      { to: "/stock-manager-dash",             label: "Dashboard",         icon: <LayoutDashboard size={18} />, end: true },
-      { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes size={18} /> },
-      { to: "/stock-manager-dash/ar",          label: "AR/3D Management",  icon: <Bot size={18} /> },
-      { to: "/stock-manager-dash/deliveries",  label: "Delivery",          icon: <Truck size={18} /> },
-      { to: "/stock-manager-dash/returns",     label: "Returns",           icon: <RotateCcw size={18} /> },
+  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
+  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
     ],
   },
   "/deliveryman-dash": {

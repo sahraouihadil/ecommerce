@@ -70,6 +70,6 @@ model-viewer {
 }
 
 .swatch.active {
-  border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px #FAFAF8, 0 0 0 5px #1A1A1A;
+  border-color: #807e7e;
+  box-shadow: 0 0 0 3px #FAFAF8, 0 0 0 5px #b8b7b7;
 }
