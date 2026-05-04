@@ -110,6 +110,7 @@ export function Header() {
     { to: '/aboutus', label: 'How It Works' },
     { to: '/journal', label: 'Journal' },
     { to: '/contactus', label: 'Contact' },
+    { to: '/faq', label: 'FAQ' }
   ];
 
   const drawerIconLinks = [
@@ -122,8 +123,8 @@ export function Header() {
     <>
       <header
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled
-            ? 'bg-white/90 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05)]'
-            : 'bg-transparent'
+          ? 'bg-white/90 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05)]'
+          : 'bg-transparent'
           }`}
       >
         <div className={`transition-all duration-500 ${scrolled ? 'py-4' : 'py-6'}`}>

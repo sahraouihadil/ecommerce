@@ -4,7 +4,7 @@ import { Header } from './components/Header'
 import { BrowserRouter, Route, Routes, Navigate, useLocation, Outlet } from 'react-router-dom'
 import ChatWidget from './components/ChatWidget/ChatWidget'
 import AuthProvider from './components/AuthProvider'
-
+import { FAQPage } from './pages/FAQPage'
 import { HomePage } from './pages/HomePage'
 import { ProductPage } from './pages/ProductPage'
 import { CheckoutPage } from './pages/CheckoutPage'
@@ -131,7 +131,8 @@ function App() {
             <Route path='/set-password' element={<SetPassword />} />
             <Route path='/privacy' element={<PrivacyPolicy />} />
             <Route path='/terms' element={<TermsOfService />} />
-
+            <Route path='/faq' element={<FAQPage />} />
+            
             {/* ===== PROTECTED USER ROUTES ===== */}
             <Route path='/cart' element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
             <Route path='/checkout' element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
