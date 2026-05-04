@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Section, Divider } from '../components/ui';
 import api from '../services/api';
-import { Search } from '../components/Search';
 
 const steps = [
   { num: '01', title: 'Browse', desc: 'Explore the full furniture catalog — filter by category, style, or room.' },
@@ -336,7 +335,7 @@ export function HomePage() {
     <div className="bg-cream text-charcoal min-h-screen">
       <style>{FONTS}</style>
 
-     
+
 
       <section className="min-h-[90vh] flex items-center overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full py-20 md:py-32">
@@ -377,24 +376,13 @@ export function HomePage() {
       </section>
       <AnnouncementBar promotions={promotions} />
       <Divider variant="diamond" className="max-w-7xl mx-auto px-6" />
-      
+
       <PromotionsBanner promotions={promotions} />
 
       <Section size="lg" id="shop">
         <h2 className="font-cinzel text-[clamp(2.5rem,5vw,3.5rem)] font-bold leading-[0.95] tracking-tight mb-8">
           Shop Furniture
         </h2>
-
-        <div style={{
-          background: "#ebe8e0ff",
-          border: "1px solid rgba(200,169,106,0.22)",
-          borderRadius: "20px",
-          padding: "2rem 2.5rem",
-          marginBottom: "2.5rem",
-        }}>
-          <Search />
-        </div>
-
         <div className="flex flex-wrap gap-3 mb-16">
           {categories.map((cat) => (
             <Button key={cat} variant={activeCategory === cat ? 'black' : 'blush'} size="sm" onClick={() => setActiveCategory(cat)}>
@@ -439,7 +427,111 @@ export function HomePage() {
           ))}
         </div>
       </Section>
+      {/* ── VIDEO SECTION ── */}
+      <section style={{ position: "relative", height: "560px", overflow: "hidden" }}>
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+          }}
+        >
+          <source
+            src="/video/room.mp4"
+            type="video/mp4"
+          />
+        </video>
 
+        {/* Dark overlay */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(26,20,14,0.35)",
+        }} />
+
+        {/* Content */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "2rem",
+          gap: "20px",
+        }}>
+          <p style={{
+            fontFamily: "sans-serif",
+            fontSize: "10px",
+            letterSpacing: "0.28em",
+            textTransform: "uppercase",
+            color: "#b89a7e",
+          }}>
+            Your space, your story
+          </p>
+
+          <h2 style={{
+            fontFamily: "'Cinzel Decorative', cursive",
+            fontSize: "clamp(1.8rem, 4vw, 3rem)",
+            color: "#fff",
+            lineHeight: 1.2,
+            maxWidth: "600px",
+            margin: 0,
+          }}>
+            Furniture that feels like home
+          </h2>
+
+          <p style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontStyle: "italic",
+            fontWeight: 300,
+            fontSize: "1.15rem",
+            color: "rgba(255,255,255,0.6)",
+            maxWidth: "420px",
+            lineHeight: 1.8,
+            margin: 0,
+          }}>
+            We built ARoom because buying furniture online felt like a gamble. We fixed that.
+          </p>
+
+          {/* Elegant button */}
+          <button
+            onClick={() => navigate("/aboutus")}
+            style={{
+              marginTop: "12px",
+              padding: "14px 36px",
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.4)",
+              borderRadius: "2rem",
+              color: "#fff",
+              fontFamily: "sans-serif",
+              fontSize: "10px",
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              transition: "all 0.35s ease",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "rgba(184,154,126,0.25)";
+              e.currentTarget.style.borderColor = "#b89a7e";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
+            }}
+          >
+            Discover our story
+          </button>
+        </div>
+      </section>
       <Divider className="max-w-7xl mx-auto" />
 
       <Section size="lg">
@@ -454,6 +546,7 @@ export function HomePage() {
           ))}
         </div>
       </Section>
+
 
       <Divider variant="diamond" className="max-w-3xl mx-auto" />
 
