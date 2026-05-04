@@ -563,6 +563,7 @@ export function HomePage() {
           <h2 className="font-cinzel text-cream text-[2.5rem] font-bold tracking-tight mb-4">Stay in touch</h2>
           <p className="font-cormorant italic text-cream/50 text-xl mb-12">
             New arrivals, AR features, and exclusive drops — straight to your inbox.
+            We’d love to hear from you!
           </p>
           <div className="flex max-w-md mx-auto">
             <input
