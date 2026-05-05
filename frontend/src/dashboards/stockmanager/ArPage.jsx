@@ -4,11 +4,13 @@ import {
   Eye, Pencil, Trash2, Plus, Layers, LayoutDashboard, Bot,
   Boxes, Truck, RotateCcw, X, Search, CheckCircle2, Loader2,
   AlertTriangle, Box, Smartphone, Globe, ToggleLeft, ToggleRight,
-  ChevronRight, ExternalLink,TriangleAlert
+  ChevronRight, ExternalLink, TriangleAlert, Clock, ShieldCheck, ShieldX,
 } from 'lucide-react'
 import api from '../../services/api'
 import Sidebar from '../ui/Sidebar'
 import Header from '../ui/Header'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const statusStyle = {
   active:   'bg-green-100 text-green-600',
@@ -33,8 +35,62 @@ function formatDate(raw) {
   return `${dd}-${mm}-${yy}`
 }
 
+// ── Validation Status Badge ───────────────────────────────────────────────────
+
+const VAL_STYLE = {
+  Pending:  { bg: '#fffbeb', color: '#d97706', Icon: Clock,        label: 'Pending Review' },
+  Approved: { bg: '#f0fdf4', color: '#16a34a', Icon: ShieldCheck,  label: 'Approved'       },
+  Rejected: { bg: '#fff1f2', color: '#dc2626', Icon: ShieldX,      label: 'Rejected'       },
+  None:     { bg: '#f8fafc', color: '#94a3b8', Icon: Clock,        label: 'Not Submitted'  },
+}
+
+function ValidationBadge({ valReq }) {
+  const key   = valReq?.status ?? 'None'
+  const style = VAL_STYLE[key] ?? VAL_STYLE.None
+  const { bg, color, Icon, label } = style
+  return (
+    <span
+      title={valReq?.rejection_note || label}
+      style={{
+        display:      'inline-flex',
+        alignItems:   'center',
+        gap:          5,
+        background:   bg,
+        color:        color,
+        fontSize:     11,
+        fontWeight:   700,
+        padding:      '3px 9px',
+        borderRadius: 99,
+        whiteSpace:   'nowrap',
+      }}
+    >
+      <Icon size={11} />
+      {label}
+    </span>
+  )
+}
+
+// ── Submit a validation request for a specific type (AR or 3D) ────────────────
+// Silently ignores 400 "already pending" — saves are still valid in that case.
+
+async function submitValidationRequest(itemType, productId, productName) {
+  const labelMap = { AR: 'AR', '3D': '3D' }
+  const label    = labelMap[itemType] ?? itemType
+  try {
+    await api.post('/api/validation/', {
+      item_type: itemType,
+      item_id:   productId,
+      title:     `${label}: ${productName}`,
+    })
+  } catch (err) {
+    if (err.response?.status !== 400) {
+      console.warn(`${label} validation submission warning:`, err.response?.data?.detail ?? err.message)
+    }
+  }
+}
+
 // ─── VIEW AR MODAL ────────────────────────────────────────────────────────────
-function ViewARModal({ item, onClose }) {
+function ViewARModal({ item, arValReq, tdValReq, onClose }) {
   const UrlField = ({ label, Icon, value }) => (
     <div>
       <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1">
@@ -91,6 +147,50 @@ function ViewARModal({ item, onClose }) {
             <Badge status={item.is_active ? 'active' : 'inactive'} />
           </div>
 
+          {/* AR validation status */}
+          <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-500 mb-1">AR Validation Status</p>
+              <ValidationBadge valReq={arValReq} />
+              {arValReq?.rejection_note && (
+                <p className="text-xs text-red-500 mt-1.5 leading-relaxed">
+                  <span className="font-semibold">Rejection note:</span> {arValReq.rejection_note}
+                </p>
+              )}
+            </div>
+            <div className="text-right text-xs shrink-0">
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                background: item.valid_ar ? '#f0fdf4' : '#f8fafc',
+                color:      item.valid_ar ? '#16a34a' : '#94a3b8',
+              }}>
+                AR {item.valid_ar ? '✓' : '✗'}
+              </span>
+            </div>
+          </div>
+
+          {/* 3D validation status */}
+          <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-500 mb-1">3D Validation Status</p>
+              <ValidationBadge valReq={tdValReq} />
+              {tdValReq?.rejection_note && (
+                <p className="text-xs text-red-500 mt-1.5 leading-relaxed">
+                  <span className="font-semibold">Rejection note:</span> {tdValReq.rejection_note}
+                </p>
+              )}
+            </div>
+            <div className="text-right text-xs shrink-0">
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                background: item.valid_3d ? '#f0fdf4' : '#f8fafc',
+                color:      item.valid_3d ? '#16a34a' : '#94a3b8',
+              }}>
+                3D {item.valid_3d ? '✓' : '✗'}
+              </span>
+            </div>
+          </div>
+
           {/* Toggles read-only */}
           <div className="grid grid-cols-2 gap-3">
             {[
@@ -144,7 +244,7 @@ function EditARModal({ item, onClose, onSaved }) {
   const [saving,    setSaving]    = useState(false)
   const [saveError, setSaveError] = useState('')
 
-  const handleSave = async () => {
+const handleSave = async () => {
     setSaving(true); setSaveError('')
     try {
       const form = new FormData()
@@ -158,15 +258,23 @@ function EditARModal({ item, onClose, onSaved }) {
       form.append('colors',      JSON.stringify(
         (item.colors || []).map(c => typeof c === 'object' ? c.color : c)
       ))
+      form.append('is_active', item.is_active)
       form.append('model_src', modelSrc)
       form.append('model_3d',  model3d)
       form.append('ios_src',   iosSrc)
       form.append('able_3d',   able3d)
       form.append('able_ar',   ableAr)
+      form.append('valid_ar',  false)
+      form.append('valid_3d',  false)
 
       await api.put(`/api/products/${item.id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
+
+      // ── Submit validation requests only for enabled types ──
+      if (ableAr)  await submitValidationRequest('AR', item.id, item.name)
+      if (able3d)  await submitValidationRequest('3D', item.id, item.name)
+
       onSaved()
       onClose()
     } catch (err) {
@@ -174,7 +282,7 @@ function EditARModal({ item, onClose, onSaved }) {
       setSaveError(err.response?.data?.detail || 'Failed to save. Please try again.')
     } finally { setSaving(false) }
   }
-
+  
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -207,6 +315,15 @@ function EditARModal({ item, onClose, onSaved }) {
               <p className="text-sm font-bold text-gray-800 truncate">{item.name}</p>
               <p className="text-xs text-[#5B47E0] font-medium">SKU: {item.sku} · {item.category}</p>
             </div>
+          </div>
+
+          {/* Validation notice */}
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+            <Clock size={14} className="text-amber-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Saving will <span className="font-semibold">reset both AR and 3D validation</span> and automatically
+              submit two separate review requests to the admin queue.
+            </p>
           </div>
 
           {/* Toggles */}
@@ -265,7 +382,7 @@ function EditARModal({ item, onClose, onSaved }) {
             className="flex-1 px-4 py-2.5 rounded-xl bg-[#5B47E0] hover:bg-[#4a38cc] text-white text-sm font-semibold transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
             {saving
               ? <><Loader2 size={14} className="animate-spin" /> Saving…</>
-              : <><CheckCircle2 size={14} /> Save Changes</>}
+              : <><CheckCircle2 size={14} /> Save & Submit for Review</>}
           </button>
         </div>
       </div>
@@ -282,7 +399,6 @@ function DeleteARModal({ item, onClose, onDeleted }) {
     setDeleting(true); setError('')
     try {
       const form = new FormData()
-      // Pass through all required product fields unchanged
       form.append('name',        item.name        || '')
       form.append('description', item.description || '')
       form.append('price',       item.price       ?? 0)
@@ -293,12 +409,14 @@ function DeleteARModal({ item, onClose, onDeleted }) {
       form.append('colors',      JSON.stringify(
         (item.colors || []).map(c => typeof c === 'object' ? c.color : c)
       ))
-      // Clear all AR fields
+      // Clear all AR/3D fields and reset both validation flags
       form.append('model_src', '')
       form.append('model_3d',  '')
       form.append('ios_src',   '')
       form.append('able_3d',   false)
       form.append('able_ar',   false)
+      form.append('valid_ar',  false)
+      form.append('valid_3d',  false)
 
       await api.put(`/api/products/${item.id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -342,8 +460,9 @@ function DeleteARModal({ item, onClose, onDeleted }) {
           <p className="text-sm text-gray-500 leading-relaxed">
             This will clear the <span className="font-semibold text-gray-700">model_src</span>,{' '}
             <span className="font-semibold text-gray-700">model_3d</span>, and{' '}
-            <span className="font-semibold text-gray-700">ios_src</span> URLs, and disable
-            both 3D and AR for this product. The product itself will not be deleted.
+            <span className="font-semibold text-gray-700">ios_src</span> URLs, disable
+            both 3D and AR, and reset <span className="font-semibold text-gray-700">valid_ar</span> /{' '}
+            <span className="font-semibold text-gray-700">valid_3d</span>. The product itself will not be deleted.
           </p>
 
           {error && (
@@ -395,7 +514,6 @@ function AddARModal({ onClose, onSaved }) {
     try {
       const res = await api.get(`/api/products/by-sku/${sku.trim()}`)
       const p   = res.data
-      console.log(res.data)
       setProduct(p)
       setModelSrc(p.model_src || '')
       setModel3d(p.model_3d   || '')
@@ -429,10 +547,18 @@ function AddARModal({ onClose, onSaved }) {
       form.append('ios_src',   iosSrc)
       form.append('able_3d',   able3d)
       form.append('able_ar',   ableAr)
+      // New AR/3D config always starts unvalidated
+      form.append('valid_ar',  false)
+      form.append('valid_3d',  false)
 
       await api.put(`/api/products/${product.id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
+
+      // Submit separate validation requests for AR and 3D
+      await submitValidationRequest('AR', product.id, product.name)
+      await submitValidationRequest('3D', product.id, product.name)
+
       onSaved()
       onClose()
     } catch (err) {
@@ -537,6 +663,17 @@ function AddARModal({ onClose, onSaved }) {
                 </button>
               </div>
 
+              {/* Validation notice */}
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                <Clock size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  Saving will automatically submit separate{' '}
+                  <span className="font-semibold">AR</span> and{' '}
+                  <span className="font-semibold">3D validation requests</span> to
+                  the admin queue. Each can be approved or rejected independently.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: 'Enable 3D', desc: 'Show 3D model viewer',  val: able3d, set: setAble3d },
@@ -600,7 +737,7 @@ function AddARModal({ onClose, onSaved }) {
               className="flex-1 px-4 py-2.5 rounded-xl bg-[#5B47E0] hover:bg-[#4a38cc] text-white text-sm font-semibold transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
               {saving
                 ? <><Loader2 size={14} className="animate-spin" /> Saving…</>
-                : <><CheckCircle2 size={14} /> Save AR Config</>}
+                : <><CheckCircle2 size={14} /> Save & Submit for Review</>}
             </button>
           )}
         </div>
@@ -611,41 +748,92 @@ function AddARModal({ onClose, onSaved }) {
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ARPage() {
-    const navigate = useNavigate();
+  const navigate = useNavigate()
 
-  const [items,       setItems]       = useState([])
-  const [loading,     setLoading]     = useState(true)
-  const [openBar,     setOpenBar]     = useState(window.innerWidth >= 600)
-  const [showModal,   setShowModal]   = useState(false)
-  const [flash,       setFlash]       = useState('')
-  const [activeModal, setActiveModal] = useState(null) // { mode: 'view'|'edit'|'delete', item }
+  const [items,         setItems]         = useState([])
+  // Separate maps: productId → latest validation request of that type
+  const [arValMap,      setArValMap]      = useState({}) // AR  type
+  const [tdValMap,      setTdValMap]      = useState({}) // 3D  type
+  const [loading,       setLoading]       = useState(true)
+  const [openBar,       setOpenBar]       = useState(window.innerWidth >= 600)
+  const [showModal,     setShowModal]     = useState(false)
+  const [flash,         setFlash]         = useState({ msg: '', type: 'success' })
+  const [activeModal,   setActiveModal]   = useState(null) // { mode: 'view'|'edit'|'delete', item }
 
-const stockManagerLinks = [
-  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
-  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
-  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
-  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
-  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
-  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
-]
+  const stockManagerLinks = [
+    { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+    { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+    { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+    { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+    { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />    },
+    { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
+  ]
 
-  const fetchItems = () => {
+  // ── Fetch products ─────────────────────────────────────────────────────────
+  const fetchItems = async () => {
     setLoading(true)
-    api.get('/api/products')
-      .then(r => setItems(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    try {
+      const r = await api.get('/api/products')
+      setItems(r.data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { fetchItems() }, [])
+  // ── Fetch validation requests and build separate maps for AR and 3D ────────
+  // API returns newest-first; we keep only the first (latest) entry per product.
+  const fetchValidations = async () => {
+    try {
+      const [arRes, tdRes] = await Promise.all([
+        api.get('/api/validation/', { params: { item_type: 'AR', limit: 500 } }),
+        api.get('/api/validation/', { params: { item_type: '3D', limit: 500 } }),
+      ])
 
-  const showFlash = (msg) => {
-    setFlash(msg)
-    setTimeout(() => setFlash(''), 3500)
+      const buildMap = (rows) => {
+        const map = {}
+        for (const req of rows) {
+          if (!(req.item_id in map)) map[req.item_id] = req
+        }
+        return map
+      }
+
+      setArValMap(buildMap(arRes.data))
+      setTdValMap(buildMap(tdRes.data))
+    } catch (err) {
+      console.error('Failed to fetch validations:', err)
+    }
   }
 
-  const handleSaved   = () => { showFlash('AR configuration saved successfully!');   fetchItems() }
-  const handleDeleted = () => { showFlash('AR configuration removed successfully!'); fetchItems() }
+  useEffect(() => {
+    fetchItems()
+    fetchValidations()
+  }, [])
+
+  const showFlash = (msg, type = 'success') => {
+    setFlash({ msg, type })
+    setTimeout(() => setFlash({ msg: '', type: 'success' }), 4000)
+  }
+
+  const handleSaved = () => {
+    showFlash('AR/3D configuration saved! Separate AR and 3D validation requests submitted to admin.')
+    fetchItems()
+    fetchValidations()
+  }
+
+  const handleDeleted = () => {
+    showFlash('AR configuration removed successfully.')
+    fetchItems()
+    fetchValidations()
+  }
+
+  // ── Validation summary counts for the mini stat bar (combined AR + 3D) ─────
+  const allValRequests = [...Object.values(arValMap), ...Object.values(tdValMap)]
+  const valCounts = allValRequests.reduce(
+    (acc, v) => { acc[v.status] = (acc[v.status] || 0) + 1; return acc },
+    { Pending: 0, Approved: 0, Rejected: 0 }
+  )
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F6FB' }}>
@@ -664,27 +852,55 @@ const stockManagerLinks = [
 
         <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-          {flash && (
-            <div className="flex items-center gap-2 bg-green-50 border-l-4 border-green-500 text-green-800 text-sm font-medium px-4 py-3 rounded-lg">
-              <CheckCircle2 size={15} className="shrink-0" /> {flash}
+          {/* Flash message */}
+          {flash.msg && (
+            <div className={`flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg border-l-4 ${
+              flash.type === 'success'
+                ? 'bg-green-50 border-green-500 text-green-800'
+                : 'bg-red-50 border-red-500 text-red-800'
+            }`}>
+              <CheckCircle2 size={15} className="shrink-0" /> {flash.msg}
             </div>
           )}
 
-          <div className="flex justify-between items-start">
-            <p className="text-sm text-gray-400 mt-0.5">Manage augmented reality product models</p>
+          {/* Header row + validation summary */}
+          <div className="flex flex-wrap justify-between items-start gap-4">
+            <div>
+              <p className="text-sm text-gray-400">Manage augmented reality and 3D product models</p>
+              {/* Mini validation stat bar */}
+              <div className="flex items-center gap-3 mt-2">
+                {[
+                  { label: 'Pending',  count: valCounts.Pending,  bg: '#fffbeb', color: '#d97706' },
+                  { label: 'Approved', count: valCounts.Approved, bg: '#f0fdf4', color: '#16a34a' },
+                  { label: 'Rejected', count: valCounts.Rejected, bg: '#fff1f2', color: '#dc2626' },
+                ].map(s => (
+                  <span key={s.label} style={{
+                    background: s.bg, color: s.color,
+                    fontSize: 11, fontWeight: 700,
+                    padding: '2px 10px', borderRadius: 99,
+                  }}>
+                    {s.label}: {s.count}
+                  </span>
+                ))}
+              </div>
+            </div>
             <button
               onClick={() => setShowModal(true)}
               className="flex items-center gap-2 bg-[#5B47E0] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#4a38cc] transition shadow-sm cursor-pointer"
             >
-              <Plus size={16} /> Add AR
+              <Plus size={16} /> Add AR / 3D
             </button>
           </div>
 
+          {/* Table */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-            <table className="w-full text-sm min-w-[860px]">
+            <table className="w-full text-sm min-w-[1100px]">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {['Product Name', 'Category', 'Model File', 'iOS Model', 'Views', 'Status', 'Created', 'Actions'].map(h => (
+                  {[
+                    'Product Name', 'Category', 'Model File', 'iOS Model',
+                    'Views', 'Status', 'AR Validation', '3D Validation', 'Created', 'Actions'
+                  ].map(h => (
                     <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -692,7 +908,7 @@ const stockManagerLinks = [
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12">
+                    <td colSpan={10} className="text-center py-12">
                       <div className="flex justify-center">
                         <div className="w-6 h-6 border-2 border-[#5B47E0] border-t-transparent rounded-full animate-spin" />
                       </div>
@@ -700,68 +916,104 @@ const stockManagerLinks = [
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12 text-gray-400 text-sm">No AR experiences found.</td>
+                    <td colSpan={10} className="text-center py-12 text-gray-400 text-sm">No AR experiences found.</td>
                   </tr>
-                ) : items.map((item) => (
-                  <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#EEF0FF] flex items-center justify-center shrink-0">
-                          <Layers size={14} className="text-[#5B47E0]" />
+                ) : items.map((item) => {
+                  const arValReq = arValMap[item.id] ?? null
+                  const tdValReq = tdValMap[item.id] ?? null
+                  return (
+                    <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-[#EEF0FF] flex items-center justify-center shrink-0">
+                            <Layers size={14} className="text-[#5B47E0]" />
+                          </div>
+                          <span className="font-medium text-gray-800">{item.name}</span>
                         </div>
-                        <span className="font-medium text-gray-800">{item.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-gray-500">{item.category}</td>
-                    <td className="px-5 py-4">
-                      <span className="font-mono text-xs bg-gray-50 border border-gray-200 px-2 py-1 rounded-md text-gray-500">
-                        {item.model_src || '—'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="font-mono text-xs bg-gray-50 border border-gray-200 px-2 py-1 rounded-md text-gray-500">
-                        {item.ios_src || '—'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 font-semibold text-gray-800">{item.views ?? '—'}</td>
-                    <td className="px-5 py-4">
-                      <Badge status={item.is_active ? 'active' : 'inactive'} />
-                    </td>
-                    <td className="px-5 py-4 text-gray-400 text-xs">{formatDate(item.created_at)}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setActiveModal({ mode: 'view', item })}
-                          title="View AR details"
-                          className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition cursor-pointer"
-                        >
-                          <Eye size={15} />
-                        </button>
-                        <button
-                          onClick={() => setActiveModal({ mode: 'edit', item })}
-                          title="Edit AR config"
-                          className="p-1.5 rounded-lg hover:bg-yellow-50 text-yellow-400 hover:text-yellow-600 transition cursor-pointer"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          onClick={() => setActiveModal({ mode: 'delete', item })}
-                          title="Remove AR config"
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition cursor-pointer"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-5 py-4 text-gray-500">{item.category}</td>
+                      <td className="px-5 py-4">
+                        <span className="font-mono text-xs bg-gray-50 border border-gray-200 px-2 py-1 rounded-md text-gray-500">
+                          {item.model_src || '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="font-mono text-xs bg-gray-50 border border-gray-200 px-2 py-1 rounded-md text-gray-500">
+                          {item.ios_src || '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 font-semibold text-gray-800">{item.views ?? '—'}</td>
+
+                      {/* Product active status — independent of AR/3D validation */}
+                      <td className="px-5 py-4">
+                        <Badge status={item.is_active ? 'active' : 'inactive'} />
+                      </td>
+
+                      {/* ── AR validation column ── */}
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col gap-1">
+                          <ValidationBadge valReq={arValReq} />
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99,
+                            display: 'inline-block', marginTop: 2,
+                            background: item.valid_ar ? '#f0fdf4' : '#f8fafc',
+                            color:      item.valid_ar ? '#16a34a' : '#94a3b8',
+                          }}>
+                            AR {item.valid_ar ? '✓' : '✗'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* ── 3D validation column ── */}
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col gap-1">
+                          <ValidationBadge valReq={tdValReq} />
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99,
+                            display: 'inline-block', marginTop: 2,
+                            background: item.valid_3d ? '#f0fdf4' : '#f8fafc',
+                            color:      item.valid_3d ? '#16a34a' : '#94a3b8',
+                          }}>
+                            3D {item.valid_3d ? '✓' : '✗'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4 text-gray-400 text-xs">{formatDate(item.created_at)}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setActiveModal({ mode: 'view', item, arValReq, tdValReq })}
+                            title="View AR details"
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition cursor-pointer"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            onClick={() => setActiveModal({ mode: 'edit', item })}
+                            title="Edit AR config"
+                            className="p-1.5 rounded-lg hover:bg-yellow-50 text-yellow-400 hover:text-yellow-600 transition cursor-pointer"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            onClick={() => setActiveModal({ mode: 'delete', item })}
+                            title="Remove AR config"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition cursor-pointer"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
-
         </div>
       </main>
-
+        {console.log(activeModal)}
       {/* ── Add AR Modal ── */}
       {showModal && (
         <AddARModal
@@ -774,9 +1026,12 @@ const stockManagerLinks = [
       {activeModal?.mode === 'view' && (
         <ViewARModal
           item={activeModal.item}
+          arValReq={activeModal.arValReq}
+          tdValReq={activeModal.tdValReq}
           onClose={() => setActiveModal(null)}
         />
       )}
+      
 
       {/* ── Edit Modal ── */}
       {activeModal?.mode === 'edit' && (
@@ -786,6 +1041,7 @@ const stockManagerLinks = [
           onSaved={handleSaved}
         />
       )}
+
 
       {/* ── Delete Modal ── */}
       {activeModal?.mode === 'delete' && (

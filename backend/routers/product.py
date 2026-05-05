@@ -40,6 +40,8 @@ def _serialize(p: Products) -> dict:
         "able_3d":     p.able_3d,
         "able_ar":     p.able_ar,
         "is_active":   p.is_active,
+        "valid_ar":    p.valid_ar,
+        "valid_3d":    p.valid_3d,
         # primary image (order=0) kept as image_url for backward compat
         "image_url":   p.images[0].image_url if p.images else None,
         "images":      [img.image_url for img in p.images],
@@ -171,6 +173,7 @@ def get_product_by_sku(sku: str, db: Session = Depends(get_db)):
     product = (
         db.query(Products)
         .filter(Products.sku == sku)
+        .filter(Products.is_active == True) 
         .first()
     )
     if not product:
@@ -194,6 +197,7 @@ def update_product(
     sku:         str            = Form(...),
     category:    Optional[str] = Form(None),
     colors:      Optional[str] = Form(None),   # JSON array string
+    is_active:   bool          =Form(...),
     min_stock:   int            = Form(5),
     model_src:   Optional[str] = Form(None),
     model_3d:    Optional[str] = Form(None),
@@ -224,7 +228,7 @@ def update_product(
     product.ios_src     = ios_src
     product.able_3d     = able_3d
     product.able_ar     = able_ar
-    product.is_active   = False      # ← reset to inactive; must be re-approved
+    product.is_active   = is_active      # ← reset to inactive; must be re-approved
 
     # — replace colors
     if colors is not None:

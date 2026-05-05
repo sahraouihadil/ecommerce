@@ -5,8 +5,19 @@ All database queries are isolated here so the router stays thin.
 
 Side-effects on status change
 ──────────────────────────────
-  Approve  →  _activate_item()    sets  is_active=True  /  status="active"  /  status="published"
-  Reject   →  _deactivate_item()  sets  is_active=False /  status="inactive" /  status="draft"
+  Approve  →  _activate_item()
+               Products   → is_active = True
+               AR         → valid_ar  = True          ← AR flag only
+               3D         → valid_3d  = True          ← 3D flag only
+               Campaigns / Promotions → status = "active"
+               Blogs      → status = "published"
+
+  Reject   →  _deactivate_item()
+               Products   → is_active = False
+               AR         → valid_ar  = False
+               3D         → valid_3d  = False
+               Campaigns / Promotions → status = "inactive"
+               Blogs      → status = "draft"
 """
 
 from sqlalchemy.orm import Session
@@ -20,7 +31,7 @@ from schema import ValidationSubmit
 
 # ── Allowed types ────────────────────────────────────────────────────────────
 
-VALID_TYPES = {"Products", "AR", "Campaigns", "Promotions", "Blogs"}
+VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Promotions", "Blogs"}
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -35,7 +46,7 @@ def submit_for_validation(
     Raises ValueError if the same item is already awaiting review.
     """
     if payload.item_type not in VALID_TYPES:
-        raise ValueError(f"item_type must be one of: {', '.join(VALID_TYPES)}")
+        raise ValueError(f"item_type must be one of: {', '.join(sorted(VALID_TYPES))}")
 
     # Prevent duplicate pending submissions for the same item
     existing = (
@@ -92,7 +103,7 @@ def get_stats(db: Session) -> dict:
         .group_by(ValidationRequest.status)
         .all()
     )
-    counts = {row[0]: row[1] for row in rows}
+    counts   = {row[0]: row[1] for row in rows}
     pending  = counts.get("Pending",  0)
     approved = counts.get("Approved", 0)
     rejected = counts.get("Rejected", 0)
@@ -112,9 +123,8 @@ def approve(
     reviewed_by: Optional[int] = None,
 ) -> ValidationRequest:
     """
-    Mark a request as Approved.
-    Side-effect: sets item.is_active = True (or equivalent) in its own table.
-    Raises ValueError if it's already been reviewed (Approved or Rejected).
+    Mark a request as Approved and trigger the item's activation side-effect.
+    Raises ValueError if already reviewed.
     """
     req = get_by_id(db, request_id)
     if not req:
@@ -128,7 +138,6 @@ def approve(
     db.commit()
     db.refresh(req)
 
-    # ── Side-effect: activate the item in its own table ──────────────────
     _activate_item(db, req.item_type, req.item_id)
 
     return req
@@ -141,9 +150,8 @@ def reject(
     reviewed_by:    Optional[int] = None,
 ) -> ValidationRequest:
     """
-    Mark a request as Rejected with a note visible to the submitter.
-    Side-effect: sets item.is_active = False (or equivalent) in its own table.
-    Raises ValueError if it's already been reviewed.
+    Mark a request as Rejected and trigger the item's deactivation side-effect.
+    Raises ValueError if already reviewed.
     """
     req = get_by_id(db, request_id)
     if not req:
@@ -158,7 +166,6 @@ def reject(
     db.commit()
     db.refresh(req)
 
-    # ── Side-effect: deactivate the item in its own table ────────────────
     _deactivate_item(db, req.item_type, req.item_id)
 
     return req
@@ -168,22 +175,40 @@ def reject(
 
 def _activate_item(db: Session, item_type: str, item_id: int) -> None:
     """
-    After approval, flip the item's status/active flag in its own table
-    so it becomes publicly visible on the storefront.
+    After approval, flip the relevant flag(s) on the item's own table.
 
     Mapping
     ───────
     Products   →  is_active = True
-    AR         →  is_active = True   (AR items are Products)
+    AR         →  valid_ar  = True   ← AR flag only (independent from 3D)
+    3D         →  valid_3d  = True   ← 3D flag only (independent from AR)
     Campaigns  →  status    = "active"
     Promotions →  status    = "active"
     Blogs      →  status    = "published"
     """
     from models import Products, Campaigns, Promotions, Blogs   # local import avoids circular
 
+    # ── AR: flip only the AR validation flag ──────────────────────────────
+    if item_type == "AR":
+        item = db.query(Products).filter(Products.id == item_id).first()
+        if item:
+            item.valid_ar = True
+            item.is_active = True
+            db.commit()
+        return
+
+    # ── 3D: flip only the 3D validation flag ──────────────────────────────
+    if item_type == "3D":
+        item = db.query(Products).filter(Products.id == item_id).first()
+        if item:
+            item.valid_3d = True
+            item.is_active = True
+            db.commit()
+        return
+
+    # ── All other types: single-field mapping ─────────────────────────────
     table_map = {
         "Products":   (Products,   "is_active", True),
-        "AR":         (Products,   "is_active", True),
         "Campaigns":  (Campaigns,  "status",    "active"),
         "Promotions": (Promotions, "status",    "active"),
         "Blogs":      (Blogs,      "status",    "published"),
@@ -201,22 +226,40 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
 
 def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
     """
-    After rejection, flip the item's status/active flag in its own table
-    so it is hidden from the storefront until resubmitted.
+    After rejection, flip the relevant flag(s) on the item's own table.
 
     Mapping
     ───────
     Products   →  is_active = False
-    AR         →  is_active = False   (AR items are Products)
+    AR         →  valid_ar  = False  ← AR flag only (independent from 3D)
+    3D         →  valid_3d  = False  ← 3D flag only (independent from AR)
     Campaigns  →  status    = "inactive"
     Promotions →  status    = "inactive"
     Blogs      →  status    = "draft"
     """
     from models import Products, Campaigns, Promotions, Blogs   # local import avoids circular
 
+    # ── AR: reset only the AR validation flag ─────────────────────────────
+    if item_type == "AR":
+        item = db.query(Products).filter(Products.id == item_id).first()
+        if item:
+            item.valid_ar = False
+            item.is_active = True
+            db.commit()
+        return
+
+    # ── 3D: reset only the 3D validation flag ─────────────────────────────
+    if item_type == "3D":
+        item = db.query(Products).filter(Products.id == item_id).first()
+        if item:
+            item.valid_3d = False
+            item.is_active = True
+            db.commit()
+        return
+
+    # ── All other types: single-field mapping ─────────────────────────────
     table_map = {
         "Products":   (Products,   "is_active", False),
-        "AR":         (Products,   "is_active", False),
         "Campaigns":  (Campaigns,  "status",    "inactive"),
         "Promotions": (Promotions, "status",    "inactive"),
         "Blogs":      (Blogs,      "status",    "draft"),

@@ -25,7 +25,7 @@ def blog_dict(b: Blogs) -> dict:
         "body":     b.content,        # frontend reads "body"
         "excerpt":  b.excerpt,
         "readTime": "5 min read",
-        "date":     (b.published_at or b.created_at).isoformat() if (b.published_at or b.created_at) else None,
+        "date":     (b.created_at).isoformat() if (b.created_at) else None,
         "author":   b.author,
         "views":    b.views or 0,
         "status":   b.status,
@@ -56,12 +56,12 @@ def get_blog(blog_id: int, db: Session = Depends(get_db)):
 def create_blog(body: BlogCreate, db: Session = Depends(get_db)):
     """
     Creates a new blog post.
-    Sets published_at automatically when status is 'published'.
+    Sets created_at automatically when status is 'published'.
     """
     data = body.model_dump()
 
-    # Auto-set published_at when publishing
-    published_at = datetime.utcnow() if data.get("status") == "published" else None
+    # Auto-set created_at when publishing
+    created_at = datetime.utcnow() if data.get("status") == "published" else None
 
     b = Blogs(
         title        = data["title"],
@@ -73,7 +73,7 @@ def create_blog(body: BlogCreate, db: Session = Depends(get_db)):
         tag          = data.get("tag"),
         content      = data.get("content"),
         views        = 0,
-        published_at = published_at,
+        created_at = created_at,
     )
     db.add(b)
     db.commit()
@@ -85,7 +85,7 @@ def create_blog(body: BlogCreate, db: Session = Depends(get_db)):
 def update_blog(blog_id: int, data: BlogUpdate, db: Session = Depends(get_db)):
     """
     Updates an existing blog post.
-    If status changes to 'published' and published_at isn't set yet, sets it now.
+    If status changes to 'published' and created_at isn't set yet, sets it now.
     """
     b = db.query(Blogs).filter(Blogs.id == blog_id).first()
     if not b:
@@ -96,9 +96,9 @@ def update_blog(blog_id: int, data: BlogUpdate, db: Session = Depends(get_db)):
     for k, v in updates.items():
         setattr(b, k, v)
 
-    # Auto-set published_at when first publishing
-    if updates.get("status") == "published" and not b.published_at:
-        b.published_at = datetime.utcnow()
+    # Auto-set created_at when first publishing
+    if updates.get("status") == "published" and not b.created_at:
+        b.created_at = datetime.utcnow()
 
     db.commit()
     db.refresh(b)

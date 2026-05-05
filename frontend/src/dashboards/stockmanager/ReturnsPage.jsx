@@ -109,7 +109,6 @@ export function ReturnsPage() {
       try {
         const res = await api.get("/api/returns");
         setReturns(res.data || []);
-        console.log(res.data);
       } catch (err) {
         console.error(err);
       }
