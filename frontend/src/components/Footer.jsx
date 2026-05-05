@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const socials = [
   {
@@ -40,10 +40,8 @@ const socials = [
   },
 ];
 
-// ── Social Icon ──────────────────────────────────────────────────────────────
 function SocialIcon({ name, href, gradient, d }) {
   const [hovered, setHovered] = useState(false);
-
   return (
     <a
       href={href}
@@ -56,9 +54,7 @@ function SocialIcon({ name, href, gradient, d }) {
       style={{
         background: hovered ? gradient : "rgba(255,255,255,0.5)",
         color: hovered ? "#fff" : "#7a6e65",
-        transform: hovered
-          ? "translateY(-5px) scale(1.1)"
-          : "translateY(0) scale(1)",
+        transform: hovered ? "translateY(-5px) scale(1.1)" : "translateY(0) scale(1)",
         boxShadow: hovered ? "0 16px 32px rgba(0,0,0,0.12)" : "none",
         transition: "all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
         display: "flex",
@@ -73,18 +69,13 @@ function SocialIcon({ name, href, gradient, d }) {
         cursor: "pointer",
       }}
     >
-      <svg
-        viewBox="0 0 24 24"
-        style={{ width: 20, height: 20, fill: "currentColor" }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
+      <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, fill: "currentColor" }} xmlns="http://www.w3.org/2000/svg">
         <path d={d} />
       </svg>
     </a>
   );
 }
 
-// ── Trust Badges ─────────────────────────────────────────────────────────────
 const badges = [
   {
     label: "AR Preview",
@@ -155,14 +146,54 @@ function TrustBadge({ icon, label, sub }) {
   );
 }
 
-// ── Footer ────────────────────────────────────────────────────────────────────
+/* ── Footer stagger: triggered when footer enters viewport ── */
+function useFooterStagger(ref, count, delayBase = 90) {
+  const [visible, setVisible] = useState([]);
+  const [triggered, setTriggered] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !triggered) {
+          setTriggered(true);
+          let timers = [];
+          for (let i = 0; i < count; i++) {
+            timers.push(
+              setTimeout(() => setVisible(v => [...v, i]), 60 + i * delayBase)
+            );
+          }
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, count, delayBase, triggered]);
+
+  return visible;
+}
+
 export function Footer() {
+  const footerRef = useRef(null);
+  // 0: brand+nav, 1: badges, 2: socials, 3: divider+bottom
+  const visible = useFooterStagger(footerRef, 4, 110);
+
   return (
     <>
-      <footer className="bg-cream pt-20 pb-10">
+      <footer ref={footerRef} className="bg-cream pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          {/* — Top row: brand + nav — */}
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-10 mb-16">
+
+          {/* 0 — Brand + nav */}
+          <div
+            style={{
+              opacity: visible.includes(0) ? 1 : 0,
+              transform: visible.includes(0) ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.55s ease, transform 0.55s ease",
+            }}
+            className="flex flex-col md:flex-row md:items-start md:justify-between gap-10 mb-16"
+          >
             <div>
               <Link
                 to="/"
@@ -193,6 +224,7 @@ export function Footer() {
                 { label: "Shop", to: "/furniture" },
                 { label: "Journal", to: "/journal" },
                 { label: "How It Works", to: "/aboutus" },
+                { label: "FAQ", to: "/faq" },
                 { label: "Contact", to: "/contactus" },
               ].map((link) => (
                 <Link
@@ -206,8 +238,15 @@ export function Footer() {
             </nav>
           </div>
 
-          {/* — Trust Badges — */}
-          <div className="mb-14">
+          {/* 1 — Trust Badges */}
+          <div
+            style={{
+              opacity: visible.includes(1) ? 1 : 0,
+              transform: visible.includes(1) ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.55s ease, transform 0.55s ease",
+            }}
+            className="mb-14"
+          >
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
               {badges.map((b) => (
                 <TrustBadge key={b.label} {...b} />
@@ -215,8 +254,15 @@ export function Footer() {
             </div>
           </div>
 
-          {/* — Follow Us — */}
-          <div className="mb-14">
+          {/* 2 — Socials */}
+          <div
+            style={{
+              opacity: visible.includes(2) ? 1 : 0,
+              transform: visible.includes(2) ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.55s ease, transform 0.55s ease",
+            }}
+            className="mb-14"
+          >
             <p className="text-[10px] tracking-[0.2em] uppercase text-muted/70 mb-5">
               Follow us
             </p>
@@ -227,29 +273,30 @@ export function Footer() {
             </div>
           </div>
 
-          {/* — Divider — */}
-          <div className="h-px bg-blush mb-8" />
-
-          {/* — Bottom row — */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-            <p className="text-muted text-xs">
-              &copy; {new Date().getFullYear()} ARoom. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6">
-              <Link
-                to="/privacy"
-                className="text-muted text-xs hover:text-charcoal transition-colors duration-300"
-              >
-                Privacy Policy
-              </Link>
-              <Link
-                to="/terms"
-                className="text-muted text-xs hover:text-charcoal transition-colors duration-300"
-              >
-                Terms of Service
-              </Link>
+          {/* 3 — Divider + bottom row */}
+          <div
+            style={{
+              opacity: visible.includes(3) ? 1 : 0,
+              transform: visible.includes(3) ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.55s ease, transform 0.55s ease",
+            }}
+          >
+            <div className="h-px bg-blush mb-8" />
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+              <p className="text-muted text-xs">
+                &copy; {new Date().getFullYear()} ARoom. All rights reserved.
+              </p>
+              <div className="flex items-center gap-6">
+                <Link to="/privacy" className="text-muted text-xs hover:text-charcoal transition-colors duration-300">
+                  Privacy Policy
+                </Link>
+                <Link to="/terms" className="text-muted text-xs hover:text-charcoal transition-colors duration-300">
+                  Terms of Service
+                </Link>
+              </div>
             </div>
           </div>
+
         </div>
       </footer>
     </>

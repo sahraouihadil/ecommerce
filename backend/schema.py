@@ -266,22 +266,13 @@ VALID_Sub_STATUSES = ["subscribed", "unsubscribed"]
 VALID_TAGS     = ["VIP", "Deals", "New Arrivals", "Sales"]
  
 class NewsletterCreate(BaseModel):
-    name:   str
     email:  str
-    status: str       = "subscribed"
     tags:   List[str] = []
  
     @field_validator("email")
     @classmethod
     def normalise_email(cls, v: str) -> str:
         return v.strip().lower()
- 
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v: str) -> str:
-        if v not in VALID_Sub_STATUSES:
-            raise ValueError(f"status must be one of: {', '.join(VALID_Sub_STATUSES)}")
-        return v
  
     @field_validator("tags")
     @classmethod
@@ -293,22 +284,7 @@ class NewsletterCreate(BaseModel):
  
  
 class NewsletterUpdate(BaseModel):
-    name:   Optional[str]       = None
-    email:  Optional[str]       = None
-    status: Optional[str]       = None
     tags:   Optional[List[str]] = None
- 
-    @field_validator("email")
-    @classmethod
-    def normalise_email(cls, v: Optional[str]) -> Optional[str]:
-        return v.strip().lower() if v else v
- 
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in VALID_Sub_STATUSES:
-            raise ValueError(f"status must be one of: {', '.join(VALID_Sub_STATUSES)}")
-        return v
  
     @field_validator("tags")
     @classmethod

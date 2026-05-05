@@ -13,27 +13,51 @@ function decodeToken(token) {
 
 // ── Badge ──────────────────────────────────────────────────────────────────────
 function Badge({ count }) {
+  const [bump, setBump] = useState(false);
+
+  useEffect(() => {
+    if (!count || count < 1) return;
+    setBump(true);
+    const t = setTimeout(() => setBump(false), 400);
+    return () => clearTimeout(t);
+  }, [count]);
+
   if (!count || count < 1) return null;
+
   return (
-    <span style={{
-      position: 'absolute',
-      top: '-6px',
-      right: '-7px',
-      minWidth: '17px',
-      height: '17px',
-      borderRadius: '999px',
-      background: '#b07d62',
-      color: '#fff',
-      fontSize: '10px',
-      fontWeight: '700',
-      lineHeight: '17px',
-      textAlign: 'center',
-      padding: '0 4px',
-      pointerEvents: 'none',
-      boxShadow: '0 1px 4px rgba(0,0,0,.18)',
-    }}>
-      {count > 99 ? '99+' : count}
-    </span>
+    <>
+      <style>{`
+        @keyframes badgePop {
+          0%   { transform: scale(1); }
+          40%  { transform: scale(1.55); }
+          70%  { transform: scale(0.88); }
+          100% { transform: scale(1); }
+        }
+        .badge-bump { animation: badgePop 0.38s cubic-bezier(.36,1.56,.64,1) both; }
+      `}</style>
+      <span
+        className={bump ? 'badge-bump' : ''}
+        style={{
+          position: 'absolute',
+          top: '-6px',
+          right: '-7px',
+          minWidth: '17px',
+          height: '17px',
+          borderRadius: '999px',
+          background: '#b07d62',
+          color: '#fff',
+          fontSize: '10px',
+          fontWeight: '700',
+          lineHeight: '17px',
+          textAlign: 'center',
+          padding: '0 4px',
+          pointerEvents: 'none',
+          boxShadow: '0 1px 4px rgba(0,0,0,.18)',
+        }}
+      >
+        {count > 99 ? '99+' : count}
+      </span>
+    </>
   );
 }
 
@@ -70,16 +94,22 @@ export function Header() {
   }, []);
 
   // ── Counts ────────────────────────────────────────────────────────────────
-  // Le Header écoute un event global "aroom:counts".
-  // Dans ton CartContext, ajoute cette ligne dans le useEffect qui modifie cartItems :
-  //   window.dispatchEvent(new CustomEvent('aroom:counts', { detail: { cart: cartItems.length } }))
-  //
-  // Dans ton FavoritesContext, pareil :
-  //   window.dispatchEvent(new CustomEvent('aroom:counts', { detail: { fav: favorites.length } }))
   useEffect(() => {
+    // Sync initial counts from sessionStorage on mount
+    const savedCart = parseInt(sessionStorage.getItem('cartCount') || '0');
+    const savedFav = parseInt(sessionStorage.getItem('favCount') || '0');
+    if (savedCart > 0) setCartCount(savedCart);
+    if (savedFav > 0) setFavCount(savedFav);
+
     const handler = (e) => {
-      if (e.detail?.cart !== undefined) setCartCount(e.detail.cart);
-      if (e.detail?.fav !== undefined) setFavCount(e.detail.fav);
+      if (e.detail?.cart !== undefined) {
+        setCartCount(e.detail.cart);
+        sessionStorage.setItem('cartCount', e.detail.cart);
+      }
+      if (e.detail?.fav !== undefined) {
+        setFavCount(e.detail.fav);
+        sessionStorage.setItem('favCount', e.detail.fav);
+      }
     };
     window.addEventListener('aroom:counts', handler);
     return () => window.removeEventListener('aroom:counts', handler);
@@ -102,6 +132,11 @@ export function Header() {
   const handleLogout = () => {
     logout();
     setUser(null);
+    // Reset counts on logout
+    setCartCount(0);
+    setFavCount(0);
+    sessionStorage.removeItem('cartCount');
+    sessionStorage.removeItem('favCount');
     navigate('/');
   };
 

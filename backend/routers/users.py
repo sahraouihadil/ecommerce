@@ -56,7 +56,6 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
     db_user_by_username = get_user_by_username(db, username=user.username)
     db_user_by_email = get_user_by_email(db, email=user.email)
 
-    # ✔ إذا user موجود ومازال ما verified → نعاودو نبعثولو code
     if db_user_by_username and not db_user_by_username.is_verified:
         verification_code = random.randint(100000, 999999)
         db_user_by_username.verification_code = str(verification_code)
@@ -99,7 +98,6 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
     # 📧 Send email
     send_reset_email(user.email, verification_code)
 
-    # 🚫 ما نعطيوش token هنا
     return {
         "action": "verify",
         "message": "Account created. Please verify your email.",
