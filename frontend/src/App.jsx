@@ -13,6 +13,7 @@ import { AboutusPage } from './pages/AboutusPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { OrderPage } from './pages/OrderPage'
+import { InvoicePage } from './pages/InvoicePage'          // ← NEW
 import { TrackingPage } from './pages/TrackingPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { CartPage } from './pages/CartPage'
@@ -132,13 +133,16 @@ function App() {
             <Route path='/privacy' element={<PrivacyPolicy />} />
             <Route path='/terms' element={<TermsOfService />} />
             <Route path='/faq' element={<FAQPage />} />
-            
+
             {/* ===== PROTECTED USER ROUTES ===== */}
             <Route path='/cart' element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
             <Route path='/checkout' element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path='/profile' element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path='/profile/history' element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
             <Route path='/favorite' element={<ProtectedRoute><FavoritePage /></ProtectedRoute>} />
+
+            {/* Order flow: checkout → invoice → orders list → tracking */}
+            <Route path='/order/confirmation' element={<ProtectedRoute><InvoicePage /></ProtectedRoute>} />   {/* ← NEW: post-checkout invoice */}
             <Route path='/order' element={<ProtectedRoute><OrderPage /></ProtectedRoute>} />
             <Route path='/order/tracking/:orderId/:productId' element={<ProtectedRoute><TrackingPage /></ProtectedRoute>} />
 
@@ -172,7 +176,6 @@ function App() {
               <Route path='inventories' element={<ProductCatalogPage />} />
               <Route path='problems' element={<ProblemsPage />} />
               <Route path='profile' element={<AProfilePage />} />
-
             </Route>
 
             {/* ===== DELIVERY ===== */}
