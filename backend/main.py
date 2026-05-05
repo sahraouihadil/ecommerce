@@ -38,6 +38,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+from routers.notifications import router as notifications_router
 
 # ======================================================================
 # APP SETUP
@@ -58,7 +59,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["*"],
 )
 
 models.Base.metadata.create_all(bind=database.engine)
@@ -81,6 +82,7 @@ app.include_router(blog.router)
 app.include_router(reviews.router)
 app.include_router(problem.router)
 app.include_router(validation.router)
+app.include_router(notifications_router)
 
 user_dependency = Annotated[dict, Depends(get_current_user)]
 

@@ -26,7 +26,7 @@ from datetime import datetime
 from typing import Optional
 
 from database import get_db
-from models import Orders, OrderItems, Products, Users, ProductImage, Notifications
+from models import Orders, OrderItems, Products, Users, ProductImage, Notification
 from schema import (
     ProblemReportBody,
     OrderOut,

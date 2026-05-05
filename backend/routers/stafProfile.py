@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from database import get_db
-from models import Users, Notifications, Orders, Campaigns, Newsletters, Blogs
+from models import Users, Notification, Orders, Campaigns, Newsletters, Blogs
 from security.jwt_handler import verify_token
 
 router = APIRouter(prefix="/api/staff", tags=["staff-profile"])
