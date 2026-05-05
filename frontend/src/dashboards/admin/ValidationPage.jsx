@@ -1,15 +1,21 @@
 /**
  * ValidationPage.jsx - Content Validation Queue (Admin)
  * Connected to real backend API.
+ * - Smooth open/close transitions on both modals (mount → fade+slide → unmount)
+ * - AR type  → only "View in AR" button shown  (no 3D button)
+ * - 3D type  → only "View 3D Model" button shown (no AR button)
+ * - Products → shows whichever flags are set (has3D / hasAR)
+ * - Stat card counts always global (never zeroed by type filter)
  */
 
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
-import { useState, useEffect, useCallback } from "react";
+import ProductViewer from "../../components/ProductViewer/ProductViewer";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   LayoutDashboard, Users, MessageSquare, CheckSquare,
   BarChart, Activity, Settings, X, Loader2,
-  AlignLeft, Calendar, Tag, Layers, Palette,
+  AlignLeft, Calendar, Tag, Layers, Palette, ArrowLeft,
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -37,12 +43,56 @@ function ColorDot({ name }) {
   );
 }
 
+// ── Smooth modal wrapper ───────────────────────────────────────────────────────
+// Mounts children immediately, animates in via data-shown="true", then
+// waits `duration` ms after visible=false before unmounting.
+function AnimatedModal({ visible, onExited, duration = 260, children, overlayClass, onOverlayClick }) {
+  const [mounted, setMounted] = useState(false);
+  const [shown,   setShown]   = useState(false);
+  const exitTimer = useRef(null);
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      // Two rAFs ensure the browser has painted the initial (invisible) state
+      // before we flip data-shown and trigger the CSS transition.
+      requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+    } else {
+      setShown(false);
+      clearTimeout(exitTimer.current);
+      exitTimer.current = setTimeout(() => {
+        setMounted(false);
+        onExited?.();
+      }, duration);
+    }
+    return () => clearTimeout(exitTimer.current);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!mounted) return null;
+
+  return (
+    <div
+      className={overlayClass}
+      data-shown={shown ? "true" : "false"}
+      onClick={onOverlayClick}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 export default function ValidationPage() {
   const [openBar, setOpenBar]               = useState(window.innerWidth >= 768);
   const [selected, setSelected]             = useState(null);
+  const [detailVisible, setDetailVisible]   = useState(false);
   const [activeFilter, setActiveFilter]     = useState("All");
-  const [activeStatusFilter, setActiveStatusFilter] = useState("All"); // ← NEW
+  const [activeStatusFilter, setActiveStatusFilter] = useState("All");
   const [rejectNote, setRejectNote]         = useState("");
+
+  // ── Model viewer modal state ──────────────────────────────────────────────
+  const [modelViewer, setModelViewer]       = useState(null);
+  const [viewerVisible, setViewerVisible]   = useState(false);
 
   // ── Server state ──────────────────────────────────────────────────────────
   const [allItems, setAllItems]           = useState([]);
@@ -64,44 +114,29 @@ export default function ValidationPage() {
   const TYPE_STYLE = {
     Products:   { bg:"#eff6ff", color:"#2563eb" },
     AR:         { bg:"#f5f3ff", color:"#7c3aed" },
+    "3D":       { bg:"#fdf4ff", color:"#9333ea" },
     Campaigns:  { bg:"#fef3c7", color:"#92400e" },
     Promotions: { bg:"#fce7f3", color:"#9d174d" },
   };
 
-  const TYPE_ICON = { Products:"📦", AR:"🥽", Campaigns:"📣", Promotions:"🎁" };
-  const filters   = ["All", "Products", "AR", "Campaigns", "Promotions"];
+  const TYPE_ICON = { Products:"📦", AR:"🥽", "3D":"🧊", Campaigns:"📣", Promotions:"🎁" };
+  const filters   = ["All", "Products", "AR", "3D", "Campaigns", "Promotions"];
 
-  // ── Stat card config — now with status keys ───────────────────────────────
   const STAT_CARDS = [
     {
-      key:     "Pending",
-      label:   activeFilter === "All" ? "Pending Review" : `${activeFilter} · Pending`,
-      countKey:"pending",
-      icon:    "⏳",
-      iconBg:  "#fffbeb",
-      clr:     "#d97706",
-      activeBorder: "#fde68a",
-      activeShadow: "0 0 0 3px rgba(245,158,11,0.18)",
+      key:"Pending",   label:"Pending Review",
+      countKey:"pending",  icon:"⏳", iconBg:"#fffbeb", clr:"#d97706",
+      activeBorder:"#fde68a", activeShadow:"0 0 0 3px rgba(245,158,11,0.18)",
     },
     {
-      key:     "Approved",
-      label:   activeFilter === "All" ? "Approved" : `${activeFilter} · Approved`,
-      countKey:"approved",
-      icon:    "✅",
-      iconBg:  "#ecfdf5",
-      clr:     "#16a34a",
-      activeBorder: "#6ee7b7",
-      activeShadow: "0 0 0 3px rgba(16,185,129,0.18)",
+      key:"Approved",  label:"Approved",
+      countKey:"approved", icon:"✅", iconBg:"#ecfdf5", clr:"#16a34a",
+      activeBorder:"#6ee7b7", activeShadow:"0 0 0 3px rgba(16,185,129,0.18)",
     },
     {
-      key:     "Rejected",
-      label:   activeFilter === "All" ? "Rejected" : `${activeFilter} · Rejected`,
-      countKey:"rejected",
-      icon:    "❌",
-      iconBg:  "#fff1f2",
-      clr:     "#dc2626",
-      activeBorder: "#fca5a5",
-      activeShadow: "0 0 0 3px rgba(239,68,68,0.18)",
+      key:"Rejected",  label:"Rejected",
+      countKey:"rejected", icon:"❌", iconBg:"#fff1f2", clr:"#dc2626",
+      activeBorder:"#fca5a5", activeShadow:"0 0 0 3px rgba(239,68,68,0.18)",
     },
   ];
 
@@ -115,60 +150,64 @@ export default function ValidationPage() {
     { to:"/admin-dash/validation",    label:"Validation",    icon:<CheckSquare size={18}/> },
   ];
 
-  // ── Fetch global stats ────────────────────────────────────────────────────
+  // ── Fetchers ──────────────────────────────────────────────────────────────
   const fetchStats = useCallback(async () => {
     try {
       const res = await api.get("/api/validation/stats");
       setStats(res.data);
-    } catch (err) {
-      console.error("Failed to load stats:", err);
-    }
+    } catch (err) { console.error("Failed to load stats:", err); }
   }, []);
 
-  // ── Fetch ALL items (no type/status filter) — for scoped stat counts ──────
   const fetchAllItems = useCallback(async () => {
     setLoadingAll(true);
     try {
       const res = await api.get("/api/validation/", { params: { limit: 500 } });
       setAllItems(res.data);
-    } catch (err) {
-      console.error("Failed to load all items:", err);
-    } finally {
-      setLoadingAll(false);
-    }
+    } catch (err) { console.error("Failed to load all items:", err); }
+    finally { setLoadingAll(false); }
   }, []);
 
-  // ── Fetch filtered list — respects BOTH type AND status filters ───────────
   const fetchList = useCallback(async () => {
     setLoadingList(true);
     setError(null);
     try {
       const params = {};
       if (activeFilter !== "All")       params.item_type = activeFilter;
-      if (activeStatusFilter !== "All") params.status    = activeStatusFilter; // ← NEW
+      if (activeStatusFilter !== "All") params.status    = activeStatusFilter;
       const res = await api.get("/api/validation/", { params });
       setItems(res.data);
     } catch (err) {
       console.error("Failed to load validation queue:", err);
       setError("Failed to load the validation queue. Please try again.");
-    } finally {
-      setLoadingList(false);
-    }
-  }, [activeFilter, activeStatusFilter]); // ← activeStatusFilter added to deps
+    } finally { setLoadingList(false); }
+  }, [activeFilter, activeStatusFilter]);
 
   useEffect(() => { fetchStats(); fetchAllItems(); }, [fetchStats, fetchAllItems]);
   useEffect(() => { fetchList(); }, [fetchList]);
 
-  // ── Escape closes modal ───────────────────────────────────────────────────
+  // ── Escape closes top-most modal ─────────────────────────────────────────
   useEffect(() => {
-    const h = (e) => { if (e.key === "Escape") { setSelected(null); setItemDetail(null); } };
+    const h = (e) => {
+      if (e.key !== "Escape") return;
+      if (viewerVisible) { closeViewer(); return; }
+      if (detailVisible) { closeDetail(); }
+    };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, []);
+  }, [viewerVisible, detailVisible]);
 
-  useEffect(() => { setRejectNote(""); setItemDetail(null); }, [selected?.id]);
+  // ── Open / close helpers ──────────────────────────────────────────────────
+  const openDetail = (item) => {
+    setSelected(item);
+    setRejectNote("");
+    setItemDetail(null);
+    setDetailVisible(true);
+  };
 
-  // ── Fetch full item detail when modal opens ───────────────────────────────
+  const closeDetail = () => setDetailVisible(false);
+  const closeViewer = () => setViewerVisible(false);
+
+  // ── Fetch item detail ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!selected) return;
     const run = async () => {
@@ -176,7 +215,8 @@ export default function ValidationPage() {
       try {
         const endpointMap = {
           Products:   `/api/products/${selected.item_id}`,
-          AR:         `/api/ar/${selected.item_id}`,
+          AR:         `/api/products/${selected.item_id}`,
+          "3D":       `/api/products/${selected.item_id}`,
           Campaigns:  `/api/campaigns/${selected.item_id}`,
           Promotions: `/api/promotions/${selected.item_id}`,
         };
@@ -187,28 +227,35 @@ export default function ValidationPage() {
       } catch (err) {
         console.error("Failed to load item detail:", err);
         setItemDetail(null);
-      } finally {
-        setLoadingDetail(false);
-      }
+      } finally { setLoadingDetail(false); }
     };
     run();
   }, [selected?.id]);
 
-  // ── Scoped stat counts ────────────────────────────────────────────────────
-  const scopedStats = activeFilter === "All"
-    ? { pending: stats.pending, approved: stats.approved, rejected: stats.rejected }
-    : {
-        pending:  allItems.filter(i => i.item_type === activeFilter && i.status === "Pending").length,
-        approved: allItems.filter(i => i.item_type === activeFilter && i.status === "Approved").length,
-        rejected: allItems.filter(i => i.item_type === activeFilter && i.status === "Rejected").length,
-      };
+  // ── Global stats (always all-types, never zeroed by type filter) ──────────
+  const globalStats = {
+    pending:  stats.pending,
+    approved: stats.approved,
+    rejected: stats.rejected,
+  };
 
-  // ── Optimistic update — patches both lists ────────────────────────────────
+  // ── Optimistic update ─────────────────────────────────────────────────────
   const applyStatusUpdate = (id, newStatus, extra = {}) => {
     const patch = { status: newStatus, ...extra };
     setItems(prev    => prev.map(i => i.id === id ? { ...i, ...patch } : i));
     setAllItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
     setSelected(prev => prev?.id === id ? { ...prev, ...patch } : prev);
+
+    setStats(prev => {
+      const oldStatus = allItems.find(i => i.id === id)?.status;
+      if (!oldStatus || oldStatus === newStatus) return prev;
+      const next = { ...prev };
+      const dec = (k) => { next[k] = Math.max(0, (next[k] ?? 0) - 1); };
+      const inc = (k) => { next[k] = (next[k] ?? 0) + 1; };
+      dec(oldStatus.toLowerCase());
+      inc(newStatus.toLowerCase());
+      return next;
+    });
   };
 
   const handleApprove = async () => {
@@ -220,9 +267,7 @@ export default function ValidationPage() {
       fetchStats();
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to approve. Please try again.");
-    } finally {
-      setLoadingAction(false);
-    }
+    } finally { setLoadingAction(false); }
   };
 
   const handleReject = async () => {
@@ -238,19 +283,33 @@ export default function ValidationPage() {
       fetchStats();
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to reject. Please try again.");
-    } finally {
-      setLoadingAction(false);
-    }
+    } finally { setLoadingAction(false); }
   };
 
-  // ── Toggle stat card: click active card to clear, click another to set ────
   const handleStatCardClick = (statusKey) => {
     setActiveStatusFilter(prev => prev === statusKey ? "All" : statusKey);
   };
 
+  // ── Open model viewer ─────────────────────────────────────────────────────
+  // Close detail first; after its exit animation completes, open the viewer.
+  const openModelViewer = (mode, d, sel) => {
+    closeDetail();
+    setTimeout(() => {
+      setModelViewer({
+        modelSrc:    d.model_src,
+        model3d:     d.model_3d,
+        iosSrc:      d?.ios_src ?? undefined,
+        productName: d?.name || sel?.title || "",
+        price:       d?.price,
+        variants:    d?.colors?.map(name => ({ name, color: PRESET_HEX[name] ?? "#d1d5db" })),
+        mode,
+      });
+      setViewerVisible(true);
+    }, 280); // slightly longer than detail exit duration (260ms)
+  };
+
   const isFinal   = selected?.status === "Approved" || selected?.status === "Rejected";
-  const typeCount = (type) => items.filter(i => i.item_type === type).length;
-  const isLoading = activeFilter !== "All" ? loadingList : loadingAll;
+  const typeCount = (type) => allItems.filter(i => i.item_type === type).length;
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -260,37 +319,28 @@ export default function ValidationPage() {
         .val-main  { flex:1; overflow-y:auto; min-width:0; }
         .val-inner { padding:24px 28px 48px; max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
 
-        /* stat cards */
         .val-stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
         .val-stat-card  {
           background:#fff; border-radius:16px; border:1.5px solid #f1f5f9;
           box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:16px 20px;
-          display:flex; align-items:center; gap:14px;
-          cursor:pointer;
-          transition:box-shadow .18s, transform .18s, border-color .18s;
-          user-select:none;
+          display:flex; align-items:center; gap:14px; cursor:pointer;
+          transition:box-shadow .18s, transform .18s, border-color .18s; user-select:none;
         }
         .val-stat-card:hover { box-shadow:0 6px 18px rgba(0,0,0,0.1); transform:translateY(-2px); }
         .val-stat-icon { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
 
-        /* filter bar */
         .val-filter-bar { display:flex; gap:8px; flex-wrap:wrap; }
-        .val-filter-btn { padding:7px 18px; border-radius:99px; font-size:13px; font-weight:600; border:1.5px solid #e2e8f0; cursor:pointer; transition:all .15s; background:#fff; color:#64748b; font-family:inherit; }
+        .val-filter-btn {
+          padding:7px 18px; border-radius:99px; font-size:13px; font-weight:600;
+          border:1.5px solid #e2e8f0; cursor:pointer; background:#fff; color:#64748b;
+          font-family:inherit; transition:background .2s, color .2s, border-color .2s;
+        }
         .val-filter-btn.active { background:#0f172a; color:#fff; border-color:#0f172a; }
         .val-filter-btn:not(.active):hover { border-color:#6366f1; color:#6366f1; }
 
-        /* status filter pill strip */
-        .val-status-filter-bar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-        .val-status-pill {
-          display:inline-flex; align-items:center; gap:5px;
-          padding:4px 12px; border-radius:99px; font-size:12px; font-weight:700;
-          border:1.5px solid transparent; cursor:pointer; transition:all .15s; font-family:inherit;
-        }
-
-        /* list */
         .val-list        { background:#fff; border-radius:16px; border:1px solid #f1f5f9; box-shadow:0 1px 3px rgba(0,0,0,0.06); overflow:hidden; }
         .val-list-header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #f1f5f9; flex-wrap:wrap; gap:8px; }
-        .val-item        { display:flex; align-items:center; gap:14px; padding:15px 20px; cursor:pointer; border-left:3px solid transparent; border-bottom:1px solid #f8fafc; transition:all .12s; }
+        .val-item        { display:flex; align-items:center; gap:14px; padding:15px 20px; cursor:pointer; border-left:3px solid transparent; border-bottom:1px solid #f8fafc; transition:background .15s, border-color .15s; }
         .val-item:last-child { border-bottom:none; }
         .val-item:hover  { background:#fafbff; border-left-color:#c7d2fe; }
         .val-item-body   { flex:1; min-width:0; }
@@ -302,16 +352,48 @@ export default function ValidationPage() {
         .val-spin        { animation:spin .8s linear infinite; }
         @keyframes spin  { to { transform:rotate(360deg); } }
 
-        /* modal */
-        .val-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.5); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; animation:vFadeIn .18s ease; }
-        @keyframes vFadeIn { from{opacity:0}to{opacity:1} }
-        .val-modal { background:#fff; border-radius:22px; box-shadow:0 32px 80px rgba(0,0,0,0.22); width:100%; max-width:680px; max-height:90vh; overflow-y:auto; animation:vSlideUp .22s ease; position:relative; display:flex; flex-direction:column; }
-        @keyframes vSlideUp { from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)} }
+        /* ════════════════════════════════════════
+           DETAIL MODAL — fade backdrop + slide panel
+        ════════════════════════════════════════ */
+        .val-overlay {
+          position:fixed; inset:0;
+          background:rgba(15,23,42,0);
+          backdrop-filter:blur(0px) saturate(1);
+          z-index:1000;
+          display:flex; align-items:center; justify-content:center; padding:20px;
+          transition: background 260ms ease, backdrop-filter 260ms ease;
+        }
+        .val-overlay[data-shown="true"] {
+          background:rgba(15,23,42,0.52);
+          backdrop-filter:blur(5px) saturate(1.4);
+        }
+
+        .val-modal {
+          background:#fff; border-radius:22px;
+          box-shadow:0 32px 80px rgba(0,0,0,0.22);
+          width:100%; max-width:680px; max-height:90vh;
+          overflow-y:auto; position:relative; display:flex; flex-direction:column;
+          opacity:0;
+          transform:translateY(28px) scale(0.975);
+          transition: opacity 260ms cubic-bezier(.22,1,.36,1),
+                      transform 260ms cubic-bezier(.22,1,.36,1);
+        }
+        .val-overlay[data-shown="true"] .val-modal {
+          opacity:1;
+          transform:translateY(0) scale(1);
+        }
+
         .val-hero             { width:100%; height:220px; object-fit:cover; border-radius:22px 22px 0 0; display:block; background:#f1f5f9; }
-        .val-hero-placeholder { width:100%; height:180px; background:linear-gradient(135deg,#f1f5f9,#e2e8f0); border-radius:22px 22px 0 0; display:flex; align-items:center; justify-content:center; font-size:56px; }
+        .val-hero-placeholder { width:100%; height:180px; background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:22px 22px 0 0; display:flex; align-items:center; justify-content:center; font-size:56px; }
         .val-modal-body   { padding:26px 28px 0; display:flex; flex-direction:column; gap:18px; }
         .val-modal-footer { padding:20px 28px 26px; display:flex; gap:12px; border-top:1px solid #f1f5f9; margin-top:20px; }
-        .val-modal-close  { position:absolute; top:14px; right:14px; background:rgba(255,255,255,0.92); border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#64748b; transition:background .15s; box-shadow:0 2px 8px rgba(0,0,0,0.12); z-index:10; }
+        .val-modal-close  {
+          position:absolute; top:14px; right:14px;
+          background:rgba(255,255,255,0.92); border:none; border-radius:50%;
+          width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+          cursor:pointer; color:#64748b; box-shadow:0 2px 8px rgba(0,0,0,0.12); z-index:10;
+          transition:background .15s, color .15s;
+        }
         .val-modal-close:hover { background:#fff; color:#0f172a; }
         .val-detail-grid  { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         .val-detail-cell  { background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:13px 15px; }
@@ -321,13 +403,101 @@ export default function ValidationPage() {
         .val-img-thumb    { width:72px; height:72px; border-radius:10px; object-fit:cover; border:1.5px solid #e2e8f0; background:#f1f5f9; }
         .val-color-strip  { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
         .val-color-chip   { display:flex; align-items:center; gap:5px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:20px; padding:3px 9px 3px 5px; font-size:12px; font-weight:500; color:#475569; }
-        .val-textarea     { width:100%; padding:12px 14px; border:1.5px solid #e2e8f0; border-radius:12px; font-size:13px; font-family:inherit; resize:vertical; outline:none; min-height:88px; background:#f8fafc; color:#0f172a; box-sizing:border-box; transition:border-color .2s; }
+        .val-textarea     { width:100%; padding:12px 14px; border:1.5px solid #e2e8f0; border-radius:12px; font-size:13px; font-family:inherit; resize:vertical; outline:none; min-height:88px; background:#f8fafc; color:#0f172a; box-sizing:border-box; transition:border-color .2s, background .2s; }
         .val-textarea:focus { border-color:#6366f1; background:#fff; }
-        .val-btn-approve  { flex:1; background:#10b981; color:#fff; border:none; border-radius:12px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .val-btn-approve  { flex:1; background:#10b981; color:#fff; border:none; border-radius:12px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .18s; display:flex; align-items:center; justify-content:center; gap:6px; }
         .val-btn-approve:hover:not(:disabled) { background:#059669; }
-        .val-btn-reject   { flex:1; background:#fff; color:#dc2626; border:1.5px solid #fecaca; border-radius:12px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .val-btn-reject   { flex:1; background:#fff; color:#dc2626; border:1.5px solid #fecaca; border-radius:12px; padding:13px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .18s, border-color .18s; display:flex; align-items:center; justify-content:center; gap:6px; }
         .val-btn-reject:hover:not(:disabled) { background:#fff1f2; border-color:#fca5a5; }
         .val-btn-approve:disabled,.val-btn-reject:disabled { opacity:0.6; cursor:not-allowed; }
+
+        /* ── 3D / AR launch buttons ── */
+        .val-model-launch-row { display:flex; gap:10px; flex-wrap:wrap; }
+        .val-model-launch-btn {
+          display:inline-flex; align-items:center; gap:8px;
+          padding:12px 24px; border-radius:13px;
+          font-size:13px; font-weight:800; font-family:inherit;
+          cursor:pointer; border:2px solid transparent;
+          transition:background .22s, color .22s, border-color .22s, box-shadow .22s, transform .22s;
+        }
+        .val-model-launch-btn.btn-3d  { background:#f5f3ff; color:#7c3aed; border-color:#ddd6fe; }
+        .val-model-launch-btn.btn-3d:hover {
+          background:#4c1d95; color:#fff; border-color:#4c1d95;
+          box-shadow:0 6px 20px rgba(124,58,237,0.35); transform:translateY(-2px);
+        }
+        .val-model-launch-btn.btn-ar  { background:#ecfdf5; color:#059669; border-color:#6ee7b7; }
+        .val-model-launch-btn.btn-ar:hover {
+          background:#065f46; color:#fff; border-color:#065f46;
+          box-shadow:0 6px 20px rgba(5,150,105,0.35); transform:translateY(-2px);
+        }
+
+        /* ════════════════════════════════════════
+           VIEWER MODAL — fade backdrop + slide children
+        ════════════════════════════════════════ */
+        .val-viewer-overlay {
+          position:fixed; inset:0;
+          background:rgba(5,7,20,0);
+          backdrop-filter:blur(0px);
+          z-index:1100;
+          display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start;
+          transition: background 300ms ease, backdrop-filter 300ms ease;
+        }
+        .val-viewer-overlay[data-shown="true"] {
+          background:rgba(5,7,20,0.96);
+          backdrop-filter:blur(14px);
+        }
+
+        /* Topbar and body slide up independently */
+        .val-viewer-topbar {
+          flex-shrink:0;
+          display:flex; align-items:center; justify-content:space-between;
+          padding:14px 20px;
+          background:linear-gradient(to bottom,rgba(5,7,20,0.85) 0%,transparent 100%);
+          position:relative; z-index:10;
+          opacity:0; transform:translateY(16px);
+          transition: opacity 300ms cubic-bezier(.22,1,.36,1),
+                      transform 300ms cubic-bezier(.22,1,.36,1);
+        }
+        .val-viewer-overlay[data-shown="true"] .val-viewer-topbar {
+          opacity:1; transform:translateY(0);
+        }
+        .val-viewer-body {
+          flex:1; display:flex; align-items:center; justify-content:center;
+          padding:0 20px 20px; min-height:0;
+          opacity:0; transform:translateY(22px);
+          transition: opacity 320ms cubic-bezier(.22,1,.36,1) 50ms,
+                      transform 320ms cubic-bezier(.22,1,.36,1) 50ms;
+        }
+        .val-viewer-overlay[data-shown="true"] .val-viewer-body {
+          opacity:1; transform:translateY(0);
+        }
+
+        .val-viewer-back-btn {
+          display:inline-flex; align-items:center; gap:7px;
+          padding:8px 18px; border-radius:99px;
+          font-size:13px; font-weight:700; font-family:inherit;
+          background:rgba(255,255,255,0.1); color:#fff;
+          border:1.5px solid rgba(255,255,255,0.2);
+          cursor:pointer; backdrop-filter:blur(6px);
+          transition:background .18s, border-color .18s;
+        }
+        .val-viewer-back-btn:hover { background:rgba(255,255,255,0.2); border-color:rgba(255,255,255,0.45); }
+        .val-viewer-title {
+          font-size:14px; font-weight:700; color:rgba(255,255,255,0.7);
+          letter-spacing:.02em; white-space:nowrap; overflow:hidden;
+          text-overflow:ellipsis; max-width:260px;
+        }
+        .val-viewer-close-btn {
+          width:38px; height:38px; border-radius:50%; border:none;
+          background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.75);
+          display:flex; align-items:center; justify-content:center;
+          cursor:pointer; transition:background .18s, color .18s;
+        }
+        .val-viewer-close-btn:hover { background:rgba(255,255,255,0.22); color:#fff; }
+        .val-viewer-inner {
+          width:100%; max-width:800px; height:100%;
+          display:flex; align-items:center; justify-content:center;
+        }
 
         @media(max-width:640px){
           .val-inner{padding:14px 10px 32px;gap:14px}
@@ -338,6 +508,8 @@ export default function ValidationPage() {
           .val-detail-grid{grid-template-columns:1fr}
           .val-item{padding:12px 14px}
           .val-hero{height:160px}
+          .val-viewer-title{max-width:120px}
+          .val-model-launch-btn{padding:10px 16px;font-size:12px}
         }
         @media(max-width:420px){.val-stats-grid{grid-template-columns:1fr}}
       `}</style>
@@ -351,7 +523,7 @@ export default function ValidationPage() {
 
           <div className="val-inner">
 
-            {/* ── Stat Cards — clickable status filter ── */}
+            {/* ── Stat Cards ── always global, never scoped to type filter */}
             <div className="val-stats-grid">
               {STAT_CARDS.map(s => {
                 const isActive = activeStatusFilter === s.key;
@@ -360,44 +532,27 @@ export default function ValidationPage() {
                     key={s.key}
                     className="val-stat-card"
                     onClick={() => handleStatCardClick(s.key)}
-                    style={isActive ? {
-                      borderColor: s.activeBorder,
-                      boxShadow:   s.activeShadow,
-                      transform:   "translateY(-2px)",
-                    } : {}}
+                    style={isActive ? { borderColor:s.activeBorder, boxShadow:s.activeShadow, transform:"translateY(-2px)" } : {}}
                     title={isActive ? `Click to clear ${s.key} filter` : `Show only ${s.key}`}
                   >
-                    <div className="val-stat-icon" style={{ background: s.iconBg }}>
-                      {s.icon}
-                    </div>
+                    <div className="val-stat-icon" style={{ background:s.iconBg }}>{s.icon}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{
-                        margin:"0 0 2px", fontSize:11, color:"#94a3b8",
-                        textTransform:"uppercase", letterSpacing:".07em", fontWeight:700,
-                      }}>
+                      <p style={{ margin:"0 0 2px", fontSize:11, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".07em", fontWeight:700 }}>
                         {s.label}
                       </p>
-                      <p style={{
-                        margin:0, fontSize:26, fontWeight:800,
-                        color: s.clr, letterSpacing:"-0.02em", lineHeight:1,
-                      }}>
-                        {isLoading ? "—" : scopedStats[s.countKey]}
+                      <p style={{ margin:0, fontSize:26, fontWeight:800, color:s.clr, letterSpacing:"-0.02em", lineHeight:1 }}>
+                        {loadingAll ? "—" : globalStats[s.countKey]}
                       </p>
                     </div>
-                    {/* Active indicator dot */}
                     {isActive && (
-                      <span style={{
-                        width:8, height:8, borderRadius:"50%",
-                        background: s.clr, flexShrink:0,
-                        boxShadow:`0 0 0 2px ${s.activeBorder}`,
-                      }} />
+                      <span style={{ width:8, height:8, borderRadius:"50%", background:s.clr, flexShrink:0, boxShadow:`0 0 0 2px ${s.activeBorder}` }} />
                     )}
                   </div>
                 );
               })}
             </div>
 
-            {/* ── Filter Bar (type) ── */}
+            {/* ── Filter Bar ── */}
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               <div className="val-filter-bar">
                 {filters.map(f => (
@@ -407,14 +562,11 @@ export default function ValidationPage() {
                     onClick={() => setActiveFilter(f)}
                   >
                     {f}
-                    {f !== "All" && (
-                      <span style={{ marginLeft:6, opacity:0.6 }}>({typeCount(f)})</span>
-                    )}
+                    {f !== "All" && <span style={{ marginLeft:6, opacity:0.6 }}>({typeCount(f)})</span>}
                   </button>
                 ))}
               </div>
 
-              {/* Active status filter indicator + clear button */}
               {activeStatusFilter !== "All" && (() => {
                 const sc = STAT_CARDS.find(s => s.key === activeStatusFilter);
                 return (
@@ -425,14 +577,11 @@ export default function ValidationPage() {
                       style={{
                         display:"inline-flex", alignItems:"center", gap:6,
                         padding:"4px 12px", borderRadius:99, fontSize:12, fontWeight:700,
-                        background: sc?.iconBg, color: sc?.clr,
+                        background:sc?.iconBg, color:sc?.clr,
                         border:`1.5px solid ${sc?.activeBorder}`,
                         cursor:"pointer", fontFamily:"inherit",
                       }}
-                    >
-                      {activeStatusFilter}
-                      <X size={11} />
-                    </button>
+                    >{activeStatusFilter} <X size={11} /></button>
                   </div>
                 );
               })()}
@@ -445,12 +594,10 @@ export default function ValidationPage() {
                 <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                   {activeStatusFilter !== "All" && (
                     <span style={{
-                      background: STAT_CARDS.find(s => s.key === activeStatusFilter)?.iconBg,
-                      color:      STAT_CARDS.find(s => s.key === activeStatusFilter)?.clr,
+                      background:STAT_CARDS.find(s => s.key === activeStatusFilter)?.iconBg,
+                      color:STAT_CARDS.find(s => s.key === activeStatusFilter)?.clr,
                       fontSize:11, fontWeight:700, borderRadius:99, padding:"3px 10px",
-                    }}>
-                      {activeStatusFilter}
-                    </span>
+                    }}>{activeStatusFilter}</span>
                   )}
                   <span style={{ background:"#f1f5f9", color:"#64748b", fontSize:12, fontWeight:600, borderRadius:99, padding:"3px 10px" }}>
                     {items.length} {activeFilter === "All" ? "Total" : activeFilter}
@@ -459,9 +606,7 @@ export default function ValidationPage() {
               </div>
 
               {loadingList ? (
-                <div className="val-loading">
-                  <Loader2 size={18} className="val-spin" /> Loading queue…
-                </div>
+                <div className="val-loading"><Loader2 size={18} className="val-spin" /> Loading queue…</div>
               ) : error ? (
                 <div className="val-error">
                   {error}<br />
@@ -480,7 +625,7 @@ export default function ValidationPage() {
                   const ss = STATUS_STYLE[item.status] || STATUS_STYLE.Pending;
                   const ts = TYPE_STYLE[item.item_type] || { bg:"#f8fafc", color:"#64748b" };
                   return (
-                    <div key={item.id} className="val-item" onClick={() => setSelected(item)}>
+                    <div key={item.id} className="val-item" onClick={() => openDetail(item)}>
                       <div style={{ width:10, height:10, borderRadius:"50%", background:ss.dot, flexShrink:0 }} />
                       <div className="val-item-body">
                         <span className="val-type-tag" style={{ background:ts.bg, color:ts.color }}>{item.item_type}</span>
@@ -507,46 +652,82 @@ export default function ValidationPage() {
         </main>
       </div>
 
-      {/* ── Detail Modal ── */}
-      {selected && (() => {
-        const ss = STATUS_STYLE[selected.status] || STATUS_STYLE.Pending;
-        const ts = TYPE_STYLE[selected.item_type] || { bg:"#f8fafc", color:"#64748b" };
-        const d  = itemDetail;
+      {/* ══════════════════════════════════════════════════════════════════════
+          DETAIL MODAL
+      ══════════════════════════════════════════════════════════════════════ */}
+      <AnimatedModal
+        visible={detailVisible}
+        duration={260}
+        overlayClass="val-overlay"
+        onOverlayClick={(e) => { if (e.target === e.currentTarget) closeDetail(); }}
+        onExited={() => { setSelected(null); setItemDetail(null); }}
+      >
+        {selected && (() => {
+          const ss = STATUS_STYLE[selected.status] || STATUS_STYLE.Pending;
+          const ts = TYPE_STYLE[selected.item_type] || { bg:"#f8fafc", color:"#64748b" };
+          const d  = itemDetail;
 
-        const images     = d?.images || (d?.image_url ? [d.image_url] : []);
-        const primaryImg = images[0] ? `http://127.0.0.1:8000/${images[0]}` : null;
-        const extraImgs  = images.slice(1, 4);
+          const isARType  = selected.item_type === "AR";
+          const is3DType  = selected.item_type === "3D";
+          const isProduct = selected.item_type === "Products";
 
-        const stockQty   = d?.quantity ?? null;
-        const stockLabel = stockQty === null ? null
-          : stockQty === 0 ? "Out of Stock"
-          : stockQty < 10  ? "Low Stock"
-          : "In Stock";
-        const stockColor = stockLabel === "In Stock" ? "#16a34a" : stockLabel === "Low Stock" ? "#d97706" : "#dc2626";
-        const stockBg    = stockLabel === "In Stock" ? "#f0fdf4"  : stockLabel === "Low Stock" ? "#fffbeb"  : "#fff1f2";
+          const images     = d?.images || (d?.image_url ? [d.image_url] : []);
+          const primaryImg = images[0] ? `http://127.0.0.1:8000/${images[0]}` : null;
+          const extraImgs  = images.slice(1, 4);
 
-        return (
-          <div className="val-overlay"
-            onClick={(e) => { if (e.target === e.currentTarget) { setSelected(null); setItemDetail(null); } }}>
+          const stockQty   = d?.quantity ?? null;
+          const stockLabel = stockQty === null ? null
+            : stockQty === 0 ? "Out of Stock"
+            : stockQty < 10  ? "Low Stock"
+            : "In Stock";
+          const stockColor = stockLabel === "In Stock" ? "#16a34a" : stockLabel === "Low Stock" ? "#d97706" : "#dc2626";
+          const stockBg    = stockLabel === "In Stock" ? "#f0fdf4"  : stockLabel === "Low Stock" ? "#fffbeb"  : "#fff1f2";
+
+          const hasModelFile = !!(d?.model_3d || d?.model_src);
+
+          // ── Strict button logic ────────────────────────────────────────────
+          // AR   type → ONLY AR  button (never show 3D)
+          // 3D   type → ONLY 3D  button (never show AR)
+          // Products  → respect the able_3d / able_ar flags; fallback to 3D if neither set
+          const show3DBtn = hasModelFile && (
+            is3DType  ? true
+            : isARType ? false
+            : !!(d?.able_3d || d?.valid_3d)
+          );
+          const showARBtn = hasModelFile && (
+            isARType  ? true
+            : is3DType ? false
+            : !!(d?.able_ar || d?.valid_ar)
+          );
+          // Fallback: Product with a model file but neither flag set → show 3D
+          const showFallback3D = isProduct && hasModelFile && !show3DBtn && !showARBtn;
+
+          const forceViewer = isARType || is3DType;
+          const showViewer  = forceViewer || (isProduct && hasModelFile);
+
+          return (
             <div className="val-modal">
-              <button className="val-modal-close" onClick={() => { setSelected(null); setItemDetail(null); }}>
+              <button className="val-modal-close" onClick={closeDetail}>
                 <X size={16} />
               </button>
 
+              {/* ── Hero ── */}
               {loadingDetail ? (
                 <div className="val-hero-placeholder">
-                  <Loader2 size={32} className="val-spin" style={{ color:"#94a3b8" }} />
+                  <Loader2 size={32} className="val-spin" style={{ color:"rgba(255,255,255,0.6)" }} />
                 </div>
-              ) : primaryImg ? (
+              ) : primaryImg && !forceViewer ? (
                 <img src={primaryImg} alt={d?.name || selected.title} className="val-hero" />
               ) : (
                 <div className="val-hero-placeholder">
-                  {TYPE_ICON[selected.item_type] || "📄"}
+                  <span>{TYPE_ICON[selected.item_type] || "📄"}</span>
                 </div>
               )}
 
+              {/* ── Body ── */}
               <div className="val-modal-body">
 
+                {/* Header */}
                 <div style={{ display:"flex", gap:12, alignItems:"flex-start", paddingRight:8 }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
@@ -557,11 +738,6 @@ export default function ValidationPage() {
                         <span style={{ width:5, height:5, borderRadius:"50%", background:ss.dot, display:"inline-block" }} />
                         {selected.status}
                       </span>
-                      {d?.sku && (
-                        <span style={{ background:"#f1f5f9", color:"#64748b", padding:"3px 9px", borderRadius:99, fontSize:11, fontWeight:600, fontFamily:"monospace" }}>
-                          {d.sku}
-                        </span>
-                      )}
                     </div>
                     <h2 style={{ margin:"0 0 3px", fontSize:20, fontWeight:800, color:"#0f172a", letterSpacing:"-0.02em", lineHeight:1.25 }}>
                       {d?.name || selected.title}
@@ -570,14 +746,43 @@ export default function ValidationPage() {
                       V-{String(selected.id).padStart(3,"0")} · Submitted by {selected.user || "Unknown"}
                     </p>
                   </div>
-                  {d?.price != null && (
-                    <div style={{ background:"#0f172a", color:"#fff", borderRadius:12, padding:"8px 16px", fontWeight:800, fontSize:18, flexShrink:0, letterSpacing:"-0.02em" }}>
-                      {d.price}DA
-                    </div>
-                  )}
                 </div>
 
-                {!loadingDetail && extraImgs.length > 0 && (
+                {/* ── 3D / AR launch buttons ── */}
+                {!loadingDetail && showViewer && (
+                  <div>
+                    <p className="val-section-label" style={{ marginBottom:10 }}>
+                      {forceViewer ? "Model Preview" : "3D / AR Preview"}
+                    </p>
+                    {hasModelFile ? (
+                      <div className="val-model-launch-row">
+                        {show3DBtn && (
+                          <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
+                            <span style={{ fontSize:20 }}>🧊</span> View 3D Model
+                          </button>
+                        )}
+                        {showARBtn && (
+                          <button className="val-model-launch-btn btn-ar" onClick={() => openModelViewer("ar", d, selected)}>
+                            <span style={{ fontSize:20 }}>🥽</span> View in AR
+                          </button>
+                        )}
+                        {showFallback3D && (
+                          <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
+                            <span style={{ fontSize:20 }}>🧊</span> View 3D Model
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ padding:"14px 16px", background:"#fff1f2", border:"1px solid #fecaca", borderRadius:12 }}>
+                        <p style={{ margin:0, fontSize:13, color:"#dc2626", fontWeight:600 }}>⚠️ No model file found on this product.</p>
+                        <p style={{ margin:"4px 0 0", fontSize:12, color:"#94a3b8" }}>model_3d / model_src is not set.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Extra images (non-AR/3D) ── */}
+                {!loadingDetail && !forceViewer && extraImgs.length > 0 && (
                   <div>
                     <p className="val-section-label">More Images</p>
                     <div className="val-img-strip">
@@ -588,7 +793,8 @@ export default function ValidationPage() {
                   </div>
                 )}
 
-                {d?.description && (
+                {/* ── Description ── */}
+                {!forceViewer && d?.description && (
                   <div>
                     <p className="val-section-label"><AlignLeft size={10} /> Description</p>
                     <p style={{ margin:0, fontSize:13, color:"#475569", lineHeight:1.6, background:"#f8fafc", border:"1px solid #f1f5f9", borderRadius:12, padding:"12px 14px" }}>
@@ -597,22 +803,21 @@ export default function ValidationPage() {
                   </div>
                 )}
 
+                {/* ── Detail grid ── */}
                 {!loadingDetail && (
                   <div className="val-detail-grid">
-                    {d?.category && (
+                    {!forceViewer && d?.category && (
                       <div className="val-detail-cell">
                         <p className="val-section-label"><Tag size={10} /> Category</p>
                         <p className="val-cell-value" style={{ textTransform:"capitalize" }}>{d.category}</p>
                       </div>
                     )}
-                    {stockLabel && (
+                    {!forceViewer && stockLabel && (
                       <div className="val-detail-cell">
                         <p className="val-section-label"><Layers size={10} /> Stock</p>
                         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                           <p className="val-cell-value">{d.quantity} units</p>
-                          <span style={{ background:stockBg, color:stockColor, fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99 }}>
-                            {stockLabel}
-                          </span>
+                          <span style={{ background:stockBg, color:stockColor, fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99 }}>{stockLabel}</span>
                         </div>
                       </div>
                     )}
@@ -632,18 +837,11 @@ export default function ValidationPage() {
                         </p>
                       </div>
                     )}
-                    {d?.able_3d != null && (
-                      <div className="val-detail-cell">
-                        <p className="val-section-label">3D / AR</p>
-                        <p className="val-cell-value">
-                          {d.able_3d ? "✅ 3D ready" : "—"}{d.able_ar ? " · 🥽 AR ready" : ""}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
 
-                {!loadingDetail && d?.colors?.length > 0 && (
+                {/* ── Colors ── */}
+                {!loadingDetail && !forceViewer && d?.colors?.length > 0 && (
                   <div>
                     <p className="val-section-label"><Palette size={10} /> Colors</p>
                     <div className="val-color-strip">
@@ -658,10 +856,11 @@ export default function ValidationPage() {
 
                 {loadingDetail && (
                   <div style={{ display:"flex", alignItems:"center", gap:8, color:"#94a3b8", fontSize:13 }}>
-                    <Loader2 size={15} className="val-spin" /> Loading product details…
+                    <Loader2 size={15} className="val-spin" /> Loading details…
                   </div>
                 )}
 
+                {/* ── Rejection note ── */}
                 <div>
                   <p className="val-section-label">
                     Rejection Note{" "}
@@ -684,22 +883,75 @@ export default function ValidationPage() {
                 )}
               </div>
 
+              {/* ── Footer ── */}
               <div className="val-modal-footer">
-                <button className="val-btn-approve" onClick={handleApprove} disabled={isFinal || loadingAction}
-                  style={selected.status === "Approved" ? { background:"#f0fdf4", color:"#16a34a" } : {}}>
+                <button
+                  className="val-btn-approve"
+                  onClick={handleApprove}
+                  disabled={isFinal || loadingAction}
+                  style={selected.status === "Approved" ? { background:"#f0fdf4", color:"#16a34a" } : {}}
+                >
                   {loadingAction ? <Loader2 size={16} className="val-spin" /> : null}
                   {selected.status === "Approved" ? "✓ Approved" : "✓ Approve"}
                 </button>
-                <button className="val-btn-reject" onClick={handleReject} disabled={isFinal || loadingAction}
-                  style={selected.status === "Rejected" ? { background:"#fff1f2", color:"#dc2626", borderColor:"#fecaca" } : {}}>
+                <button
+                  className="val-btn-reject"
+                  onClick={handleReject}
+                  disabled={isFinal || loadingAction}
+                  style={selected.status === "Rejected" ? { background:"#fff1f2", color:"#dc2626", borderColor:"#fecaca" } : {}}
+                >
                   {loadingAction ? <Loader2 size={16} className="val-spin" /> : null}
                   {selected.status === "Rejected" ? "✕ Rejected" : "✕ Reject"}
                 </button>
               </div>
             </div>
+          );
+        })()}
+      </AnimatedModal>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          MODEL VIEWER MODAL
+      ══════════════════════════════════════════════════════════════════════ */}
+      <AnimatedModal
+        visible={viewerVisible}
+        duration={300}
+        overlayClass="val-viewer-overlay"
+        onOverlayClick={(e) => { if (e.target === e.currentTarget) closeViewer(); }}
+        onExited={() => setModelViewer(null)}
+      >
+        <div className="val-viewer-topbar">
+          <button className="val-viewer-back-btn" onClick={closeViewer}>
+            <ArrowLeft size={14} /> Back to details
+          </button>
+          <span className="val-viewer-title">
+            {modelViewer?.mode === "ar" ? "🥽" : "🧊"} {modelViewer?.productName}
+          </span>
+          <button className="val-viewer-close-btn" onClick={closeViewer}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="val-viewer-body">
+          <div className="val-viewer-inner">
+            {modelViewer?.modelSrc ? (
+              <ProductViewer
+                modelSrc={modelViewer.modelSrc}
+                model3d={modelViewer.model3d}
+                iosSrc={modelViewer.iosSrc}
+                productName={modelViewer.productName}
+                price={modelViewer.price}
+                variants={modelViewer.variants}
+              />
+            ) : (
+              <div style={{ textAlign:"center", color:"rgba(255,255,255,0.55)" }}>
+                <p style={{ fontSize:44, margin:"0 0 14px" }}>⚠️</p>
+                <p style={{ fontSize:16, fontWeight:700, margin:"0 0 6px", color:"rgba(255,255,255,0.8)" }}>No model file found</p>
+                <p style={{ fontSize:13, margin:0 }}>model_3d / model_src is not set on this product.</p>
+              </div>
+            )}
           </div>
-        );
-      })()}
+        </div>
+      </AnimatedModal>
     </>
   );
 }

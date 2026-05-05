@@ -294,6 +294,7 @@ export function ProductPage() {
     api.get(`/api/products/${productId}`)
       .then(res => {
         const p = res.data;
+        console.log(res.data)
         setProduct(p);
         if (p.colors?.length) setActiveColor(p.colors[0]);
         setActiveImg(p.images?.[0] ?? p.image_url ?? null);
@@ -376,17 +377,18 @@ export function ProductPage() {
     cursor: "pointer",
   });
 
-  // Build variants array once for reuse in both viewer modes
   const colorVariants = product.colors?.map(colorName => ({
     name: colorName,
     color: COLOR_HEX[colorName] || "#d1d5db",
   }));
 
-  // Whether to show the AR button: mobile only + product must have a model
-  const showARButton = IS_MOBILE && !!(product.model_src || product.able_ar);
-
-  // Whether to show the 3D button: all devices + model_3d must exist and not be empty
-  const show3DButton = !!(product.model_3d);
+  // ── Display rules ──────────────────────────────────────────────────────────
+  // Product is visible on the page when is_active === true (unrelated to AR/3D).
+  // AR button: only on mobile AND only when valid_ar === true.
+  // 3D button: on all devices AND only when valid_3d === true.
+  // Each flag is set independently by its own validation queue entry.
+  const showARButton = IS_MOBILE && product.valid_ar === true;
+  const show3DButton = product.valid_3d === true;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F5F0E8", color: "#1C1916", fontFamily: "'Cormorant Garamond',Georgia,serif", overflowX: "hidden" }}>
@@ -437,8 +439,13 @@ export function ProductPage() {
                     </div>
                   )}
 
-                  {/* ── AR button: mobile only | 3D button: desktop+mobile, only if model_3d exists ── */}
-                  {(showARButton || show3DButton) && (
+                  {/*
+                    ── AR / 3D buttons ───────────────────────────────────────────
+                    AR  button: mobile only + valid_ar must be true
+                    3D  button: all devices + valid_3d must be true
+                    Product visibility (is_active) is completely separate from these.
+                  */}
+                  {(showARButton ||show3DButton) && (
                     <div style={{ position: "absolute", bottom: "16px", right: "16px", display: "flex", gap: "8px" }}>
                       {showARButton && (
                         <button style={pillBtn(false)} onClick={() => setViewerMode('ar')}>

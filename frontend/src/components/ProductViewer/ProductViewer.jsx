@@ -18,10 +18,9 @@ function applyColor(viewer, hex) {
 
 function ProductViewer({ modelSrc, model3d, iosSrc, productName, price, variants }) {
   const [activeVariant, setActiveVariant] = useState(0);
-  const [activeModel, setActiveModel] = useState('modelSrc');
   const viewerRef = useRef(null);
 
-  const currentSrc = activeModel === 'model3d' && model3d ? model3d : modelSrc;
+  const currentSrc =  model3d ? model3d : modelSrc;
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -44,22 +43,6 @@ function ProductViewer({ modelSrc, model3d, iosSrc, productName, price, variants
 
   return (
     <div className="product-viewer">
-      {modelSrc && model3d && (
-        <div className="model-toggle">
-          <button
-            className={`model-toggle-btn ${activeModel === 'modelSrc' ? 'active' : ''}`}
-            onClick={() => setActiveModel('modelSrc')}
-          >
-            Model 1
-          </button>
-          <button
-            className={`model-toggle-btn ${activeModel === 'model3d' ? 'active' : ''}`}
-            onClick={() => setActiveModel('model3d')}
-          >
-            Model 2
-          </button>
-        </div>
-      )}
 
       <model-viewer
         ref={viewerRef}

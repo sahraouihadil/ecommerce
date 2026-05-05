@@ -62,7 +62,6 @@ def _serialize(order: Orders, db: Session) -> dict:
         "deliverydate":      order.deliverydate.isoformat() if order.deliverydate else None,
         "status":            order.status,
         "delivery_type":     order.delivery_type,
-        "problem":           order.problem,
         "problem_notes":     _normalize_notes(order.problem_notes),
         "problem_reason":    order.problem_reason,
         "payment_method":    order.payment_method,

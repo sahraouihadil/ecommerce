@@ -69,7 +69,9 @@ class Products(Base):
     ios_src     = Column(String)
     able_3d     = Column(Boolean, default=False)
     able_ar     = Column(Boolean, default=False)
-    is_active   = Column(Boolean, default=True)
+    is_active   = Column(Boolean, default=False)
+    valid_ar    = Column(Boolean, default=False)
+    valid_3d    = Column(Boolean, default=False)
     created_at  = Column(DateTime, default=datetime.utcnow)
 
     colors = relationship("ProductColor", back_populates="product",
@@ -156,7 +158,7 @@ class Favorites(Base):
     id         = Column(Integer, primary_key=True, index=True)
     user_id    = Column(Integer, ForeignKey("users.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
-
+    
     product = relationship("Products")
 
 
@@ -189,7 +191,7 @@ class Complaints(Base):
     id            = Column(Integer, primary_key=True, index=True)
     title         = Column(String)
     description   = Column(String)
-    date          = Column(DateTime, default=datetime.utcnow)
+    date          = Column(DateTime, default=datetime.utcnow) # complaint date
     type_c        = Column(String)
     priority      = Column(String)
     status        = Column(String, default='pending')
@@ -252,7 +254,6 @@ class Blogs(Base):
     author       = Column(String)
     views        = Column(Integer, default=0)
     status       = Column(String, default="draft")
-    published_at = Column(DateTime)
     created_at   = Column(DateTime, default=datetime.utcnow)
 
 class Notifications(Base):

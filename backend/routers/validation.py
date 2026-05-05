@@ -8,12 +8,19 @@ Mount this in main.py:
 
 Endpoints
 ─────────
-GET    /api/validation/              List all requests (filterable)
+GET    /api/validation/              List all requests (filterable by status & item_type)
 GET    /api/validation/stats         Stat card counts
 GET    /api/validation/{id}          Get single request detail
 POST   /api/validation/              Submit a new item for review
-PUT    /api/validation/{id}/approve  Approve a pending request  →  item.is_active = True
-PUT    /api/validation/{id}/reject   Reject a pending request   →  item.is_active = False
+PUT    /api/validation/{id}/approve  Approve:
+                                       AR  → valid_ar  = True   (3D untouched)
+                                       3D  → valid_3d  = True   (AR untouched)
+                                       Products → is_active = True
+PUT    /api/validation/{id}/reject   Reject:
+                                       AR  → valid_ar  = False  (3D untouched)
+                                       3D  → valid_3d  = False  (AR untouched)
+                                       Products → is_active = False
+                                       Stores rejection_note
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -34,20 +41,17 @@ router = APIRouter(prefix="/api/validation", tags=["validation"], redirect_slash
 
 
 # ── Helper: build the list-row dict the frontend expects ─────────────────────
-# item_id and rejection_note are now included so ProductCatalogPage can:
-#   • tell "Rejected" apart from "Pending" (both have is_active=False)
-#   • surface the admin's rejection note directly in the product table row
-#     and inside the edit modal so the manager knows what to fix.
 
 def _to_list_item(req) -> dict:
     return {
         "id":             req.id,
         "item_type":      req.item_type,
-        "item_id":        req.item_id,           # ← maps back to the product/campaign/etc.
+        "item_id":        req.item_id,
         "title":          req.title,
         "status":         req.status,
         "submitted_at":   req.submitted_at,
-        "rejection_note": req.rejection_note,    # ← shown to the manager when Rejected
+        "reviewed_at":    req.reviewed_at,
+        "rejection_note": req.rejection_note,
         "user":           req.submitter.username if req.submitter else None,
     }
 
@@ -64,9 +68,9 @@ def get_stats(db: Session = Depends(get_db)):
 @router.get("/")
 def list_requests(
     status:    Optional[str] = Query(None, description="Pending | Approved | Rejected"),
-    item_type: Optional[str] = Query(None, description="Products | AR | Campaigns | Promotions | Blogs"),
+    item_type: Optional[str] = Query(None, description="Products | AR | 3D | Campaigns | Promotions | Blogs"),
     skip:      int           = Query(0,    ge=0),
-    limit:     int           = Query(50,   ge=1, le=200),
+    limit:     int           = Query(50,   ge=1, le=500),
     db:        Session       = Depends(get_db),
 ):
     requests = crud.get_all(db, status=status, item_type=item_type, skip=skip, limit=limit)
@@ -107,7 +111,11 @@ def approve_request(
     current_user: dict    = Depends(get_current_user),
 ):
     """
-    Approve → item.is_active = True (Products/AR) or status = "active" / "published".
+    AR         →  valid_ar  = True   (valid_3d is NOT touched)
+    3D         →  valid_3d  = True   (valid_ar is NOT touched)
+    Products   →  is_active = True
+    Campaigns / Promotions  →  status = "active"
+    Blogs      →  status = "published"
     Locks the request. Returns 400 if already reviewed.
     """
     try:
@@ -129,7 +137,9 @@ def reject_request(
     current_user: dict    = Depends(get_current_user),
 ):
     """
-    Reject → item.is_active = False (Products/AR) or status = "inactive" / "draft".
+    AR         →  valid_ar  = False  (valid_3d is NOT touched)
+    3D         →  valid_3d  = False  (valid_ar is NOT touched)
+    Products   →  is_active = False
     Stores rejection_note visible to the manager. Locks the request.
     Returns 400 if already reviewed.
     """
