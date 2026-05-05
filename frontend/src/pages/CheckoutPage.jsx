@@ -127,7 +127,31 @@ export function CheckoutPage() {
         ...(paymentMethod === "cib" ? { cardNumber, cardExpiry, cardCvv } : {}),
         delivery_type: deliveryType, deliverydate: deliveryDate,
       });
-      navigate("/order/confirmation", { state: { orderId: res.data.order_id, total: res.data.total } });
+
+      // ✅ Pass ALL info to InvoicePage so it doesn't depend on API refetch
+      navigate("/order/confirmation", {
+        state: {
+          orderId: res.data.order_id,
+          total: res.data.total ?? total,
+          // customer info
+          fullName,
+          wilaya,
+          paymentMethod,
+          delivery_type: deliveryType,
+          deliverydate: deliveryType === "any time" ? "ASAP" : deliveryDate,
+          // cart items snapshot
+          items: items.map(i => ({
+            id: i.id,
+            quantity: i.quantity,
+            product: {
+              name: i.product?.name,
+              price: i.product?.price,
+              image: i.product?.image,
+              sku: i.product?.sku,
+            }
+          })),
+        }
+      });
     } catch (err) {
       alert(err?.response?.data?.detail || "Failed to place order");
     } finally { setPlacing(false); }
@@ -187,7 +211,6 @@ export function CheckoutPage() {
                   <FieldWrap><input style={inputSt} placeholder="Full name" value={fullName} onChange={e => setFullName(e.target.value)} /></FieldWrap>
                   <FieldWrap><input style={inputSt} placeholder="Phone (0550 123 456)" value={phone} onChange={e => setPhone(e.target.value)} /></FieldWrap>
 
-                  {/* Wilaya select */}
                   <FieldWrap>
                     <select
                       value={wilaya} onChange={e => setWilaya(e.target.value)}
@@ -319,10 +342,8 @@ export function CheckoutPage() {
                 color: "#E8DCC8",
               }}>
 
-                {/* Title */}
                 <p style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.7rem", letterSpacing: "0.35em", textTransform: "uppercase", color: "#C8A96A", marginBottom: "1.75rem" }}>Order Summary</p>
 
-                {/* Items */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.75rem" }}>
                   {items.map(item => (
                     <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -339,10 +360,8 @@ export function CheckoutPage() {
                   ))}
                 </div>
 
-                {/* Divider */}
                 <div style={{ height: "1px", background: "rgba(200,169,106,0.2)", marginBottom: "1.5rem" }} />
 
-                {/* Meta rows */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
                   {[
                     { label: "Subtotal", value: `${total.toLocaleString()} DA` },
@@ -357,13 +376,11 @@ export function CheckoutPage() {
                   ))}
                 </div>
 
-                {/* Total */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderTop: "1px solid rgba(200,169,106,0.2)", paddingTop: "1.25rem", marginBottom: "1.75rem" }}>
                   <span style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(200,169,106,0.7)" }}>Total</span>
                   <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "1.2rem", fontWeight: 700, color: "#C8A96A" }}>{total.toLocaleString()} DA</span>
                 </div>
 
-                {/* CTA */}
                 <button
                   onClick={handlePlaceOrder} disabled={!canSubmit}
                   style={{
@@ -388,7 +405,6 @@ export function CheckoutPage() {
                   <a href="#" style={{ color: "rgba(200,169,106,0.55)", textDecoration: "underline" }}>Privacy</a>
                 </p>
 
-                {/* Footer signature */}
                 <div style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
                   <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.48rem", letterSpacing: "0.45em", textTransform: "uppercase", color: "rgba(200,169,106,0.2)" }}>
                     enter your sanctuary
