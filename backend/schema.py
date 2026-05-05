@@ -525,3 +525,93 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     code: str           # re-validated to prevent skipping step 2
     new_password: str
+
+#___Complaints_____________________________________________________
+
+class ComplaintCreate(BaseModel):
+    name:    str
+    email:   str
+    subject: str          # maps to title AND type_c
+    message: str          # maps to description
+    priority: Optional[str] = "low"
+
+"""
+validation_schemas.py - Pydantic request/response schemas for the Validation API
+"""
+# ── Request Bodies ──────────────────────────────────────────────────────────
+
+class ValidationSubmit(BaseModel):
+    """
+    Used when a manager/editor submits a new item for admin review.
+    The frontend sends the type and the id of the item to be validated.
+    """
+    item_type: str   # "Products" | "AR" | "Campaigns" | "Promotions" | "Blogs"
+    item_id:   int
+    title:     str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "item_type": "Products",
+                "item_id":   42,
+                "title":     "Scandinavian Bookshelf Pro"
+            }
+        }
+
+
+class RejectionPayload(BaseModel):
+    """Body for the reject endpoint — rejection note is required."""
+    rejection_note: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {"rejection_note": "Missing dimension specs and weight information."}
+        }
+
+
+# ── Response Schemas ─────────────────────────────────────────────────────────
+
+class SubmitterOut(BaseModel):
+    id:       int
+    username: str
+
+    class Config:
+        from_attributes = True
+
+
+class ValidationOut(BaseModel):
+    """Full detail response for one validation request."""
+    id:             int
+    item_type:      str
+    item_id:        int
+    title:          str
+    status:         str
+    rejection_note: Optional[str] = None
+    submitted_at:   datetime
+    reviewed_at:    Optional[datetime] = None
+    submitter:      Optional[SubmitterOut] = None
+    reviewer:       Optional[SubmitterOut] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ValidationListItem(BaseModel):
+    """Lightweight row used in the queue list."""
+    id:           int
+    item_type:    str
+    title:        str
+    status:       str
+    submitted_at: datetime
+    user:         Optional[str] = None   # submitter username for display
+
+    class Config:
+        from_attributes = True
+
+
+class ValidationStats(BaseModel):
+    """Summary counts shown in the dashboard stat cards."""
+    pending:  int
+    approved: int
+    rejected: int
+    total:    int

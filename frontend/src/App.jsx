@@ -174,7 +174,8 @@ function App() {
               <Route path='deliveries' element={<DeliveryPage />} />
               <Route path='returns' element={<ReturnsPage />} />
               <Route path='inventories' element={<ProductCatalogPage />} />
-              <Route path='problems' element={<ProblemsPage />} />
+              <Route path='ar' element={<ARPage />} />
+              <Route path='problems' element={<ProblemsPage/>}/>
               <Route path='profile' element={<AProfilePage />} />
             </Route>
 

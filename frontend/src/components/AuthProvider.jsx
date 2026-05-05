@@ -18,7 +18,11 @@ const PUBLIC_PATHS = [
   "/journal",
   "/contactus",
   "/aboutus",
-  "/product"
+  "/product",
+  "/search",
+  "/faq",
+  "/terms",
+  "/privacy"
 ];
 
 const isPublicPath = (pathname) =>

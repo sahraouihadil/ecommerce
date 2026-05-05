@@ -632,7 +632,7 @@ const stockManagerLinks = [
   const fetchItems = () => {
     setLoading(true)
     api.get('/api/products')
-      .then(r => {setItems(r.data); console.log(r.data)})
+      .then(r => setItems(r.data))
       .catch(console.error)
       .finally(() => setLoading(false))
   }

@@ -268,9 +268,8 @@ export function ProductPage() {
   const [favMsg, setFavMsg] = useState("");
   const [activeColor, setActiveColor] = useState(null);
   const [activeImg, setActiveImg] = useState(null);
-  const [showViewer, setShowViewer] = useState(false);
+  const [viewerMode, setViewerMode] = useState(null); // null | '3d' | 'ar'
   const [mounted, setMounted] = useState(false);
-
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
@@ -284,11 +283,10 @@ export function ProductPage() {
     return () => document.head.removeChild(link);
   }, []);
 
-  // ── ✅ FIX: كان /api/me وهو غير موجود، صار /profile ──
   useEffect(() => {
     api.get("/profile")
-      .then(res => { setCurrentUser(res.data); })
-      .catch(() => { setCurrentUser(null); })
+      .then(res => setCurrentUser(res.data))
+      .catch(() => setCurrentUser(null))
       .finally(() => setUserChecked(true));
   }, []);
 
@@ -312,16 +310,23 @@ export function ProductPage() {
       .finally(() => setReviewsLoading(false));
   };
 
-  useEffect(() => {
-    fetchReviews();
-  }, [productId]);
+  useEffect(() => { fetchReviews(); }, [productId]);
+  useEffect(() => { setViewerMode(null); }, [productId]);
 
-  useEffect(() => { setShowViewer(false); }, [productId]);
+  useEffect(() => {
+    if (viewerMode === 'ar') {
+      const timer = setTimeout(() => {
+        document.querySelector("model-viewer")?.activateAR?.();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [viewerMode]);
 
   const handleAddToCart = async () => {
     try {
       await api.post("/api/cart", null, { params: { product_id: product.id, quantity: 1 } });
-      setCartMsg("Added to cart!"); setTimeout(() => setCartMsg(""), 2500);
+      setCartMsg("Added to cart!");
+      setTimeout(() => setCartMsg(""), 2500);
     } catch (err) {
       if (err.response?.status === 401) navigate("/login");
       else setCartMsg("Failed to add");
@@ -331,7 +336,8 @@ export function ProductPage() {
   const handleAddToFavorites = async () => {
     try {
       await api.post("/api/favorites", null, { params: { product_id: product.id } });
-      setFavMsg("Added to favourites!"); setTimeout(() => setFavMsg(""), 2500);
+      setFavMsg("Added to favourites!");
+      setTimeout(() => setFavMsg(""), 2500);
     } catch (err) {
       if (err.response?.status === 401) navigate("/login");
       else setFavMsg("Failed to add");
@@ -339,14 +345,14 @@ export function ProductPage() {
   };
 
   if (!product) return (
-    <div style={{ minHeight: "100vh", background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Cormorant Garamond',Georgia,serif" }}>
+    <div style={{ minHeight: "100vh", background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
         <div style={{ position: "relative", width: "48px", height: "48px" }}>
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1px solid #C8A96A", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
           <div style={{ position: "absolute", inset: "5px", borderRadius: "50%", border: "1px solid rgba(200,169,106,0.25)" }} />
         </div>
         <p style={{ fontFamily: "sans-serif", fontSize: "0.575rem", letterSpacing: "0.42em", textTransform: "uppercase", color: "#9E8E7A" }}>Loading product</p>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}`}</style>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
   );
@@ -358,13 +364,32 @@ export function ProductPage() {
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : null;
 
-  const base = {
-    minHeight: "100vh", background: "#F5F0E8", color: "#1C1916",
-    fontFamily: "'Cormorant Garamond',Georgia,serif", overflowX: "hidden",
-  };
+  const pillBtn = (dark = false) => ({
+    display: "flex", alignItems: "center", gap: "6px",
+    padding: "0.5rem 1rem",
+    background: dark ? "#1C1916" : "rgba(245,240,232,0.92)",
+    border: `1px solid ${dark ? "#1C1916" : "rgba(200,169,106,0.35)"}`,
+    borderRadius: "2rem",
+    fontFamily: "sans-serif", fontSize: "0.52rem",
+    letterSpacing: "0.22em", textTransform: "uppercase",
+    color: dark ? "#F5F0E8" : "#9A7D4A",
+    cursor: "pointer",
+  });
+
+  // Build variants array once for reuse in both viewer modes
+  const colorVariants = product.colors?.map(colorName => ({
+    name: colorName,
+    color: COLOR_HEX[colorName] || "#d1d5db",
+  }));
+
+  // Whether to show the AR button: mobile only + product must have a model
+  const showARButton = IS_MOBILE && !!(product.model_src || product.able_ar);
+
+  // Whether to show the 3D button: all devices + model_3d must exist and not be empty
+  const show3DButton = !!(product.model_3d);
 
   return (
-    <div style={base}>
+    <div style={{ minHeight: "100vh", background: "#F5F0E8", color: "#1C1916", fontFamily: "'Cormorant Garamond',Georgia,serif", overflowX: "hidden" }}>
       <style>{`
         @keyframes spin    { to { transform:rotate(360deg); } }
         @keyframes fadeUp  { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
@@ -395,45 +420,85 @@ export function ProductPage() {
           {/* LEFT: Visuals */}
           <div>
             <div style={{ position: "relative", borderRadius: "20px", overflow: "hidden", border: "1px solid rgba(200,169,106,0.2)" }}>
-              {!showViewer ? (
+
+              {/* ── Photo gallery ── */}
+              {viewerMode === null && (
                 <>
                   {activeImg
                     ? <img src={img(activeImg)} alt={product.name} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} />
                     : <div style={{ width: "100%", aspectRatio: "4/3", background: "#EDE7D9", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#9E8E7A" }}>No image</span>
-                    </div>
+                        <span style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#9E8E7A" }}>No image</span>
+                      </div>
                   }
+
                   {product.best_seller && (
                     <div style={{ position: "absolute", top: "16px", left: "16px", padding: "0.35rem 1rem", background: "rgba(245,240,232,0.92)", borderRadius: "2rem", fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#9A7D4A", border: "1px solid rgba(200,169,106,0.35)" }}>
                       Best Seller
                     </div>
                   )}
-                  <div style={{ position: "absolute", bottom: "16px", right: "16px", display: "flex", gap: "8px" }}>
-                    {IS_MOBILE && (product.able_ar ?? product.model_src) && (
-                      <button onClick={() => { setShowViewer(true); setTimeout(() => document.querySelector("model-viewer")?.activateAR?.(), 300); }}
-                        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0.5rem 1rem", background: "rgba(245,240,232,0.92)", border: "1px solid rgba(200,169,106,0.35)", borderRadius: "2rem", fontFamily: "sans-serif", fontSize: "0.52rem", letterSpacing: "0.22em", textTransform: "uppercase", color: "#9A7D4A", cursor: "pointer" }}>
-                        View in AR
-                      </button>
-                    )}
-                    {product.model_src && (
-                      <button onClick={() => setShowViewer(true)}
-                        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0.5rem 1rem", background: "#1C1916", border: "1px solid #1C1916", borderRadius: "2rem", fontFamily: "sans-serif", fontSize: "0.52rem", letterSpacing: "0.22em", textTransform: "uppercase", color: "#F5F0E8", cursor: "pointer" }}>
-                        View in 3D
-                      </button>
-                    )}
-                  </div>
+
+                  {/* ── AR button: mobile only | 3D button: desktop+mobile, only if model_3d exists ── */}
+                  {(showARButton || show3DButton) && (
+                    <div style={{ position: "absolute", bottom: "16px", right: "16px", display: "flex", gap: "8px" }}>
+                      {showARButton && (
+                        <button style={pillBtn(false)} onClick={() => setViewerMode('ar')}>
+                          View in AR
+                        </button>
+                      )}
+                      {show3DButton && (
+                        <button style={pillBtn(true)} onClick={() => setViewerMode('3d')}>
+                          View in 3D
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
-              ) : (
+              )}
+
+              {/* ── 3D viewer ── */}
+              {viewerMode === '3d' && (
                 <div style={{ position: "relative" }}>
-                  <ProductViewer modelSrc={product.model_src} iosSrc={product.ios_src} productName={product.name} price={product.price} />
-                  <button onClick={() => setShowViewer(false)} style={{ position: "absolute", top: "12px", left: "12px", padding: "0.45rem 1rem", background: "rgba(245,240,232,0.92)", border: "1px solid rgba(200,169,106,0.35)", borderRadius: "2rem", fontFamily: "sans-serif", fontSize: "0.52rem", letterSpacing: "0.22em", textTransform: "uppercase", color: "#9A7D4A", cursor: "pointer" }}>
+                  <ProductViewer
+                    modelSrc={product.model_src}
+                    model3d={product.model_3d}
+                    iosSrc={product.ios_src}
+                    productName={product.name}
+                    price={product.price}
+                    variants={colorVariants}
+                  />
+                  <button
+                    style={{ ...pillBtn(false), position: "absolute", top: "12px", left: "12px" }}
+                    onClick={() => setViewerMode(null)}
+                  >
                     ← Photo
                   </button>
                 </div>
               )}
+
+              {/* ── AR viewer ── */}
+              {viewerMode === 'ar' && (
+                <div style={{ position: "relative" }}>
+                  <ProductViewer
+                    modelSrc={product.model_src}
+                    model3d={product.model_3d}
+                    iosSrc={product.ios_src}
+                    productName={product.name}
+                    price={product.price}
+                    variants={colorVariants}
+                  />
+                  <button
+                    style={{ ...pillBtn(false), position: "absolute", top: "12px", left: "12px" }}
+                    onClick={() => setViewerMode(null)}
+                  >
+                    ← Photo
+                  </button>
+                </div>
+              )}
+
             </div>
 
-            {thumbnails.length > 0 && (
+            {/* Thumbnails */}
+            {viewerMode === null && thumbnails.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px", marginTop: "12px" }}>
                 {thumbnails.slice(0, 3).map((src, i) => (
                   <div key={i} onClick={() => setActiveImg(src)} style={{
@@ -608,17 +673,13 @@ export function ProductPage() {
         </div>
       </div>
 
-      {/* ── REVIEWS SECTION ── */}
+      {/* ── Reviews ── */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1.5rem 7rem" }}>
         <GoldRule />
 
         <div style={{ marginTop: "3.5rem", marginBottom: "2.5rem" }}>
-          <p style={{ fontFamily: "sans-serif", fontSize: "0.575rem", letterSpacing: "0.38em", textTransform: "uppercase", color: "#9E8E7A", marginBottom: "1rem" }}>
-            What They Say
-          </p>
-          <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "clamp(1.4rem,3.5vw,2rem)", fontWeight: 700, letterSpacing: "0.04em", color: "#1C1916", marginBottom: "1.25rem" }}>
-            Customer Reviews
-          </h2>
+          <p style={{ fontFamily: "sans-serif", fontSize: "0.575rem", letterSpacing: "0.38em", textTransform: "uppercase", color: "#9E8E7A", marginBottom: "1rem" }}>What They Say</p>
+          <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "clamp(1.4rem,3.5vw,2rem)", fontWeight: 700, letterSpacing: "0.04em", color: "#1C1916", marginBottom: "1.25rem" }}>Customer Reviews</h2>
           <GoldRuleShort />
 
           {avgRating && (
@@ -646,18 +707,10 @@ export function ProductPage() {
             ))}
           </div>
         ) : reviews.length === 0 ? (
-          <div style={{
-            textAlign: "center", padding: "3rem",
-            background: "#EDE7D9", border: "1px solid rgba(200,169,106,0.2)",
-            borderRadius: "16px", marginBottom: "3rem",
-          }}>
+          <div style={{ textAlign: "center", padding: "3rem", background: "#EDE7D9", border: "1px solid rgba(200,169,106,0.2)", borderRadius: "16px", marginBottom: "3rem" }}>
             <div style={{ width: "4px", height: "3rem", background: "linear-gradient(to bottom, transparent, rgba(200,169,106,0.5))", margin: "0 auto 1.25rem" }} />
-            <p style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.85rem", color: "#1C1916", marginBottom: "0.5rem" }}>
-              No Reviews Yet
-            </p>
-            <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "1rem", fontStyle: "italic", fontWeight: 300, color: "#6B5F52" }}>
-              Be the first to share your experience.
-            </p>
+            <p style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.85rem", color: "#1C1916", marginBottom: "0.5rem" }}>No Reviews Yet</p>
+            <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "1rem", fontStyle: "italic", fontWeight: 300, color: "#6B5F52" }}>Be the first to share your experience.</p>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "1.25rem", marginBottom: "3rem" }}>
@@ -675,9 +728,7 @@ export function ProductPage() {
                       {r.user_name || r.username || "Anonymous"}
                     </p>
                     {r.wilaya && (
-                      <p style={{ fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "#9E8E7A" }}>
-                        {r.wilaya}
-                      </p>
+                      <p style={{ fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "#9E8E7A" }}>{r.wilaya}</p>
                     )}
                   </div>
                   <Stars count={r.rating} size={11} />
@@ -698,45 +749,26 @@ export function ProductPage() {
           </div>
         )}
 
-        <div style={{ marginBottom: "2.5rem" }}>
-          <GoldRule />
-        </div>
+        <div style={{ marginBottom: "2.5rem" }}><GoldRule /></div>
 
-        {/* ── Add Review — logged-in only ── */}
         {!userChecked ? null : currentUser ? (
           <AddReviewForm productId={productId} onSubmitted={fetchReviews} />
         ) : (
-          <div style={{
-            background: "#EDE7D9", border: "1px solid rgba(200,169,106,0.22)",
-            borderRadius: "16px", padding: "2.5rem",
-            display: "flex", flexDirection: "column", alignItems: "center",
-            textAlign: "center", gap: "1.25rem",
-          }}>
+          <div style={{ background: "#EDE7D9", border: "1px solid rgba(200,169,106,0.22)", borderRadius: "16px", padding: "2.5rem", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
             <div style={{ width: "48px", height: "48px", borderRadius: "50%", border: "1px solid rgba(200,169,106,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A96A" strokeWidth="1.4">
-                <rect x="3" y="11" width="18" height="11" rx="2" />
-                <path d="M7 11V7a5 5 0 0110 0v4" />
+                <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>
             </div>
             <div>
-              <p style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.85rem", color: "#1C1916", marginBottom: "0.5rem" }}>
-                Sign In to Leave a Review
-              </p>
+              <p style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.85rem", color: "#1C1916", marginBottom: "0.5rem" }}>Sign In to Leave a Review</p>
               <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "1rem", fontStyle: "italic", fontWeight: 300, color: "#6B5F52", lineHeight: 1.75 }}>
                 Share your experience with this piece and help others find their perfect match.
               </p>
             </div>
             <button
               onClick={() => navigate("/login")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "0.625rem",
-                padding: "0 1.75rem", height: "46px",
-                background: "transparent", border: "1px solid rgba(200,169,106,0.5)",
-                borderRadius: 0,
-                fontFamily: "sans-serif", fontSize: "0.58rem", fontWeight: 600,
-                letterSpacing: "0.28em", textTransform: "uppercase",
-                color: "#C8A96A", cursor: "pointer", transition: "all 0.25s ease",
-              }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.625rem", padding: "0 1.75rem", height: "46px", background: "transparent", border: "1px solid rgba(200,169,106,0.5)", borderRadius: 0, fontFamily: "sans-serif", fontSize: "0.58rem", fontWeight: 600, letterSpacing: "0.28em", textTransform: "uppercase", color: "#C8A96A", cursor: "pointer", transition: "all 0.25s ease" }}
               onMouseEnter={e => { e.currentTarget.style.background = "#1C1916"; e.currentTarget.style.color = "#FAF8F4"; e.currentTarget.style.borderColor = "#1C1916"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#C8A96A"; e.currentTarget.style.borderColor = "rgba(200,169,106,0.5)"; }}
             >

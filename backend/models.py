@@ -78,7 +78,6 @@ class Products(Base):
                           cascade="all, delete-orphan",
                           order_by="ProductImage.order")
 
-
 class ProductColor(Base):
     __tablename__ = "product_colors"
 
@@ -124,7 +123,6 @@ class Orders(Base):
     notes          = Column(String, nullable=True)
     rating         = Column(String)
 
-    problem = Column(String)
     problem_notes  = Column(String)
     problem_reason = Column(String)
 
@@ -278,3 +276,31 @@ class Review(Base):
     rating     = Column(Integer, nullable=False)
     comment    = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False) 
+
+class ValidationRequest(Base):
+    """
+    The validation_requests table.
+    Each row represents one submission awaiting admin review.
+ 
+    item_type  → "Products" | "AR" | "Campaigns" | "Promotions" | "Blogs"
+    item_id    → the primary key of the referenced row in its own table
+    status     → "Pending" | "Approved" | "Rejected"
+    """
+    __tablename__ = "validation_requests"
+ 
+    id             = Column(Integer, primary_key=True, index=True)
+    item_type      = Column(String,   nullable=False, index=True)   # e.g. "Products"
+    item_id        = Column(Integer,  nullable=False, index=True)   # FK to the actual table
+    title          = Column(String,   nullable=False)               # display name in the queue
+    status         = Column(String,   default="Pending", index=True)# Pending/Approved/Rejected
+    rejection_note = Column(Text,     nullable=True)                # shown to the submitter
+ 
+    submitted_by   = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_by    = Column(Integer, ForeignKey("users.id"), nullable=True)
+ 
+    submitted_at   = Column(DateTime, default=datetime.utcnow)
+    reviewed_at    = Column(DateTime, nullable=True)
+ 
+    # Relationships
+    submitter = relationship("Users", foreign_keys=[submitted_by])
+    reviewer  = relationship("Users", foreign_keys=[reviewed_by])

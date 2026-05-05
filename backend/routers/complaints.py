@@ -8,20 +8,10 @@ from typing import Optional
 from database import get_db
 from models import Complaints, Users
 from user_crud import get_current_user 
+from schema import ComplaintCreate
 
 
 router = APIRouter(prefix="/api/complaints", tags=["Complaints"])
-
-
-# ── schemas ───────────────────────────────────────────────────────────────────
-
-class ComplaintCreate(BaseModel):
-    name:    str
-    email:   str
-    subject: str          # maps to title AND type_c
-    message: str          # maps to description
-    priority: Optional[str] = "low"
-
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
 
