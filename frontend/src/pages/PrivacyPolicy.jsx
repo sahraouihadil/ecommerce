@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const LAST_UPDATED = "May 2, 2026";
 const COMPANY = "ARoom";
@@ -125,6 +125,37 @@ const sections = [
   },
 ];
 
+/* ── Stagger hook ── */
+function useStaggerVisible(count, delayBase = 80) {
+  const [visible, setVisible] = useState([]);
+  useEffect(() => {
+    let timers = [];
+    for (let i = 0; i < count; i++) {
+      timers.push(
+        setTimeout(() => setVisible(v => [...v, i]), 120 + i * delayBase)
+      );
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [count, delayBase]);
+  return visible;
+}
+
+/* ── Animated section wrapper ── */
+function AnimSection({ children, index, visible }) {
+  const isVisible = visible.includes(index);
+  return (
+    <div
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translateY(0)" : "translateY(22px)",
+        transition: "opacity 0.55s ease, transform 0.55s ease",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function TableOfContents({ active, onClick }) {
   return (
     <nav
@@ -186,6 +217,10 @@ function TableOfContents({ active, onClick }) {
 export default function PrivacyPolicy() {
   const [activeSection, setActiveSection] = useState("information");
 
+  // hero = index 0, banner = 1, toc = 2, sections start at 3
+  const totalItems = 3 + sections.length + 1; // +1 for back link
+  const visible = useStaggerVisible(totalItems, 75);
+
   const scrollTo = (id) => {
     setActiveSection(id);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -193,6 +228,13 @@ export default function PrivacyPolicy() {
 
   return (
     <div style={{ background: "#faf7f4", minHeight: "100vh" }}>
+      <style>{`
+        @keyframes heroSlideDown {
+          from { opacity: 0; transform: translateY(-18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       {/* ── Hero ── */}
       <div
         style={{
@@ -201,6 +243,9 @@ export default function PrivacyPolicy() {
           textAlign: "center",
           position: "relative",
           overflow: "hidden",
+          opacity: visible.includes(0) ? 1 : 0,
+          transform: visible.includes(0) ? "translateY(0)" : "translateY(-18px)",
+          transition: "opacity 0.6s ease, transform 0.6s ease",
         }}
       >
         <div
@@ -232,7 +277,17 @@ export default function PrivacyPolicy() {
       </div>
 
       {/* ── Intro banner ── */}
-      <div style={{ background: "rgba(184,154,126,0.1)", borderBottom: "1px solid rgba(200,185,170,0.3)", padding: "18px 32px", textAlign: "center" }}>
+      <div
+        style={{
+          background: "rgba(184,154,126,0.1)",
+          borderBottom: "1px solid rgba(200,185,170,0.3)",
+          padding: "18px 32px",
+          textAlign: "center",
+          opacity: visible.includes(1) ? 1 : 0,
+          transform: visible.includes(1) ? "translateY(0)" : "translateY(14px)",
+          transition: "opacity 0.5s ease, transform 0.5s ease",
+        }}
+      >
         <p style={{ fontSize: "0.82rem", color: "#7a6352", maxWidth: "640px", margin: "0 auto", lineHeight: 1.7 }}>
           At {COMPANY}, your privacy matters. This policy explains what data we collect, how we use it, and your rights as a user operating in {COUNTRY}.
         </p>
@@ -249,63 +304,66 @@ export default function PrivacyPolicy() {
           alignItems: "flex-start",
         }}
       >
-        {/* TOC — hidden on small screens via inline check */}
-        <div style={{ display: "block" }}>
+        {/* TOC */}
+        <AnimSection index={2} visible={visible}>
           <TableOfContents active={activeSection} onClick={scrollTo} />
-        </div>
+        </AnimSection>
 
         {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {sections.map((section) => (
-            <div
-              key={section.id}
-              id={section.id}
-              style={{ marginBottom: "52px", scrollMarginTop: "100px" }}
-            >
-              <h2
-                style={{
-                  fontFamily: "'Cinzel Decorative', cursive",
-                  fontSize: "1rem",
-                  color: "#3a3330",
-                  marginBottom: "20px",
-                  paddingBottom: "10px",
-                  borderBottom: "1px solid rgba(200,185,170,0.35)",
-                }}
+          {sections.map((section, i) => (
+            <AnimSection key={section.id} index={3 + i} visible={visible}>
+              <div
+                id={section.id}
+                style={{ marginBottom: "52px", scrollMarginTop: "100px" }}
               >
-                {section.title}
-              </h2>
-              {section.content.map((block, i) => (
-                <div key={i} style={{ marginBottom: "16px" }}>
-                  {block.subtitle && (
-                    <p style={{ fontSize: "0.82rem", fontWeight: 600, color: "#5c4a3a", marginBottom: "6px", letterSpacing: "0.02em" }}>
-                      {block.subtitle}
+                <h2
+                  style={{
+                    fontFamily: "'Cinzel Decorative', cursive",
+                    fontSize: "1rem",
+                    color: "#3a3330",
+                    marginBottom: "20px",
+                    paddingBottom: "10px",
+                    borderBottom: "1px solid rgba(200,185,170,0.35)",
+                  }}
+                >
+                  {section.title}
+                </h2>
+                {section.content.map((block, j) => (
+                  <div key={j} style={{ marginBottom: "16px" }}>
+                    {block.subtitle && (
+                      <p style={{ fontSize: "0.82rem", fontWeight: 600, color: "#5c4a3a", marginBottom: "6px", letterSpacing: "0.02em" }}>
+                        {block.subtitle}
+                      </p>
+                    )}
+                    <p style={{ fontSize: "0.88rem", color: "#6b5d52", lineHeight: 1.85 }}>
+                      {block.text}
                     </p>
-                  )}
-                  <p style={{ fontSize: "0.88rem", color: "#6b5d52", lineHeight: 1.85 }}>
-                    {block.text}
-                  </p>
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            </AnimSection>
           ))}
 
           {/* Back link */}
-          <div style={{ paddingTop: "20px", borderTop: "1px solid rgba(200,185,170,0.3)" }}>
-            <Link
-              to="/"
-              style={{
-                fontSize: "0.78rem",
-                color: "#b89a7e",
-                textDecoration: "none",
-                letterSpacing: "0.05em",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              ← Back to ARoom
-            </Link>
-          </div>
+          <AnimSection index={3 + sections.length} visible={visible}>
+            <div style={{ paddingTop: "20px", borderTop: "1px solid rgba(200,185,170,0.3)" }}>
+              <Link
+                to="/"
+                style={{
+                  fontSize: "0.78rem",
+                  color: "#b89a7e",
+                  textDecoration: "none",
+                  letterSpacing: "0.05em",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                ← Back to ARoom
+              </Link>
+            </div>
+          </AnimSection>
         </div>
       </div>
     </div>

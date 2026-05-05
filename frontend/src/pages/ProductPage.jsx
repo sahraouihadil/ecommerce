@@ -15,6 +15,15 @@ const LIGHT_COLORS = new Set(["White", "Ivory", "Beige", "Yellow"]);
 const BASE = "http://127.0.0.1:8000";
 const img = (path) => (path ? `${BASE}/${path}` : null);
 
+/* ── Helper: dispatch count update to Header ── */
+function dispatchCount(type, delta = 1) {
+  const key = type === 'cart' ? 'cartCount' : 'favCount';
+  const prev = parseInt(sessionStorage.getItem(key) || '0');
+  const next = Math.max(0, prev + delta);
+  sessionStorage.setItem(key, next);
+  window.dispatchEvent(new CustomEvent('aroom:counts', { detail: { [type]: next } }));
+}
+
 /* ── Helpers ── */
 const Stars = ({ count, size = 12 }) => (
   <div style={{ display: "flex", gap: "2px" }}>
@@ -294,7 +303,6 @@ export function ProductPage() {
     api.get(`/api/products/${productId}`)
       .then(res => {
         const p = res.data;
-        console.log(res.data)
         setProduct(p);
         if (p.colors?.length) setActiveColor(p.colors[0]);
         setActiveImg(p.images?.[0] ?? p.image_url ?? null);
@@ -328,6 +336,8 @@ export function ProductPage() {
       await api.post("/api/cart", null, { params: { product_id: product.id, quantity: 1 } });
       setCartMsg("Added to cart!");
       setTimeout(() => setCartMsg(""), 2500);
+      // ✅ Update header badge
+      dispatchCount('cart', 1);
     } catch (err) {
       if (err.response?.status === 401) navigate("/login");
       else setCartMsg("Failed to add");
@@ -339,6 +349,8 @@ export function ProductPage() {
       await api.post("/api/favorites", null, { params: { product_id: product.id } });
       setFavMsg("Added to favourites!");
       setTimeout(() => setFavMsg(""), 2500);
+      // ✅ Update header badge
+      dispatchCount('fav', 1);
     } catch (err) {
       if (err.response?.status === 401) navigate("/login");
       else setFavMsg("Failed to add");
@@ -377,18 +389,17 @@ export function ProductPage() {
     cursor: "pointer",
   });
 
+  // Build variants array once for reuse in both viewer modes
   const colorVariants = product.colors?.map(colorName => ({
     name: colorName,
     color: COLOR_HEX[colorName] || "#d1d5db",
   }));
 
-  // ── Display rules ──────────────────────────────────────────────────────────
-  // Product is visible on the page when is_active === true (unrelated to AR/3D).
-  // AR button: only on mobile AND only when valid_ar === true.
-  // 3D button: on all devices AND only when valid_3d === true.
-  // Each flag is set independently by its own validation queue entry.
-  const showARButton = IS_MOBILE && product.valid_ar === true;
-  const show3DButton = product.valid_3d === true;
+  // Whether to show the AR button: mobile only + product must have a model
+  const showARButton = IS_MOBILE && !!(product.model_src || product.able_ar);
+
+  // Whether to show the 3D button: all devices + model_3d must exist and not be empty
+  const show3DButton = !!(product.model_3d);
 
   return (
     <div style={{ minHeight: "100vh", background: "#F5F0E8", color: "#1C1916", fontFamily: "'Cormorant Garamond',Georgia,serif", overflowX: "hidden" }}>
@@ -429,8 +440,8 @@ export function ProductPage() {
                   {activeImg
                     ? <img src={img(activeImg)} alt={product.name} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} />
                     : <div style={{ width: "100%", aspectRatio: "4/3", background: "#EDE7D9", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#9E8E7A" }}>No image</span>
-                      </div>
+                      <span style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#9E8E7A" }}>No image</span>
+                    </div>
                   }
 
                   {product.best_seller && (
@@ -439,13 +450,8 @@ export function ProductPage() {
                     </div>
                   )}
 
-                  {/*
-                    ── AR / 3D buttons ───────────────────────────────────────────
-                    AR  button: mobile only + valid_ar must be true
-                    3D  button: all devices + valid_3d must be true
-                    Product visibility (is_active) is completely separate from these.
-                  */}
-                  {(showARButton ||show3DButton) && (
+                  {/* ── AR button: mobile only | 3D button: desktop+mobile, only if model_3d exists ── */}
+                  {(showARButton || show3DButton) && (
                     <div style={{ position: "absolute", bottom: "16px", right: "16px", display: "flex", gap: "8px" }}>
                       {showARButton && (
                         <button style={pillBtn(false)} onClick={() => setViewerMode('ar')}>
