@@ -303,7 +303,12 @@ export function HomePage() {
     }
     setSubLoading(true);
     try {
-      await api.post('/api/newsletter', { email });
+      await api.post('/api/newsletters', { 
+      name: email.split('@')[0],
+      email,
+      status: "subscribed",
+      tags: []
+    });
     } catch (err) { }
     finally {
       setSubMsg("You're in! Welcome to the family 🤍");

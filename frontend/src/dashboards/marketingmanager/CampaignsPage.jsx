@@ -16,17 +16,8 @@ const PURPLE = '#5B47E0'
 const STATUS_OPTIONS = ['active', 'draft', 'paused', 'completed']
 
 const CHANNEL_OPTIONS = [
-  'Email',
   'Facebook',
   'Instagram',
-  'TikTok',
-  'YouTube',
-  'Twitter / X',
-  'LinkedIn',
-  'Snapchat',
-  'Pinterest',
-  'WhatsApp',
-  'Telegram',
 ]
 
 const statusStyle = {
