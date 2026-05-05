@@ -127,7 +127,7 @@ export function CheckoutPage() {
         ...(paymentMethod === "cib" ? { cardNumber, cardExpiry, cardCvv } : {}),
         delivery_type: deliveryType, deliverydate: deliveryDate,
       });
-      navigate("/order", { state: { orderId: res.data.order_id, total: res.data.total } });
+      navigate("/order/confirmation", { state: { orderId: res.data.order_id, total: res.data.total } });
     } catch (err) {
       alert(err?.response?.data?.detail || "Failed to place order");
     } finally { setPlacing(false); }
