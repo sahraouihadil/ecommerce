@@ -60,6 +60,14 @@ const FONTS = `
     transition: box-shadow 0.3s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1) !important;
   }
   .product-card:hover { transform: translateY(-6px) !important; }
+
+  .mini-card {
+    transition: box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  .mini-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(26,26,26,0.15) !important;
+  }
 `;
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
@@ -317,9 +325,8 @@ function ExitPopup() {
     }
     setLoading(true);
     try {
-      // Backend reads the user from the JWT — only tags is needed
       await api.post('/api/newsletters', { email, tags: [] });
-    console.log(email)
+      console.log(email);
       setStatus("✅ You're subscribed! Check your inbox for your discount code.");
       setTimeout(() => setIsOpen(false), 2500);
     } catch (err) {
@@ -402,7 +409,6 @@ export function HomePage() {
 
   // ── Newsletter subscribe (footer) ─────────────────────────────────────────
   const handleSubscribe = async () => {
-    // Must be logged in — backend resolves the email from the JWT
     if (!isLoggedIn()) {
       setSubMsg('Please log in first to subscribe.');
       setTimeout(() => {
@@ -414,27 +420,22 @@ export function HomePage() {
 
     setSubLoading(true);
     try {
-      // Only `tags` is read by the backend; name/email/status come from the JWT
       await api.post('/api/newsletters', { email, tags: [] });
       setSubMsg("You're in! Welcome to the family 🤍");
       setEmail('');
     } catch (err) {
       if (err.response?.status === 400) {
-        // Backend returns 400 when already subscribed
         setSubMsg('You are already subscribed!');
-      }else if (err.response?.status === 403) {
-  const msg = err.response?.data?.detail;
-
-  if (msg?.includes("Only customers")) {
-    setSubMsg('Only customers can subscribe.');
-  } 
-  else if (msg?.includes("Email does not match")) {
-    setSubMsg('Email does not match your account.');
-  } 
-  else {
-    setSubMsg('Access denied.');
-  }
-} else {
+      } else if (err.response?.status === 403) {
+        const msg = err.response?.data?.detail;
+        if (msg?.includes("Only customers")) {
+          setSubMsg('Only customers can subscribe.');
+        } else if (msg?.includes("Email does not match")) {
+          setSubMsg('Email does not match your account.');
+        } else {
+          setSubMsg('Access denied.');
+        }
+      } else {
         setSubMsg('Something went wrong. Please try again.');
       }
     } finally {
@@ -485,23 +486,123 @@ export function HomePage() {
                 <Button as="a" href="#shop" variant="black" size="lg">Start Shopping</Button>
               </div>
             </div>
+
+            {/* ── Hero Image + Mini Cards ── */}
             <div className="hero-img order-2 relative flex justify-center lg:justify-end">
-              <div className="relative w-full max-w-[480px]">
-                <div className="rounded-3xl overflow-hidden aspect-[3/4] bg-surface shadow-[0_8px_40px_rgba(26,26,26,0.06)]">
+              <div style={{ display: "flex", gap: "16px", alignItems: "stretch", width: "100%", maxWidth: "540px" }}>
+
+                {/* Main featured image */}
+                <div style={{ flex: 1, position: "relative", borderRadius: "28px", overflow: "hidden", aspectRatio: "3/4", background: "#d6cfc4", boxShadow: "0 8px 40px rgba(26,26,26,0.08)" }}>
                   <img
                     src={getImageUrl(featuredProduct)}
                     onError={(e) => { e.target.src = PLACEHOLDER_SVG; }}
                     alt={featuredProduct.name}
-                    className="w-full h-full object-cover"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
+                  {featuredProduct.badge && (
+                    <span style={{
+                      position: "absolute", top: "16px", left: "16px",
+                      background: "rgba(255,255,255,0.92)", color: "#1C1916",
+                      fontFamily: "sans-serif", fontSize: "0.62rem",
+                      letterSpacing: "0.14em", textTransform: "uppercase",
+                      fontWeight: 700, padding: "5px 12px", borderRadius: "2rem",
+                    }}>
+                      {featuredProduct.badge}
+                    </span>
+                  )}
                 </div>
-                {featuredProduct.badge && (
-                  <span className="font-cormorant absolute top-6 right-6 bg-white text-charcoal text-sm uppercase tracking-[0.1em] font-semibold px-4 py-2 rounded-full shadow-sm">
-                    {featuredProduct.badge}
-                  </span>
-                )}
+
+                {/* Mini cards column */}
+                <div style={{ width: "118px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center" }}>
+                  {products.slice(1, 4).map((product, i) => (
+                    <div
+                      key={product.id}
+                      onClick={() => navigate(`/product/${product.id}`)}
+                      style={{
+                        borderRadius: "18px", overflow: "hidden",
+                        background: "#FAF8F4", cursor: "pointer",
+                        border: "1px solid rgba(0,0,0,0.06)",
+                        transition: "transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease",
+                        animation: `fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) ${0.18 + i * 0.08}s both`,
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = "translateX(-4px)";
+                        e.currentTarget.style.boxShadow = "4px 0 20px rgba(0,0,0,0.12)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = "translateX(0)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      {/* Image */}
+                      <div style={{ height: "88px", overflow: "hidden", background: "#ece6dc", position: "relative" }}>
+                        <img
+                          src={getImageUrl(product)}
+                          onError={(e) => { e.target.src = PLACEHOLDER_SVG; }}
+                          alt={product.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s ease" }}
+                          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.06)"}
+                          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                        />
+                        {product.badge && (
+                          <span style={{
+                            position: "absolute", top: "6px", left: "6px",
+                            background: "#C8A96A", color: "#1C1916",
+                            fontSize: "0.5rem", letterSpacing: "0.12em",
+                            textTransform: "uppercase", fontWeight: 700,
+                            padding: "2px 7px", borderRadius: "2rem",
+                            fontFamily: "sans-serif",
+                          }}>
+                            {product.badge}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ padding: "8px 10px 10px" }}>
+                        <p style={{
+                          fontFamily: "'Cormorant Garamond', serif",
+                          fontSize: "0.88rem", fontWeight: 600,
+                          color: "#1C1916", margin: 0,
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        }}>
+                          {product.name}
+                        </p>
+                        <p style={{
+                          fontFamily: "sans-serif", fontSize: "0.6rem",
+                          color: "#9e8e7a", margin: "2px 0 0", letterSpacing: "0.04em",
+                        }}>
+                          {product.price.toLocaleString()} DA
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* More button */}
+                  <button
+                    onClick={() => { const el = document.getElementById('shop'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
+                    style={{
+                      marginTop: "2px",
+                      background: "#1C1916", color: "#FAF8F4",
+                      border: "none", borderRadius: "14px",
+                      padding: "11px 0", width: "100%",
+                      fontFamily: "sans-serif", fontSize: "0.56rem",
+                      letterSpacing: "0.2em", textTransform: "uppercase",
+                      fontWeight: 700, cursor: "pointer",
+                      transition: "background 0.2s ease",
+                      animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.42s both",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#C8A96A"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#1C1916"}
+                  >
+                    More Positions
+                  </button>
+                </div>
+
               </div>
             </div>
+            {/* ── End Hero Image + Mini Cards ── */}
+
           </div>
         </div>
       </section>

@@ -25,7 +25,7 @@ from security.settings import validate_password, hash_password, admin_required, 
 
 from routers import (
     chat, cart, orders, favorites,
-    campaign, promotion, newsletter, blog,
+    campaign, newsletter, blog,
     complaints, product, profile, stafProfile, deliveries,
     deliveryman, reviews, users,problem,validation
 )
@@ -38,6 +38,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+from routers.notifications import router as notifications_router
 
 # ======================================================================
 # APP SETUP
@@ -46,6 +47,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="ARoom API")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+os.makedirs("uploads/campaigns", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 origins = [
     "http://localhost:5173",
@@ -58,7 +61,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["*"],
 )
 
 models.Base.metadata.create_all(bind=database.engine)
@@ -75,12 +78,12 @@ app.include_router(stafProfile.router)
 app.include_router(deliveries.router)
 app.include_router(deliveryman.router)
 app.include_router(campaign.router)
-app.include_router(promotion.router)
 app.include_router(newsletter.router)
 app.include_router(blog.router)
 app.include_router(reviews.router)
 app.include_router(problem.router)
 app.include_router(validation.router)
+app.include_router(notifications_router)
 
 user_dependency = Annotated[dict, Depends(get_current_user)]
 

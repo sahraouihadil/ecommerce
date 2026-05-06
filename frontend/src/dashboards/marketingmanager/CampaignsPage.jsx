@@ -5,7 +5,7 @@ import {
   Mail, FileText, X, Check, Loader2,
   ChevronDown, ImagePlus, Trash, Store, Globe, ChevronUp,
   Heart, MessageCircle, Share2, Bookmark, MoreHorizontal,
-  ThumbsUp, Send,
+  ThumbsUp, Send, Tag, Users, Hash,
 } from 'lucide-react'
 import api from '../../services/api'
 import Sidebar from '../ui/Sidebar'
@@ -22,6 +22,7 @@ const img = path => {
 
 const PURPLE = '#5B47E0'
 const STATUS_OPTIONS = ['active', 'draft', 'paused', 'completed']
+const DISCOUNT_TYPES = ['percentage', 'fixed']
 
 const statusStyle = {
   active:    { bg: '#ECFDF5', color: '#16A34A' },
@@ -31,15 +32,24 @@ const statusStyle = {
 }
 
 const EMPTY_FORM = {
-  name: '', title: '',
-  tactics: { shop: false, facebook: false, instagram: false },
-  status: 'draft', budget: 0, start_date: '', end_date: '',
+  name:          '',
+  title:         '',
+  tactics:       { shop: false, facebook: false, instagram: false },
+  status:        'draft',
+  budget:        0,
+  start_date:    '',
+  end_date:      '',
+  // discount / coupon
+  discount:      '',
+  discount_type: 'percentage',
+  code:          '',
+  usage_max:     0,
+  usage_current: 0,
 }
 
 const marketingmanagerLinks = [
   { to: "/marketing-manager-dash",             label: "Dashboard",   icon: <LayoutDashboard size={18} />, end: true },
   { to: "/marketing-manager-dash/campaigns",   label: "Campaigns",   icon: <Megaphone size={18} /> },
-  { to: "/marketing-manager-dash/promotions",  label: "Promotions",  icon: <BadgePercent size={18} /> },
   { to: "/marketing-manager-dash/newsletters", label: "Newsletters", icon: <Mail size={18} /> },
   { to: "/marketing-manager-dash/blogs",       label: "Blogs",       icon: <FileText size={18} /> },
 ]
@@ -68,6 +78,28 @@ function channelToTactics(channel) {
   }
 }
 
+function parseApiError(err) {
+  const detail = err?.response?.data?.detail
+  if (!detail) return 'Failed to save.'
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map(e => {
+        const field = Array.isArray(e.loc) ? e.loc.filter(l => l !== 'body').join(' → ') : ''
+        return field ? `${field}: ${e.msg}` : e.msg
+      })
+      .join('\n')
+  }
+  return JSON.stringify(detail)
+}
+
+function fmtDiscount(discount, discount_type) {
+  if (discount == null || discount === '') return null
+  const num = Number(discount)
+  if (isNaN(num) || num <= 0) return null
+  return discount_type === 'percentage' ? `${num}% off` : `${num} DA off`
+}
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const labelStyle = {
   display: 'block', fontSize: '0.6875rem', fontWeight: 600,
@@ -80,7 +112,7 @@ const inputStyle = {
 }
 
 // ─── Facebook Ad Preview ──────────────────────────────────────────────────────
-function FacebookPreview({ name, title, previewImg }) {
+function FacebookPreview({ title, previewImg }) {
   return (
     <div style={{
       border: '1px solid #E4E6EB', borderRadius: 12, overflow: 'hidden',
@@ -89,16 +121,18 @@ function FacebookPreview({ name, title, previewImg }) {
     }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-            background: 'linear-gradient(135deg, #5B47E0, #8B75F5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 800, fontSize: '1rem',
-          }}>
-            {(name || 'B')[0].toUpperCase()}
-          </div>
+          <img
+  src="/logo.png" 
+  alt="ARoom"
+  style={{
+    width: 40,
+    height: 40,
+    borderRadius: '50%',
+    objectFit: 'cover'
+  }}
+/>
           <div>
-            <p style={{ fontWeight: 700, fontSize: '0.875rem', color: '#050505', margin: 0 }}>{name || 'Your Brand'}</p>
+            <p style={{ fontWeight: 700, fontSize: '0.875rem', color: '#050505', margin: 0 }}>{'ARoom'}</p>
             <p style={{ fontSize: '0.6875rem', color: '#65676B', margin: 0 }}>Sponsored · 🌐</p>
           </div>
         </div>
@@ -155,7 +189,7 @@ function InstagramPreview({ name, title, previewImg }) {
           </div>
           <div>
             <p style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#262626', margin: 0 }}>
-              {(name || 'your_brand').toLowerCase().replace(/\s+/g, '_')}
+              {'ARoom'}
             </p>
             <p style={{ fontSize: '0.6875rem', color: '#8E8E8E', margin: 0 }}>Sponsored</p>
           </div>
@@ -292,12 +326,10 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
   const toggle = key => {
     const next = { ...tactics, [key]: !tactics[key] }
     onChange(next)
-    // When enabling a platform, auto-open section and switch preview to it
     if ((key === 'facebook' || key === 'instagram') && !tactics[key]) {
       setPlatformOpen(true)
       setActivePreview(key)
     }
-    // When disabling, switch preview to the other if it's still on
     if ((key === 'facebook' || key === 'instagram') && tactics[key]) {
       if (key === 'facebook' && tactics.instagram) setActivePreview('instagram')
       else if (key === 'instagram' && tactics.facebook) setActivePreview('facebook')
@@ -339,7 +371,6 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
 
         {/* ── Ads on Platforms ── */}
         <div style={{ border: `1px solid ${anyPlatform ? PURPLE : '#E5E7EB'}`, borderRadius: 10, overflow: 'hidden' }}>
-          {/* Header row */}
           <div
             onClick={() => setPlatformOpen(p => !p)}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: anyPlatform ? '#F5F3FF' : '#FAFAFA', cursor: 'pointer' }}
@@ -367,10 +398,8 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
             </div>
           </div>
 
-          {/* Expanded section */}
           {platformOpen && (
             <div style={{ padding: '14px 16px', borderTop: '1px solid #E5E7EB', background: '#fff', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Platform toggle cards — INDEPENDENT */}
               <div style={{ display: 'flex', gap: 10 }}>
                 {[
                   { key: 'facebook',  label: 'Facebook',  emoji: '📘', color: '#1877F2', bg: '#E7F0FD' },
@@ -397,10 +426,8 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
                 })}
               </div>
 
-              {/* Ad Preview area */}
               {anyPlatform && (
                 <div>
-                  {/* Tab switcher — only when both are on */}
                   {tactics.facebook && tactics.instagram && (
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
                       {[
@@ -422,16 +449,14 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
                     </div>
                   )}
 
-                  {/* Render the correct preview */}
                   {(() => {
                     const show = activePreview || (tactics.facebook ? 'facebook' : 'instagram')
                     if (show === 'facebook' && tactics.facebook)
-                      return <FacebookPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
+                      return <FacebookPreview title={campaignTitle} previewImg={previewImg} />
                     if (show === 'instagram' && tactics.instagram)
                       return <InstagramPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
-                    // Fallback: show whichever is actually on
                     if (tactics.facebook)
-                      return <FacebookPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
+                      return <FacebookPreview title={campaignTitle} previewImg={previewImg} />
                     if (tactics.instagram)
                       return <InstagramPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
                     return null
@@ -446,19 +471,161 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
   )
 }
 
+// ─── Discount Section ─────────────────────────────────────────────────────────
+function DiscountSection({ form, set, setForm, isEdit }) {
+  const hasDiscount = form.discount !== '' && Number(form.discount) > 0
+
+  return (
+    <div style={{ border: '1px solid #E5E7EB', borderRadius: 12 }}>
+      {/* Header */}
+      <div style={{ padding: '14px 16px', background: hasDiscount ? '#F5F3FF' : '#FAFAFA', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 8, background: hasDiscount ? PURPLE : '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
+          <Tag size={16} color={hasDiscount ? '#fff' : '#9CA3AF'} />
+        </div>
+        <div>
+          <p style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#111827', margin: 0 }}>Discount & Coupon</p>
+          <p style={{ fontSize: '0.6875rem', color: '#9CA3AF', margin: 0 }}>
+            {hasDiscount
+              ? `${form.discount_type === 'percentage' ? form.discount + '%' : form.discount + ' DA'} off · max ${form.usage_max || '∞'} uses`
+              : 'Optional — add a discount code to this campaign'}
+          </p>
+        </div>
+      </div>
+
+      {/* Fields */}
+      <div style={{ padding: '16px', borderTop: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', gap: 14, background: '#fff' }}>
+
+        {/* Discount value + type */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={labelStyle}>Discount Value</label>
+            <input
+              style={inputStyle} type="number" min="0" step="0.01"
+              placeholder="e.g. 20"
+              value={form.discount}
+              onChange={set('discount')}
+              onFocus={e => e.target.style.borderColor = PURPLE}
+              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Discount Type</label>
+            <div style={{ position: 'relative' }}>
+              <select
+                style={{ ...inputStyle, paddingRight: 36 }}
+                value={form.discount_type}
+                onChange={set('discount_type')}
+              >
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed">Fixed (DA)</option>
+              </select>
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}>
+                <ChevronDown size={15} />
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Coupon code */}
+        <div>
+          <label style={labelStyle}>
+            Coupon Code
+            <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(optional)</span>
+          </label>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }}>
+              <Hash size={14} />
+            </span>
+            <input
+              style={{ ...inputStyle, paddingLeft: 34, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, fontFamily: 'monospace' }}
+              placeholder="e.g. SUMMER25"
+              value={form.code}
+              onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+              onFocus={e => e.target.style.borderColor = PURPLE}
+              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+            />
+          </div>
+        </div>
+
+        {/* Max usage + current usage */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={labelStyle}>
+              Max Redemptions
+              <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(0 = unlimited)</span>
+            </label>
+            <input
+              style={inputStyle} type="number" min="0"
+              placeholder="e.g. 500"
+              value={form.usage_max}
+              onChange={set('usage_max')}
+              onFocus={e => e.target.style.borderColor = PURPLE}
+              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>
+              Current Redemptions
+              {!isEdit && <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(starts at 0)</span>}
+            </label>
+            <input
+              style={{ ...inputStyle, background: !isEdit ? '#F9FAFB' : '#fff', color: !isEdit ? '#9CA3AF' : '#111827' }}
+              type="number" min="0"
+              placeholder="0"
+              value={form.usage_current}
+              onChange={set('usage_current')}
+              disabled={!isEdit}
+              onFocus={e => { if (isEdit) e.target.style.borderColor = PURPLE }}
+              onBlur={e => { if (isEdit) e.target.style.borderColor = '#E5E7EB' }}
+            />
+          </div>
+        </div>
+
+        {/* Live usage progress bar — only shown when editing and usage_max > 0 */}
+        {isEdit && Number(form.usage_max) > 0 && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: '0.6875rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Users size={10} /> Redemption Progress
+              </span>
+              <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#374151' }}>
+                {form.usage_current} / {form.usage_max}
+              </span>
+            </div>
+            {(() => {
+              const pct = Math.min(100, Math.round((Number(form.usage_current) / Number(form.usage_max)) * 100))
+              const barColor = pct >= 90 ? '#EF4444' : pct >= 60 ? '#F59E0B' : '#10B981'
+              return (
+                <div style={{ height: 5, borderRadius: 99, background: '#F0F0F5', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 99, transition: 'width 0.5s ease' }} />
+                </div>
+              )
+            })()}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Campaign Modal ───────────────────────────────────────────────────────────
 function CampaignModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial?.id
 
   const [form, setForm] = useState(
     initial ? {
-      name:       initial.name       ?? '',
-      title:      initial.title      ?? '',
-      tactics:    channelToTactics(initial.channel),
-      status:     initial.status     ?? 'draft',
-      budget:     initial.budget     ?? 0,
-      start_date: initial.start_date ? initial.start_date.slice(0, 10) : '',
-      end_date:   initial.end_date   ? initial.end_date.slice(0, 10)   : '',
+      name:          initial.name          ?? '',
+      title:         initial.title         ?? '',
+      tactics:       channelToTactics(initial.channel),
+      status:        initial.status        ?? 'draft',
+      budget:        initial.budget        ?? 0,
+      start_date:    initial.start_date    ? initial.start_date.slice(0, 10) : '',
+      end_date:      initial.end_date      ? initial.end_date.slice(0, 10)   : '',
+      discount:      initial.discount != null ? initial.discount : '',
+      discount_type: initial.discount_type ?? 'percentage',
+      code:          initial.code          ?? '',
+      usage_max:     initial.usage_max     ?? 0,
+      usage_current: initial.usage_current ?? 0,
     } : EMPTY_FORM
   )
   const [saving,      setSaving]      = useState(false)
@@ -485,16 +652,38 @@ function CampaignModal({ initial, onClose, onSaved }) {
     if (form.start_date > form.end_date) return setError('Start date must be before end date.')
     const channel = tacticsToChannel(form.tactics)
     if (channel === 'None')              return setError('Select at least one ad placement.')
+
+    const discountVal = form.discount !== '' ? parseFloat(form.discount) : null
+    if (discountVal !== null && isNaN(discountVal)) return setError('Discount value must be a number.')
+    if (discountVal !== null && discountVal < 0)    return setError('Discount value cannot be negative.')
+    if (form.discount_type === 'percentage' && discountVal > 100)
+      return setError('Percentage discount cannot exceed 100%.')
+
+    const usageMax     = parseInt(form.usage_max) || 0
+    const usageCurrent = parseInt(form.usage_current) || 0
+    if (usageMax > 0 && usageCurrent > usageMax)
+      return setError('Current redemptions cannot exceed max redemptions.')
+
     setError('')
     setSaving(true)
 
     try {
       const payload = {
-        name: form.name.trim(), title: form.title.trim(), channel,
-        status: form.status, budget: parseFloat(form.budget) || 0,
-        spent: initial?.spent ?? 0, impressions: initial?.impressions ?? 0,
-        clicks: initial?.clicks ?? 0,
-        start_date: form.start_date, end_date: form.end_date,
+        name:          form.name.trim(),
+        title:         form.title.trim(),
+        channel,
+        status:        form.status,
+        budget:        parseFloat(form.budget) || 0,
+        spent:         initial?.spent       ?? 0,
+        impressions:   initial?.impressions ?? 0,
+        clicks:        initial?.clicks      ?? 0,
+        start_date:    form.start_date,
+        end_date:      form.end_date,
+        discount:      discountVal,
+        discount_type: discountVal != null ? form.discount_type : null,
+        code:          form.code.trim() || null,
+        usage_max:     usageMax,
+        usage_current: usageCurrent,
       }
 
       const res = isEdit
@@ -505,9 +694,13 @@ function CampaignModal({ initial, onClose, onSaved }) {
       if (pendingFile) {
         const fd = new FormData()
         fd.append('file', pendingFile)
-        const imgRes = await api.post(`/api/campaigns/${saved.id}/image`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        const imgRes = await api.post(
+          `/api/campaigns/${saved.id}/image`, fd,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        )
         saved = imgRes.data
       }
+
       if (clearImage && !pendingFile && isEdit && initial?.image_url) {
         const imgRes = await api.delete(`/api/campaigns/${saved.id}/image`)
         saved = imgRes.data
@@ -516,11 +709,13 @@ function CampaignModal({ initial, onClose, onSaved }) {
       onSaved(saved, isEdit)
       onClose()
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Failed to save.')
-    } finally { setSaving(false) }
+      setError(parseApiError(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const backdrop = e => { if (e.target === e.currentTarget) onClose() }
+  const backdrop    = e => { if (e.target === e.currentTarget) onClose() }
   const existingUrl = clearImage ? null : (initial?.image_url ? img(initial.image_url) : null)
   const livePreview = blobPreview || existingUrl
 
@@ -535,6 +730,7 @@ function CampaignModal({ initial, onClose, onSaved }) {
         width: '100%', maxWidth: '520px', overflow: 'hidden',
         maxHeight: '94vh', display: 'flex', flexDirection: 'column',
       }}>
+        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '22px 24px 18px', borderBottom: '1px solid #F3F4F6', flexShrink: 0 }}>
           <span style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#111827' }}>
             {isEdit ? 'Edit Campaign' : 'New Campaign'}
@@ -544,7 +740,8 @@ function CampaignModal({ initial, onClose, onSaved }) {
           </button>
         </div>
 
-        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+        {/* Body */}
+        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           <ImageUploadField
             pendingFile={pendingFile} existingUrl={existingUrl}
             onFile={f => { setPendingFile(f); setClearImage(false) }}
@@ -571,40 +768,62 @@ function CampaignModal({ initial, onClose, onSaved }) {
             campaignTitle={form.title}
           />
 
-          <div>
-            <label style={labelStyle}>Status</label>
-            <div style={{ position: 'relative' }}>
-              <select style={{ ...inputStyle, paddingRight: 36 }} value={form.status} onChange={set('status')}>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
-              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}>
-                <ChevronDown size={15} />
-              </span>
-            </div>
-          </div>
+            {/* Discount & Coupon section */}
+          <DiscountSection
+            form={form}
+            set={set}
+            setForm={setForm}
+            isEdit={isEdit}
+          />
+          
 
+          {/* Status + Budget row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Status</label>
+              <div style={{ position: 'relative' }}>
+                <select style={{ ...inputStyle, paddingRight: 36 }} value={form.status} onChange={set('status')}>
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}>
+                  <ChevronDown size={15} />
+                </span>
+              </div>
+            </div>
+
+            
             <div>
               <label style={labelStyle}>Budget (DA)</label>
               <input style={inputStyle} type="number" min="0" value={form.budget} onChange={set('budget')}
                 onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
             </div>
+          </div>
+
+          {/* Dates row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Start Date</label>
               <input style={inputStyle} type="date" value={form.start_date} onChange={set('start_date')}
                 onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
             </div>
+            <div>
+              <label style={labelStyle}>End Date</label>
+              <input style={inputStyle} type="date" value={form.end_date} onChange={set('end_date')}
+                onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+            </div>
           </div>
 
-          <div>
-            <label style={labelStyle}>End Date</label>
-            <input style={inputStyle} type="date" value={form.end_date} onChange={set('end_date')}
-              onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
-          </div>
-
-          {error && <p style={{ fontSize: '0.8125rem', color: '#EF4444', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8 }}>{error}</p>}
+          {/* Error display */}
+          {error && (
+            <div style={{ fontSize: '0.8125rem', color: '#EF4444', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8 }}>
+              {error.split('\n').map((line, i) => (
+                <p key={i} style={{ margin: i === 0 ? 0 : '4px 0 0' }}>{line}</p>
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Footer */}
         <div style={{ padding: '14px 24px 20px', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0, borderTop: '1px solid #F3F4F6' }}>
           <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
             Cancel
@@ -665,9 +884,12 @@ function ChannelBadges({ channel }) {
 
 // ─── Campaign Card ────────────────────────────────────────────────────────────
 function CampaignCard({ item, onEdit, onDelete }) {
-  const pct = item.budget > 0 ? Math.min(100, Math.round((item.spent / item.budget) * 100)) : 0
-  const st  = statusStyle[item.status] || { bg: '#F3F4F6', color: '#6B7280' }
+  const pct      = item.budget > 0 ? Math.min(100, Math.round((item.spent / item.budget) * 100)) : 0
+  const st       = statusStyle[item.status] || { bg: '#F3F4F6', color: '#6B7280' }
   const imageUrl = img(item.image_url)
+
+  const usagePct      = item.usage_max > 0 ? Math.min(100, Math.round((item.usage_current / item.usage_max) * 100)) : null
+  const discountLabel = fmtDiscount(item.discount, item.discount_type)
 
   return (
     <div
@@ -675,6 +897,7 @@ function CampaignCard({ item, onEdit, onDelete }) {
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.04)'}
     >
+      {/* Banner image */}
       {imageUrl && (
         <div style={{ position: 'relative', width: '100%', height: 160, flexShrink: 0 }}>
           <img src={imageUrl} alt={item.name}
@@ -683,10 +906,16 @@ function CampaignCard({ item, onEdit, onDelete }) {
           <span style={{ position: 'absolute', top: 10, right: 10, padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color, boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>
             {item.status}
           </span>
+          {discountLabel && (
+            <span style={{ position: 'absolute', top: 10, left: 10, padding: '4px 10px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: '#FEF9C3', color: '#B45309', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }}>
+              <Tag size={10} /> {discountLabel}
+            </span>
+          )}
         </div>
       )}
 
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Title row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -700,12 +929,36 @@ function CampaignCard({ item, onEdit, onDelete }) {
             <ChannelBadges channel={item.channel} />
           </div>
           {!imageUrl && (
-            <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color, flexShrink: 0, marginLeft: 10 }}>
-              {item.status}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, marginLeft: 10 }}>
+              <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color }}>
+                {item.status}
+              </span>
+              {discountLabel && (
+                <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: '#FEF9C3', color: '#B45309', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <Tag size={9} /> {discountLabel}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
+        {/* Coupon code badge */}
+        {item.code && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '4px 10px', borderRadius: 6,
+              background: '#F5F3FF', color: PURPLE,
+              fontSize: '0.75rem', fontWeight: 700,
+              fontFamily: 'monospace', letterSpacing: '0.08em',
+              border: `1px dashed ${PURPLE}`,
+            }}>
+              <Hash size={10} /> {item.code}
+            </span>
+          </div>
+        )}
+
+        {/* Metrics grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
           {[
             { label: 'Budget',      value: `${Number(item.budget).toLocaleString()} DA` },
@@ -720,6 +973,7 @@ function CampaignCard({ item, onEdit, onDelete }) {
           ))}
         </div>
 
+        {/* Budget progress */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: '0.6875rem', color: '#9CA3AF' }}>Budget Used</span>
@@ -730,6 +984,28 @@ function CampaignCard({ item, onEdit, onDelete }) {
           </div>
         </div>
 
+        {/* Redemption progress */}
+        {usagePct !== null && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: '0.6875rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Users size={10} /> Redemptions
+              </span>
+              <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#374151' }}>
+                {item.usage_current} / {item.usage_max}
+              </span>
+            </div>
+            <div style={{ height: 5, borderRadius: 99, background: '#F0F0F5', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${usagePct}%`,
+                background: usagePct >= 90 ? '#EF4444' : usagePct >= 60 ? '#F59E0B' : '#10B981',
+                borderRadius: 99, transition: 'width 0.5s ease',
+              }} />
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid #F3F4F6' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#9CA3AF' }}>
             <Calendar size={12} />
@@ -765,7 +1041,10 @@ export default function CampaignsPage() {
   const [deleting,     setDeleting]     = useState(false)
 
   useEffect(() => {
-    api.get('/api/campaigns/').then(r => setItems(r.data)).catch(console.error).finally(() => setLoading(false))
+    api.get('/api/campaigns/')
+      .then(r => setItems(r.data))
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [])
 
   const handleSaved = (saved, isEdit) => {

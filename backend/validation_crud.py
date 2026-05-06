@@ -9,14 +9,14 @@ Side-effects on status change
                Products   → is_active = True
                AR         → valid_ar  = True          ← AR flag only
                3D         → valid_3d  = True          ← 3D flag only
-               Campaigns / Promotions → status = "active"
+               Campaigns  → status = "active"
                Blogs      → status = "published"
 
   Reject   →  _deactivate_item()
                Products   → is_active = False
                AR         → valid_ar  = False
                3D         → valid_3d  = False
-               Campaigns / Promotions → status = "inactive"
+               Campaigns  → status = "inactive"
                Blogs      → status = "draft"
 """
 
@@ -31,7 +31,7 @@ from schema import ValidationSubmit
 
 # ── Allowed types ────────────────────────────────────────────────────────────
 
-VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Promotions", "Blogs"}
+VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Blogs"}
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -183,10 +183,9 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
     AR         →  valid_ar  = True   ← AR flag only (independent from 3D)
     3D         →  valid_3d  = True   ← 3D flag only (independent from AR)
     Campaigns  →  status    = "active"
-    Promotions →  status    = "active"
     Blogs      →  status    = "published"
     """
-    from models import Products, Campaigns, Promotions, Blogs   # local import avoids circular
+    from models import Products, Campaigns, Blogs   # local import avoids circular
 
     # ── AR: flip only the AR validation flag ──────────────────────────────
     if item_type == "AR":
@@ -210,7 +209,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
     table_map = {
         "Products":   (Products,   "is_active", True),
         "Campaigns":  (Campaigns,  "status",    "active"),
-        "Promotions": (Promotions, "status",    "active"),
         "Blogs":      (Blogs,      "status",    "published"),
     }
 
@@ -234,10 +232,9 @@ def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
     AR         →  valid_ar  = False  ← AR flag only (independent from 3D)
     3D         →  valid_3d  = False  ← 3D flag only (independent from AR)
     Campaigns  →  status    = "inactive"
-    Promotions →  status    = "inactive"
     Blogs      →  status    = "draft"
     """
-    from models import Products, Campaigns, Promotions, Blogs   # local import avoids circular
+    from models import Products, Campaigns, Blogs   # local import avoids circular
 
     # ── AR: reset only the AR validation flag ─────────────────────────────
     if item_type == "AR":
@@ -261,7 +258,6 @@ def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
     table_map = {
         "Products":   (Products,   "is_active", False),
         "Campaigns":  (Campaigns,  "status",    "inactive"),
-        "Promotions": (Promotions, "status",    "inactive"),
         "Blogs":      (Blogs,      "status",    "draft"),
     }
 

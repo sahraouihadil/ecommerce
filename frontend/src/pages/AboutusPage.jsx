@@ -210,13 +210,13 @@ function PhotoCarousel() {
 const members = [
   {
     name: "Merahi Ikram",
-    role: "Co-Founder & Product",
+    role: "Co-Founder & Design ",
     photo: null,
     initials: "MI",
   },
   {
     name: "Ferdi Oum Keltoum",
-    role: "Co-Founder & Design",
+    role: "Co-Founder & Product",
     photo: null,
     initials: "FK",
   },

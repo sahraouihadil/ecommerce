@@ -23,24 +23,26 @@ from models import Orders, OrderItems, CartItems, Products
 from security.jwt_handler import verify_token
 from datetime import datetime
 from schema import OrderCreate
+from routers.notifications import push_notification
 
 router = APIRouter(prefix="/api/orders", tags=["orders"], redirect_slashes=False)
 
 
 @router.post("")
-def create_order(data: OrderCreate,db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
+async def create_order(
+    data: OrderCreate,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(verify_token)
+):
     """
     Creates a new order from the user's cart items.
-    This is the "checkout" endpoint.
-
     Steps:
       1. Get all items from the user's cart
       2. Calculate the total price
       3. Create an Order record
       4. Create OrderItem records for each cart item
       5. Delete the cart items (they've been "moved" to the order)
-
-    Called by: CheckoutPage.jsx "Place Order" button
+      6. Send a notification to the user
     """
     user_id = payload.get("id")
 
@@ -58,19 +60,18 @@ def create_order(data: OrderCreate,db: Session = Depends(get_db), payload: dict 
 
     # Step 3: Create the Order
     order = Orders(
-       user_id=user_id,
-       totalamount=total,
-       status="pending",
-       orderdate=datetime.utcnow(),
-       deliverydate=data.deliverydate,
-       delivery_type=data.delivery_type,
-
-       wilaya=data.wilaya,
-       city=data.city,
-       street_address=data.streetAddress,
+        user_id=user_id,
+        totalamount=total,
+        status="pending",
+        orderdate=datetime.utcnow(),
+        deliverydate=data.deliverydate,
+        delivery_type=data.delivery_type,
+        wilaya=data.wilaya,
+        city=data.city,
+        street_address=data.streetAddress,
     )
     db.add(order)
-    db.flush()  # flush() assigns the order.id without committing yet
+    db.flush()  # assigns order.id without committing yet
 
     # Step 4: Create OrderItems and delete CartItems
     for item in cart_items:
@@ -79,14 +80,23 @@ def create_order(data: OrderCreate,db: Session = Depends(get_db), payload: dict 
             order_id=order.id,
             product_id=item.product_id,
             quantity=item.quantity,
-            price=product.price if product else 0, # Save price at time of purchase
+            price=product.price if product else 0,
             status=order.status
         )
         db.add(order_item)
-        db.delete(item)     # Remove from cart
+        db.delete(item)  # Remove from cart
 
     # Step 5: Commit everything (order + items + cart cleanup)
     db.commit()
+
+    # Step 6: Notify the user that their order was placed
+    await push_notification(
+        db=db,
+        user_id=user_id,
+        type="order",
+        title="✅ Order Placed!",
+        body=f"Your order #{order.id} has been placed successfully. Total: {total:.2f} DA",
+    )
 
     return {"message": "Order placed successfully", "order_id": order.id, "total": total}
 
@@ -96,17 +106,13 @@ def get_orders(db: Session = Depends(get_db), payload: dict = Depends(verify_tok
     """
     Returns all orders for the current user, newest first.
     Each order includes a list of its items.
-
-    Called by: OrderPage.jsx on page load
     """
     user_id = payload.get("id")
 
-    # Get orders sorted by date (newest first)
     orders = db.query(Orders).filter(Orders.user_id == user_id).order_by(Orders.orderdate.desc()).all()
 
     result = []
     for order in orders:
-        # Get the items for each order
         items = db.query(OrderItems).filter(OrderItems.order_id == order.id).all()
         result.append({
             "id": order.id,
@@ -122,8 +128,6 @@ def get_orders(db: Session = Depends(get_db), payload: dict = Depends(verify_tok
             } for i in items]
         })
     return result
-
-
 
 
 @router.get("/all")
@@ -153,22 +157,19 @@ def get_all_orders(db: Session = Depends(get_db), payload: dict = Depends(verify
         })
     return result
 
+
 @router.get("/{order_id}")
 def get_order(order_id: int, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
     """
     Returns detailed info about a specific order.
     Includes product names for each item (used by the tracking page).
-
-    Called by: TrackingPage.jsx → GET /api/orders/{orderId}
     """
     user_id = payload.get("id")
 
-    # Find the order (must belong to this user)
     order = db.query(Orders).filter(Orders.id == order_id, Orders.user_id == user_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Get items with product names
     items = db.query(OrderItems).filter(OrderItems.order_id == order.id).all()
     item_details = []
     for i in items:
@@ -190,14 +191,15 @@ def get_order(order_id: int, db: Session = Depends(get_db), payload: dict = Depe
         "items": item_details
     }
 
+
 @router.put("/{order_id}/status")
-def update_order_status(
+async def update_order_status(
     order_id: int,
     status: str,
     db: Session = Depends(get_db),
     payload: dict = Depends(verify_token)
 ):
-    """Updates order status and syncs all order items to the same status."""
+    """Updates order status, syncs all order items, and notifies the user."""
     order = db.query(Orders).filter(Orders.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -209,4 +211,23 @@ def update_order_status(
     )
 
     db.commit()
+
+    # Notify the user based on the new status
+    status_messages = {
+        "shipped":   ("📦 Order Shipped!",  f"Your order #{order_id} is on its way."),
+        "delivered": ("✅ Order Delivered!", f"Order #{order_id} has been delivered. Enjoy!"),
+        "canceled":  ("❌ Order Canceled",   f"Order #{order_id} was canceled."),
+        "pending":   ("🕐 Order Pending",    f"Order #{order_id} is being processed."),
+    }
+
+    if status in status_messages:
+        title, body = status_messages[status]
+        await push_notification(
+            db=db,
+            user_id=order.user_id,
+            type="order",
+            title=title,
+            body=body,
+        )
+
     return {"message": "Status updated", "order_id": order_id, "status": status}

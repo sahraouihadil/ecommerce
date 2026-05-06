@@ -1,8 +1,6 @@
 import os
 import uuid
-import shutil
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from models import Campaigns
 from database import get_db
@@ -20,14 +18,6 @@ MAX_SIZE_MB = 5
 
 router = APIRouter(prefix="/api/campaigns", tags=["Campaigns"])
 
-# ─── Note ─────────────────────────────────────────────────────────────────────
-# Add these columns to your Campaigns model (models.py) if not present:
-#   title     = Column(String, nullable=True)
-#   image_url = Column(String, nullable=True)
-# Then run: alembic revision --autogenerate -m "add title and image_url to campaigns"
-#           alembic upgrade head
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 # ======================================================================
 # SERIALIZER
@@ -35,21 +25,26 @@ router = APIRouter(prefix="/api/campaigns", tags=["Campaigns"])
 
 def campaign_dict(c: Campaigns) -> dict:
     return {
-        "id":          c.id,
-        "name":        c.name,
-        # title is None if the column doesn't exist yet — safe fallback
-        "title":       getattr(c, "title", None),
-        "channel":     c.channel,
-        "status":      c.status,
-        "budget":      float(c.budget      or 0),
-        "spent":       float(c.spent       or 0),
-        "impressions": int(c.impressions   or 0),
-        "clicks":      int(c.clicks        or 0),
-        "start_date":  str(c.start_date)   if c.start_date  else None,
-        "end_date":    str(c.end_date)     if c.end_date    else None,
-        # image_url is None if the column doesn't exist yet — safe fallback
-        "image_url":   getattr(c, "image_url", None),
-        "created_at":  c.created_at.isoformat() if c.created_at else None,
+        "id":            c.id,
+        "name":          c.name,
+        "title":         c.title,
+        "channel":       c.channel,
+        "status":        c.status,
+        "budget":        float(c.budget        or 0),
+        "spent":         float(c.spent         or 0),
+        "impressions":   int(c.impressions     or 0),
+        "clicks":        int(c.clicks          or 0),
+        # ── discount / coupon fields ──
+        "discount":      float(c.discount) if c.discount is not None else None,
+        "discount_type": c.discount_type,
+        "code":          c.code,
+        "usage_max":     int(c.usage_max       or 0),
+        "usage_current": int(c.usage_current   or 0),
+        # ── dates ──
+        "start_date":    str(c.start_date)  if c.start_date  else None,
+        "end_date":      str(c.end_date)    if c.end_date    else None,
+        "image_url":     c.image_url,
+        "created_at":    c.created_at.isoformat() if c.created_at else None,
     }
 
 
@@ -82,17 +77,22 @@ def create_campaign(body: CampaignCreate, db: Session = Depends(get_db)):
     """Creates a new campaign."""
     data = body.model_dump()
     c = Campaigns(
-        name        = data["name"],
-        title       = data.get("title"),      
-        channel     = data["channel"],
-        status      = data["status"],
-        budget      = data["budget"],
-        spent       = data["spent"],
-        impressions = data["impressions"],
-        clicks      = data["clicks"],
-        start_date  = data["start_date"],
-        end_date    = data["end_date"],
-        image_url   = None,
+        name          = data["name"],
+        title         = data["title"],
+        channel       = data["channel"],
+        status        = data["status"],
+        budget        = data["budget"],
+        spent         = data.get("spent", 0),
+        impressions   = data.get("impressions", 0),
+        clicks        = data.get("clicks", 0),
+        discount      = data.get("discount"),
+        discount_type = data.get("discount_type"),
+        code          = data.get("code"),
+        usage_max     = data.get("usage_max", 0),
+        usage_current = data.get("usage_current", 0),
+        start_date    = data["start_date"],
+        end_date      = data["end_date"],
+        image_url     = None,
     )
     db.add(c)
     db.commit()
@@ -119,6 +119,16 @@ def update_campaign(
     if new_start and new_end and new_end < new_start:
         raise HTTPException(status_code=422, detail="end_date must be on or after start_date")
 
+    # usage_max must be >= usage_current
+    new_usage_max     = updates.get("usage_max",     c.usage_max)
+    new_usage_current = updates.get("usage_current", c.usage_current)
+    if new_usage_max is not None and new_usage_current is not None:
+        if new_usage_max > 0 and new_usage_current > new_usage_max:
+            raise HTTPException(
+                status_code=422,
+                detail="usage_max cannot be less than current usage count."
+            )
+
     for k, v in updates.items():
         setattr(c, k, v)
 
@@ -138,7 +148,6 @@ async def upload_campaign_image(
     Accepts: JPEG, PNG, WebP, GIF — max 5 MB.
     Returns the updated campaign dict including the new image_url.
     """
-    # Fetch campaign
     c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -159,9 +168,8 @@ async def upload_campaign_image(
         )
 
     # Delete old image file if one existed
-    old_url = getattr(c, "image_url", None)
-    if old_url:
-        old_path = old_url.lstrip("/")          # e.g. "uploads/campaigns/abc.jpg"
+    if c.image_url:
+        old_path = c.image_url.lstrip("/")
         if os.path.isfile(old_path):
             os.remove(old_path)
 
@@ -174,8 +182,7 @@ async def upload_campaign_image(
         f.write(contents)
 
     # Persist URL (served via the /uploads static mount)
-    image_url = f"/uploads/campaigns/{filename}"
-    c.image_url = image_url
+    c.image_url = f"/uploads/campaigns/{filename}"
     db.commit()
     db.refresh(c)
     return campaign_dict(c)
@@ -188,9 +195,8 @@ def delete_campaign_image(campaign_id: int, db: Session = Depends(get_db)):
     if not c:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    old_url = getattr(c, "image_url", None)
-    if old_url:
-        old_path = old_url.lstrip("/")
+    if c.image_url:
+        old_path = c.image_url.lstrip("/")
         if os.path.isfile(old_path):
             os.remove(old_path)
 
@@ -208,9 +214,8 @@ def delete_campaign(campaign_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     # Clean up image file on disk
-    old_url = getattr(c, "image_url", None)
-    if old_url:
-        old_path = old_url.lstrip("/")
+    if c.image_url:
+        old_path = c.image_url.lstrip("/")
         if os.path.isfile(old_path):
             os.remove(old_path)
 

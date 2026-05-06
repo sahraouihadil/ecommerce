@@ -16,7 +16,7 @@ NAMING CONVENTION:
   - No suffix = data going TO the frontend or used internally
 """
 
-from pydantic import BaseModel,Field,EmailStr, field_validator,validator
+from pydantic import BaseModel,Field,EmailStr, field_validator,validator, model_validator
 from enums import UserRole
 from fastapi import Form,File
 from datetime import datetime,date
@@ -109,147 +109,128 @@ class ProfileUpdate(BaseModel):
     email: str | None = None
     avatar_url: str | None = None
 
-
-# ── Campaigns ───────────────────────────────
-
-VALID_CHANNELS = [
-    "Facebook",
-    "Instagram",
-]
-
-VALID_Cam_STATUSES = ["active", "draft", "paused", "completed"]
+#_____Campaigns ________________________________________________________
 
 class CampaignCreate(BaseModel):
-    name:        str
-    title:       str
-    channel:     str
-    status:      str        = "draft"
-    budget:      float      = 0.0
-    spent:       float      = 0.0
-    impressions: int        = 0
-    clicks:      int        = 0
-    start_date:  date
-    end_date:    date
-
-    @field_validator("channel")
-    @classmethod
-    def validate_channel(cls, v):
-        if v not in VALID_CHANNELS:
-            raise ValueError(f"Invalid channel '{v}'. Must be one of: {', '.join(VALID_CHANNELS)}")
-        return v
-
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v):
-        if v not in VALID_Cam_STATUSES:
-            raise ValueError(f"Invalid status '{v}'. Must be one of: {', '.join(VALID_Cam_STATUSES)}")
-        return v
-
-    @field_validator("end_date")
-    @classmethod
-    def end_after_start(cls, v, info):
-        start = info.data.get("start_date")
-        if start and v < start:
-            raise ValueError("end_date must be on or after start_date")
-        return v
-
-
-class CampaignUpdate(BaseModel):
-    name:        Optional[str]   = None
-    title:       Optional[str]   = None
-    channel:     Optional[str]   = None
-    status:      Optional[str]   = None
-    budget:      Optional[float] = None
-    spent:       Optional[float] = None
-    impressions: Optional[int]   = None
-    clicks:      Optional[int]   = None
-    start_date:  Optional[date]  = None
-    end_date:    Optional[date]  = None
-
-    @field_validator("channel")
-    @classmethod
-    def validate_channel(cls, v):
-        if v is not None and v not in VALID_CHANNELS:
-            raise ValueError(f"Invalid channel '{v}'. Must be one of: {', '.join(VALID_CHANNELS)}")
-        return v
-
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v):
-        if v is not None and v not in VALID_Cam_STATUSES:
-            raise ValueError(f"Invalid status '{v}'. Must be one of: {', '.join(VALID_Cam_STATUSES)}")
-        return v
-
-
-# ── Promotions ──────────────────────────────
-VALID_TYPES    = ["Percentage", "Fixed"]
-VALID_Prom_STATUSES = ["active", "upcoming", "expired"]
-
-class PromotionCreate(BaseModel):
+    name:          str
     title:         str
-    code:          str
-    discount:      float       = 0.0
-    discount_type: str         = "Percentage"
-    usage_max:     int         = 0
-    usage_current: int         = 0
-    expiry:        date
-    status:        str         = "upcoming"
+    channel:       Optional[str]   = None
+    status:        str             = "draft"
+    budget:        float           = 0
+    spent:         float           = 0
+    impressions:   int             = 0
+    clicks:        int             = 0
+    start_date:    Optional[date]  = None
+    end_date:      Optional[date]  = None
+    # ── discount / coupon ──
+    discount:      Optional[float] = None
+    discount_type: Optional[str]   = None   # "percentage" | "fixed"
+    code:          Optional[str]   = None
+    usage_max:     int             = 0
+    usage_current: int             = 0      # allow seeding on creation; normally 0
 
-    @field_validator("code")
+    @field_validator("status")
     @classmethod
-    def uppercase_code(cls, v):
-        return v.strip().upper()
+    def status_valid(cls, v):
+        allowed = {"active", "draft", "paused", "completed"}
+        if v not in allowed:
+            raise ValueError(f"status must be one of {sorted(allowed)}")
+        return v
 
     @field_validator("discount_type")
     @classmethod
-    def validate_type(cls, v):
-        if v not in VALID_TYPES:
-            raise ValueError(f"discount_type must be one of: {', '.join(VALID_TYPES)}")
-        return v
-
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v):
-        if v not in VALID_Prom_STATUSES:
-            raise ValueError(f"status must be one of: {', '.join(VALID_Prom_STATUSES)}")
+    def discount_type_valid(cls, v):
+        if v is None:
+            return v
+        allowed = {"percentage", "fixed"}
+        if v not in allowed:
+            raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
 
     @field_validator("discount")
     @classmethod
-    def validate_discount(cls, v):
-        if v < 0:
-            raise ValueError("discount must be >= 0")
+    def discount_non_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("discount cannot be negative")
         return v
-
-
-class PromotionUpdate(BaseModel):
-    title:         Optional[str]   = None
-    code:          Optional[str]   = None
-    discount:      Optional[float] = None
-    discount_type: Optional[str]   = None
-    usage_max:     Optional[int]   = None
-    usage_current: Optional[int]   = None
-    expiry:        Optional[date]  = None
-    status:        Optional[str]   = None
 
     @field_validator("code")
     @classmethod
-    def uppercase_code(cls, v):
-        return v.strip().upper() if v else v
-
-    @field_validator("discount_type")
-    @classmethod
-    def validate_type(cls, v):
-        if v is not None and v not in VALID_TYPES:
-            raise ValueError(f"discount_type must be one of: {', '.join(VALID_TYPES)}")
+    def code_strip(cls, v):
+        """Uppercase and strip whitespace from coupon codes."""
+        if v is not None:
+            v = v.strip().upper()
+            return v or None
         return v
+
+    @model_validator(mode="after")
+    def validate_dates_and_discount(self):
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("end_date must be on or after start_date")
+        if self.discount is not None and self.discount_type == "percentage" and self.discount > 100:
+            raise ValueError("percentage discount cannot exceed 100")
+        if self.discount is not None and self.discount_type is None:
+            raise ValueError("discount_type is required when discount is set")
+        if self.usage_max > 0 and self.usage_current > self.usage_max:
+            raise ValueError("usage_current cannot exceed usage_max")
+        return self
+
+
+class CampaignUpdate(BaseModel):
+    name:          Optional[str]   = None
+    title:         Optional[str]   = None
+    channel:       Optional[str]   = None
+    status:        Optional[str]   = None
+    budget:        Optional[float] = None
+    spent:         Optional[float] = None
+    impressions:   Optional[int]   = None
+    clicks:        Optional[int]   = None
+    start_date:    Optional[date]  = None
+    end_date:      Optional[date]  = None
+    # ── discount / coupon ──
+    discount:      Optional[float] = None
+    discount_type: Optional[str]   = None
+    code:          Optional[str]   = None
+    usage_max:     Optional[int]   = None
+    usage_current: Optional[int]   = None
 
     @field_validator("status")
     @classmethod
-    def validate_status(cls, v):
-        if v is not None and v not in VALID_Prom_STATUSES:
-            raise ValueError(f"status must be one of: {', '.join(VALID_Prom_STATUSES)}")
+    def status_valid(cls, v):
+        if v is None:
+            return v
+        allowed = {"active", "draft", "paused", "completed"}
+        if v not in allowed:
+            raise ValueError(f"status must be one of {sorted(allowed)}")
         return v
+
+    @field_validator("discount_type")
+    @classmethod
+    def discount_type_valid(cls, v):
+        if v is None:
+            return v
+        allowed = {"percentage", "fixed"}
+        if v not in allowed:
+            raise ValueError(f"discount_type must be one of {sorted(allowed)}")
+        return v
+
+    @field_validator("discount")
+    @classmethod
+    def discount_non_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("discount cannot be negative")
+        return v
+
+    @field_validator("code")
+    @classmethod
+    def code_strip(cls, v):
+        """Uppercase and strip whitespace from coupon codes."""
+        if v is not None:
+            v = v.strip().upper()
+            return v or None
+        return v
+
+
 # ── Subscribers ─────────────────────────────
  
 VALID_Sub_STATUSES = ["subscribed", "unsubscribed"]
@@ -511,7 +492,7 @@ class ValidationSubmit(BaseModel):
     Used when a manager/editor submits a new item for admin review.
     The frontend sends the type and the id of the item to be validated.
     """
-    item_type: str   # "Products" | "AR" | "Campaigns" | "Promotions" | "Blogs"
+    item_type: str   # "Products" | "AR" | "Campaigns" | "Blogs"
     item_id:   int
     title:     str
 

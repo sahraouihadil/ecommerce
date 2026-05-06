@@ -45,7 +45,6 @@ import MarketingMngrDashboard from './dashboards/marketingmanager/MarketingManag
 import BlogsPage from './dashboards/marketingmanager/BlogPage'
 import CampaignsPage from './dashboards/marketingmanager/CampaignsPage'
 import NewslettersPage from './dashboards/marketingmanager/NewslettersPage'
-import PromotionsPage from './dashboards/marketingmanager/PromotionsPage'
 
 import TodayOrdersPage from './dashboards/deliveryman/TodayOrdersPage'
 import SchedulePage from './dashboards/deliveryman/SchedulePage'
@@ -164,7 +163,6 @@ function App() {
               <Route path='blogs' element={<BlogsPage />} />
               <Route path='campaigns' element={<CampaignsPage />} />
               <Route path='newsletters' element={<NewslettersPage />} />
-              <Route path='promotions' element={<PromotionsPage />} />
               <Route path='profile' element={<AProfilePage />} />
             </Route>
 
