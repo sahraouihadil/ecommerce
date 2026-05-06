@@ -336,9 +336,10 @@ export function Header() {
     <>
       <style>{GLOBAL_STYLES}</style>
 
+      {/* ── FIX 1: raised z-index from z-[100] to z-[201] so it always sits above the overlay (z-199) and drawer (z-200) ── */}
       <header
         style={{ animation: mounted ? 'headerReveal 0.6s cubic-bezier(0.22,1,0.36,1) both' : 'none' }}
-        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled ? 'bg-white/92 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.06)]' : 'bg-transparent'}`}
+        className={`fixed top-0 left-0 right-0 z-[201] transition-all duration-500 ${scrolled ? 'bg-white/92 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.06)]' : 'bg-transparent'}`}
       >
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent, #b07d62, transparent)', opacity: scrolled ? 1 : 0, transition: 'opacity 0.4s' }} />
 
@@ -346,7 +347,16 @@ export function Header() {
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="flex items-center justify-between">
 
-              <Link to="/" style={{ fontFamily: "'Cinzel Decorative', cursive", transition: 'letter-spacing 0.3s, color 0.3s' }}
+              {/* ── FIX 2: added pointerEvents auto + relative positioning + z-index to guarantee clickability ── */}
+              <Link
+                to="/"
+                style={{
+                  fontFamily: "'Cinzel Decorative', cursive",
+                  transition: 'letter-spacing 0.3s, color 0.3s',
+                  pointerEvents: 'auto',
+                  position: 'relative',
+                  zIndex: 10,
+                }}
                 className="text-2xl font-bold text-primary hover:text-accent2 transition-colors duration-300 select-none"
                 onMouseEnter={e => e.currentTarget.style.letterSpacing = '0.04em'}
                 onMouseLeave={e => e.currentTarget.style.letterSpacing = ''}
@@ -409,6 +419,7 @@ export function Header() {
         </div>
       </header>
 
+      {/* Overlay — z-199, below header (z-201) */}
       <div onClick={() => setMenuOpen(false)} style={{
         position: 'fixed', inset: 0, zIndex: 199,
         background: 'rgba(30,22,18,.5)', backdropFilter: 'blur(4px)',
@@ -417,6 +428,7 @@ export function Header() {
         animation: menuOpen ? 'overlayIn 0.35s ease both' : 'none',
       }} />
 
+      {/* Drawer — z-200, below header (z-201) */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, width: '310px', zIndex: 200,
         transform: menuOpen ? 'translateX(0)' : 'translateX(105%)',
@@ -427,7 +439,14 @@ export function Header() {
 
         {/* Top bar */}
         <div className="flex items-center justify-between px-6 py-5">
-          <span style={{ fontFamily: "'Cinzel Decorative', cursive" }} className="text-sm font-bold text-primary">ARoom</span>
+          {/* ── FIX 3: drawer logo is now a real <Link> instead of a <span> ── */}
+          <Link
+            to="/"
+            onClick={() => setMenuOpen(false)}
+            style={{ fontFamily: "'Cinzel Decorative', cursive", textDecoration: 'none' }}
+            className="text-sm font-bold text-primary"
+          >ARoom</Link>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {user && (
               <button onClick={() => setNotifOpen(true)} title="Notifications" style={{
