@@ -183,7 +183,11 @@ function NotificationBell({ notifications, unreadCount, markRead, markAllRead })
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler); // ✅ FIX: added touchstart for mobile
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
   }, []);
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
@@ -284,7 +288,15 @@ export function Header() {
 
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications(!!user);
 
-  useEffect(() => { if (!menuOpen) setNotifOpen(false); }, [menuOpen]);
+  // ✅ FIX 1: Close drawer + notif panel on every route change
+  useEffect(() => {
+    setMenuOpen(false);
+    setNotifOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) setNotifOpen(false);
+  }, [menuOpen]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -305,11 +317,31 @@ export function Header() {
     return () => window.removeEventListener('aroom:counts', handler);
   }, []);
 
+  // ✅ FIX 2: iOS Safari scroll lock — saves scroll position before locking so page doesn't jump
   useEffect(() => {
     const chatbot = document.getElementById('roomie-widget') || document.querySelector('[class*="roomie"], [id*="roomie"]');
-    if (menuOpen) { document.body.style.overflow = 'hidden'; if (chatbot) chatbot.style.visibility = 'hidden'; }
-    else { document.body.style.overflow = ''; if (chatbot) chatbot.style.visibility = ''; }
-    return () => { document.body.style.overflow = ''; };
+    if (menuOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      if (chatbot) chatbot.style.visibility = 'hidden';
+    } else {
+      const scrollY = Math.abs(parseInt(document.body.style.top || '0', 10));
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollY);   // restore exact scroll position
+      if (chatbot) chatbot.style.visibility = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    };
   }, [menuOpen]);
 
   const handleLogout = () => {
@@ -336,7 +368,6 @@ export function Header() {
     <>
       <style>{GLOBAL_STYLES}</style>
 
-      {/* ── FIX 1: raised z-index from z-[100] to z-[201] so it always sits above the overlay (z-199) and drawer (z-200) ── */}
       <header
         style={{ animation: mounted ? 'headerReveal 0.6s cubic-bezier(0.22,1,0.36,1) both' : 'none' }}
         className={`fixed top-0 left-0 right-0 z-[201] transition-all duration-500 ${scrolled ? 'bg-white/92 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.06)]' : 'bg-transparent'}`}
@@ -347,7 +378,6 @@ export function Header() {
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="flex items-center justify-between">
 
-              {/* ── FIX 2: added pointerEvents auto + relative positioning + z-index to guarantee clickability ── */}
               <Link
                 to="/"
                 style={{
@@ -400,17 +430,28 @@ export function Header() {
                 )}
               </div>
 
-              <div className="flex lg:hidden items-center gap-4">
-                <Link to="/favorite" title="Favorites" style={{ position: 'relative', display: 'inline-flex' }} className="icon-btn text-muted hover:text-primary transition-colors duration-300">
-                  <span className="material-symbols-outlined text-[20px]">favorite</span>
-                  <Badge count={favCount} small />
-                </Link>
-                <Link to="/cart" title="Cart" style={{ position: 'relative', display: 'inline-flex' }} className="icon-btn text-muted hover:text-primary transition-colors duration-300">
-                  <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
-                  <Badge count={cartCount} small />
-                </Link>
-                <button className="icon-btn text-primary hover:text-accent2 transition-colors duration-300" onClick={() => setMenuOpen(true)} aria-label="Open menu">
-                  <span className="material-symbols-outlined text-[22px]">menu</span>
+              <div className="flex lg:hidden items-center gap-3">
+                {/* notification badge shortcut — taps open the drawer directly on the notif panel */}
+                {user && (
+                  <button
+                    onClick={() => { setMenuOpen(true); setTimeout(() => setNotifOpen(true), 50); }}
+                    title="Notifications"
+                    style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '8px', color: 'inherit' }}
+                    className="icon-btn text-muted hover:text-primary transition-colors duration-300"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{unreadCount > 0 ? 'notifications_active' : 'notifications'}</span>
+                    <Badge count={unreadCount} small />
+                  </button>
+                )}
+                <button
+                  className="icon-btn text-primary hover:text-accent2 transition-colors duration-300"
+                  onClick={() => setMenuOpen(v => !v)}
+                  aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                  style={{ transition: 'transform 0.3s cubic-bezier(0.22,1,0.36,1)' }}
+                >
+                  <span className="material-symbols-outlined text-[22px]" style={{ transition: 'transform 0.3s', transform: menuOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                    {menuOpen ? 'close' : 'menu'}
+                  </span>
                 </button>
               </div>
 
@@ -419,27 +460,29 @@ export function Header() {
         </div>
       </header>
 
-      {/* Overlay — z-199, below header (z-201) */}
+      {/* Overlay */}
       <div onClick={() => setMenuOpen(false)} style={{
         position: 'fixed', inset: 0, zIndex: 199,
         background: 'rgba(30,22,18,.5)', backdropFilter: 'blur(4px)',
         transition: 'opacity .35s ease', opacity: menuOpen ? 1 : 0,
         pointerEvents: menuOpen ? 'auto' : 'none',
-        animation: menuOpen ? 'overlayIn 0.35s ease both' : 'none',
       }} />
 
-      {/* Drawer — z-200, below header (z-201) */}
+      {/* ✅ FIX 3: Drawer — responsive width + overflow hidden (required for DrawerNotifPanel absolute positioning) */}
       <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: '310px', zIndex: 200,
+        position: 'fixed', top: 0, right: 0, bottom: 0,
+        width: 'min(310px, 88vw)',   // ← responsive: never wider than 88% of the viewport
+        zIndex: 200,
         transform: menuOpen ? 'translateX(0)' : 'translateX(105%)',
         transition: 'transform .42s cubic-bezier(.16,1,.3,1)',
         display: 'flex', flexDirection: 'column', background: '#faf7f4',
         boxShadow: menuOpen ? '-12px 0 60px rgba(0,0,0,.14)' : 'none',
+        overflow: 'hidden',   // ← clips DrawerNotifPanel correctly
+        // ✅ FIX 4: position is already 'fixed' so inset: 0 on child panel works automatically
       }} className="lg:hidden">
 
         {/* Top bar */}
         <div className="flex items-center justify-between px-6 py-5">
-          {/* ── FIX 3: drawer logo is now a real <Link> instead of a <span> ── */}
           <Link
             to="/"
             onClick={() => setMenuOpen(false)}
@@ -448,35 +491,7 @@ export function Header() {
           >ARoom</Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {user && (
-              <button onClick={() => setNotifOpen(true)} title="Notifications" style={{
-                position: 'relative', background: 'none', border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '6px', borderRadius: '8px', color: '#6b4f3a', transition: 'background 0.18s',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(176,125,98,.1)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '21px' }}>{unreadCount > 0 ? 'notifications_active' : 'notifications'}</span>
-                {unreadCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: '2px', right: '2px', minWidth: '15px', height: '15px',
-                    borderRadius: '999px', background: '#b07d62', color: '#fff',
-                    fontSize: '9px', fontWeight: '700', lineHeight: '15px', textAlign: 'center', padding: '0 3px', pointerEvents: 'none',
-                  }}>{unreadCount > 99 ? '99+' : unreadCount}</span>
-                )}
-              </button>
-            )}
-            <button onClick={() => setMenuOpen(false)} aria-label="Close menu" style={{
-              width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', background: 'rgba(0,0,0,.05)', border: 'none', cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.2s',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(176,125,98,.15)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,.05)'; e.currentTarget.style.transform = ''; }}
-            >
-              <span className="material-symbols-outlined text-[17px] text-primary">close</span>
-            </button>
+            {/* close handled by header hamburger toggle */}
           </div>
         </div>
 
@@ -486,7 +501,6 @@ export function Header() {
         <div className="flex items-center justify-around px-6 py-4">
           {drawerIconLinks.map(({ to, label, icon, count }, i) => (
             <Link key={to} to={to} onClick={() => setMenuOpen(false)}
-              style={{ animation: menuOpen ? `notifItemIn 0.3s ${i * 0.07 + 0.1}s both` : 'none' }}
               className={`flex flex-col items-center gap-1 transition-colors duration-200 ${location.pathname === to ? 'text-accent2' : 'text-muted hover:text-primary'}`}
             >
               <span style={{
@@ -512,7 +526,6 @@ export function Header() {
         <nav className="flex flex-col px-6 pt-2 flex-1 overflow-y-auto">
           {navLinks.map((link, i) => (
             <Link key={link.to} to={link.to} onClick={() => setMenuOpen(false)}
-              style={{ animation: menuOpen ? `notifItemIn 0.35s ${i * 0.06 + 0.2}s both` : 'none' }}
               className={`font-serif text-[17px] tracking-wide py-3.5 flex items-center justify-between transition-colors duration-200 ${i < navLinks.length - 1 ? 'border-b border-blush/20' : ''} ${location.pathname === link.to ? 'text-accent2' : 'text-primary hover:text-accent2'}`}
             >
               {link.label}
