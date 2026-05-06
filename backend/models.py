@@ -204,16 +204,20 @@ class Campaigns(Base):
 
     id          = Column(Integer, primary_key=True, index=True)
     name        = Column(String, nullable=False)
+    title       = Column(String, nullable=False)
     channel     = Column(String)
     status      = Column(String, default="draft")
     budget      = Column(Float, default=0)
     spent       = Column(Float, default=0)
     impressions = Column(Integer, default=0)
     clicks      = Column(Integer, default=0)
+    image_url   = Column(String)
     start_date  = Column(DateTime)
     end_date    = Column(DateTime)
     created_at  = Column(DateTime, default=datetime.utcnow)
 
+    # relationship
+    promotions = relationship("Promotions", back_populates="campaign")
 
 class Promotions(Base):
     __tablename__ = "promotions"
@@ -229,6 +233,11 @@ class Promotions(Base):
     status           = Column(String, default="upcoming")
     created_at       = Column(DateTime, default=datetime.utcnow)
 
+    # foreign key
+    campaign_id = Column(Integer, ForeignKey("campaigns.id"))
+
+    # relationship
+    campaign = relationship("Campaigns", back_populates="promotions")
 
 class Newsletters(Base):
     __tablename__ = "newsletters"

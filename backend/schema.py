@@ -113,26 +113,15 @@ class ProfileUpdate(BaseModel):
 # ── Campaigns ───────────────────────────────
 
 VALID_CHANNELS = [
-    "Email",
     "Facebook",
     "Instagram",
-    "TikTok",
-    "YouTube",
-    "Twitter / X",
-    "LinkedIn",
-    "Snapchat",
-    "Pinterest",
-    "WhatsApp",
-    "Telegram",
-    "AR",
-    "Search",
-    "Display",
 ]
 
 VALID_Cam_STATUSES = ["active", "draft", "paused", "completed"]
 
 class CampaignCreate(BaseModel):
     name:        str
+    title:       str
     channel:     str
     status:      str        = "draft"
     budget:      float      = 0.0
@@ -167,6 +156,7 @@ class CampaignCreate(BaseModel):
 
 class CampaignUpdate(BaseModel):
     name:        Optional[str]   = None
+    title:       Optional[str]   = None
     channel:     Optional[str]   = None
     status:      Optional[str]   = None
     budget:      Optional[float] = None
