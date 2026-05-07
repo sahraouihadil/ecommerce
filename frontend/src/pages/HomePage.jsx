@@ -15,15 +15,6 @@ const FONTS = `
   .font-cormorant { font-family: 'Cormorant Garamond', Georgia, serif !important; }
   .font-serif     { font-family: 'Cormorant Garamond', Georgia, serif !important; }
 
-  @keyframes promoSlide {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes promoPulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.6; }
-  }
-
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(36px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -70,7 +61,8 @@ const FONTS = `
   }
 `;
 
-// ─── Auth helper ──────────────────────────────────────────────────────────────
+const BASE = "http://127.0.0.1:8000";
+
 function isLoggedIn() {
   return !!localStorage.getItem('token');
 }
@@ -94,191 +86,11 @@ function useScrollReveal(deps = []) {
   return ref;
 }
 
-function formatDiscount(discount, type) {
-  if (type === 'percentage') return `-${discount}%`;
-  return `-${Number(discount).toLocaleString()} DA`;
-}
-
-function isExpiringSoon(expiry) {
-  if (!expiry) return false;
-  const diff = new Date(expiry) - new Date();
-  return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
-}
-function isExpired(expiry) {
-  if (!expiry) return false;
-  return new Date(expiry) < new Date();
-}
-
-function getAnnouncementDismissedKey(promotions) {
-  const ids = promotions
-    .filter(p => p.status === 'active' && !isExpired(p.expiry))
-    .map(p => p.id)
-    .sort()
-    .join('-');
-  return `announcementDismissed_${ids}`;
-}
-
-/* ── AnnouncementBar ─────────────────────────────────────────────────────────── */
-function AnnouncementBar({ promotions }) {
-  const [idx, setIdx] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
-  const active = promotions.filter(p => p.status === 'active' && !isExpired(p.expiry));
-  const storageKey = getAnnouncementDismissedKey(promotions);
-
-  useEffect(() => {
-    if (active.length === 0) return;
-    const saved = localStorage.getItem(storageKey);
-    setDismissed(saved === 'true');
-  }, [storageKey]);
-
-  const handleDismiss = () => {
-    setDismissed(true);
-    localStorage.setItem(storageKey, 'true');
-  };
-
-  useEffect(() => {
-    if (active.length <= 1 || dismissed) return;
-    const t = setInterval(() => setIdx(i => (i + 1) % active.length), 4000);
-    return () => clearInterval(t);
-  }, [active.length, dismissed]);
-
-  if (active.length === 0 || dismissed) return null;
-  const promo = active[idx % active.length];
-
-  return (
-    <div style={{
-      background: "#877a6fff", color: "#C8A96A", textAlign: "center",
-      padding: "0.85rem 2.5rem 0.85rem 1rem", position: "sticky", top: 0, zIndex: 50,
-      display: "flex", alignItems: "center", justifyContent: "center", gap: "1.5rem",
-      animation: "promoSlide 0.4s ease",
-    }}>
-      <span style={{ fontFamily: "sans-serif", fontSize: "0.8rem", letterSpacing: "0.25em", textTransform: "uppercase", fontWeight: 500 }}>
-        {promo.title}
-        {promo.discount && (
-          <span style={{ marginLeft: "0.6rem", color: "#FAF8F4", fontWeight: 700 }}>
-            {formatDiscount(promo.discount, promo.discount_type)}
-          </span>
-        )}
-      </span>
-      {promo.code && (
-        <span style={{ fontFamily: "sans-serif", fontSize: "0.75rem", letterSpacing: "0.2em", textTransform: "uppercase", border: "1px solid rgba(200,169,106,0.6)", padding: "0.25rem 0.9rem", borderRadius: "2rem", color: "#C8A96A" }}>
-          Code: <strong>{promo.code}</strong>
-        </span>
-      )}
-      {isExpiringSoon(promo.expiry) && (
-        <span style={{ fontFamily: "sans-serif", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#e07b54", animation: "promoPulse 1.5s ease infinite" }}>
-          ⏳ Ends soon
-        </span>
-      )}
-      {active.length > 1 && (
-        <div style={{ display: "flex", gap: "5px" }}>
-          {active.map((_, i) => (
-            <div key={i} onClick={() => setIdx(i)} style={{ width: "6px", height: "6px", borderRadius: "50%", background: i === idx ? "#C8A96A" : "rgba(200,169,106,0.3)", cursor: "pointer", transition: "background 0.3s" }} />
-          ))}
-        </div>
-      )}
-      <button
-        onClick={handleDismiss}
-        style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#C8A96A", cursor: "pointer", fontSize: "1.2rem", fontWeight: "bold", padding: "0 0.5rem", opacity: 0.7, transition: "opacity 0.2s" }}
-        onMouseEnter={e => e.currentTarget.style.opacity = "1"}
-        onMouseLeave={e => e.currentTarget.style.opacity = "0.7"}
-      >✕</button>
-    </div>
-  );
-}
-
-/* ── PromotionsBanner ────────────────────────────────────────────────────────── */
-function PromotionsBanner({ promotions }) {
-  const ref = useScrollReveal([promotions]);
-  const active = promotions.filter(p => p.status === 'active' && !isExpired(p.expiry));
-  if (active.length === 0) return null;
-
-  return (
-    <section style={{ background: "#696a6aff", padding: "4rem 1.5rem", margin: "3rem 0" }}>
-      <div style={{ maxWidth: "1280px", margin: "0 auto" }} ref={ref}>
-        <div className="sr" style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2.5rem", justifyContent: "center" }}>
-          <div style={{ height: "1px", flex: 1, maxWidth: "80px", background: "#C8A96A", opacity: 0.4 }} />
-          <span style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: "1.1rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#C8A96A" }}>
-            Current Offers
-          </span>
-          <div style={{ height: "1px", flex: 1, maxWidth: "80px", background: "#C8A96A", opacity: 0.4 }} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
-          {active.map((promo, i) => (
-            <div key={promo.id} className={`sr sr-scale sr-d${Math.min(i + 1, 6)}`} style={{
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(200,169,106,0.3)",
-              borderRadius: "20px", padding: "2rem 2.25rem", position: "relative", overflow: "hidden",
-            }}>
-              <div style={{ position: "absolute", top: "-40px", right: "-40px", width: "130px", height: "130px", borderRadius: "50%", background: "rgba(200,169,106,0.06)", pointerEvents: "none" }} />
-              {isExpiringSoon(promo.expiry) && (
-                <p style={{ fontFamily: "sans-serif", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#e07b54", marginBottom: "0.75rem", animation: "promoPulse 1.5s ease infinite" }}>⏳ Ends soon</p>
-              )}
-              <p style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: "1rem", fontWeight: 700, color: "#C8A96A", marginBottom: "0.75rem", lineHeight: 1.4 }}>{promo.title}</p>
-              {promo.discount && (
-                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "3rem", fontWeight: 300, color: "#FAF8F4", lineHeight: 1, marginBottom: "1.25rem" }}>
-                  {formatDiscount(promo.discount, promo.discount_type)}
-                  <span style={{ fontSize: "1.2rem", marginLeft: "6px", opacity: 0.4 }}>off</span>
-                </p>
-              )}
-              {promo.code && (
-                <div style={{ display: "inline-flex", alignItems: "center", border: "1px dashed rgba(200,169,106,0.5)", borderRadius: "8px", padding: "0.5rem 1rem", marginBottom: "1rem" }}>
-                  <span style={{ fontFamily: "monospace", fontSize: "1rem", letterSpacing: "0.2em", color: "#C8A96A", fontWeight: 700 }}>{promo.code}</span>
-                </div>
-              )}
-              {promo.expiry && (
-                <p style={{ fontFamily: "sans-serif", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(158,142,122,0.6)", marginTop: "0.5rem" }}>
-                  Until {new Date(promo.expiry).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Inline Promo Card ───────────────────────────────────────────────────────── */
-function InlinePromoCard({ promotion }) {
-  if (!promotion) return null;
-  return (
-    <div style={{
-      background: "#2c2a28", borderRadius: "28px", padding: "2rem 1.5rem", textAlign: "center",
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      minHeight: "380px", boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
-    }}>
-      <span style={{ fontFamily: "sans-serif", fontSize: "0.7rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#C8A96A", marginBottom: "1rem" }}>
-        Limited Offer
-      </span>
-      <p style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: "1.6rem", fontWeight: 700, color: "#fff", marginBottom: "1rem", lineHeight: 1.2 }}>
-        {promotion.title}
-      </p>
-      {promotion.discount && (
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.8rem", fontWeight: 300, color: "#C8A96A", marginBottom: "0.5rem" }}>
-          {formatDiscount(promotion.discount, promotion.discount_type)}
-        </p>
-      )}
-      {promotion.code && (
-        <div style={{ background: "rgba(200,169,106,0.15)", padding: "0.5rem 1rem", borderRadius: "2rem", margin: "1rem 0" }}>
-          <span style={{ fontFamily: "monospace", fontSize: "1rem", letterSpacing: "0.1em", color: "#C8A96A", fontWeight: "bold" }}>{promotion.code}</span>
-        </div>
-      )}
-      <button
-        onClick={() => { const el = document.getElementById('shop'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
-        style={{ marginTop: "1rem", background: "#C8A96A", border: "none", padding: "0.6rem 1.8rem", borderRadius: "2rem", color: "#1C1916", fontFamily: "sans-serif", fontSize: "0.7rem", letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer", fontWeight: "bold" }}
-      >
-        Shop Now
-      </button>
-    </div>
-  );
-}
-
 function getExitPopupKey() {
   const week = Math.floor(new Date().getTime() / (7 * 24 * 60 * 60 * 1000));
   return `exitPopupShown_w${week}`;
 }
 
-/* ── Exit Intent Popup ───────────────────────────────────────────────────────── */
 function ExitPopup() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -326,7 +138,6 @@ function ExitPopup() {
     setLoading(true);
     try {
       await api.post('/api/newsletters', { email, tags: [] });
-      console.log(email);
       setStatus("✅ You're subscribed! Check your inbox for your discount code.");
       setTimeout(() => setIsOpen(false), 2500);
     } catch (err) {
@@ -380,44 +191,183 @@ const PLACEHOLDER_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000
 function getImageUrl(product) {
   if (!product || !product.image_url) return PLACEHOLDER_SVG;
   if (product.image_url.startsWith('http')) return product.image_url;
-  return `http://127.0.0.1:8000/${product.image_url}`;
+  return `${BASE}/${product.image_url}`;
 }
 
-/* ── HomePage ────────────────────────────────────────────────────────────────── */
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMPAIGNS SECTION
+// ─────────────────────────────────────────────────────────────────────────────
+function CampaignsSection() {
+  const navigate = useNavigate();
+  const ref = useRef(null);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.get('/api/campaigns/active')
+      .then(res => setCampaigns(res.data))
+      .catch(err => { setError(err.message); setCampaigns([]); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // ✅ FIX: فعّل الـsr مباشرة بعد ما تجي الdata
+  useEffect(() => {
+    if (campaigns.length === 0) return;
+    const container = ref.current;
+    if (!container) return;
+    setTimeout(() => {
+      container.querySelectorAll('.sr').forEach(t => t.classList.add('visible'));
+    }, 50);
+  }, [campaigns]);
+
+  if (loading) return (
+    <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
+      <p className="font-cormorant italic text-muted">Loading campaigns...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
+      <p className="font-cormorant italic" style={{ color: '#b95c3a' }}>Failed to load campaigns: {error}</p>
+    </div>
+  );
+
+  if (campaigns.length === 0) return (
+    <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
+      <p className="font-cormorant italic text-muted">No active campaigns at the moment.</p>
+    </div>
+  );
+
+  const handleCampaignClick = (camp) => {
+    navigate(camp.campaign_type ? `/furniture?campaign=${camp.campaign_type}` : '/furniture');
+  };
+
+  const discountLabel = (camp) => {
+    if (!camp.discount) return null;
+    return camp.discount_type === 'percent'
+      ? `${camp.discount}% OFF selected items`
+      : `${camp.discount} DA off selected items`;
+  };
+
+  const ctaLabel = (camp) => {
+    if (camp.campaign_type === 'sale') return 'SHOP THE SALE';
+    if (camp.campaign_type === 'new') return 'DISCOVER NOW';
+    return 'SHOP NOW';
+  };
+
+  return (
+    <div ref={ref} className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+      <div className="sr sr-left text-center mb-8">
+        <p className="font-cinzel text-sm uppercase tracking-[0.2em] text-blush">🔥 Limited Time Offers</p>
+        <h2 className="font-cinzel text-3xl md:text-4xl font-bold mt-2">CURRENT CAMPAIGNS</h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {campaigns.map((camp, idx) => (
+          <div
+            key={camp.id}
+            className={`sr sr-scale sr-d${Math.min(idx + 1, 6)}`}
+            style={{
+              background: 'rgba(200,169,106,0.06)',
+              border: '1px solid rgba(200,169,106,0.25)',
+              borderRadius: '1.5rem',
+              padding: '2rem',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            <p style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#C8A96A', marginBottom: '0.5rem' }}>
+              ✨ Campaign
+            </p>
+            <h3 style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 'clamp(1.25rem, 3vw, 1.75rem)', fontWeight: 700, color: '#1C1916', marginBottom: '0.5rem' }}>
+              {camp.title || camp.name}
+            </h3>
+
+            {camp.image_url && (
+              <img
+                src={`${BASE}${camp.image_url}`}
+                alt={camp.title}
+                style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '1rem', margin: '1rem 0' }}
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+            )}
+
+            {discountLabel(camp) && (
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', color: '#6B5F52', marginTop: '0.5rem' }}>
+                {discountLabel(camp)}
+              </p>
+            )}
+
+            {camp.code && (
+              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1rem', marginTop: '0.75rem', color: '#1C1916' }}>
+                Use code:{' '}
+                <span style={{ fontWeight: 700, background: 'rgba(255,255,255,0.6)', padding: '2px 10px', borderRadius: '6px', letterSpacing: '0.08em' }}>
+                  {camp.code}
+                </span>
+              </p>
+            )}
+
+            {camp.usage_max > 0 && (
+              <p style={{ fontFamily: 'sans-serif', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#B0A090', marginTop: '0.5rem' }}>
+                {camp.usage_max - camp.usage_current} uses remaining
+              </p>
+            )}
+
+            <button
+              onClick={() => handleCampaignClick(camp)}
+              style={{
+                marginTop: '1.5rem', background: '#1C1916', color: '#FAF8F4',
+                border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem',
+                fontFamily: "'Cormorant Garamond', serif", fontSize: '0.875rem',
+                fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase',
+                cursor: 'pointer', transition: 'background 0.25s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#C8A96A'; e.currentTarget.style.color = '#1C1916'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#1C1916'; e.currentTarget.style.color = '#FAF8F4'; }}
+            >
+              {ctaLabel(camp)}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOME PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 export function HomePage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
-  const [promotions, setPromotions] = useState([]);
   const [email, setEmail] = useState('');
   const [subMsg, setSubMsg] = useState('');
   const [subLoading, setSubLoading] = useState(false);
 
-  const shopRef       = useScrollReveal([products]);
-  const videoRef      = useScrollReveal([products]);
-  const stepsRef      = useScrollReveal([products]);
-  const quoteRef      = useScrollReveal([products]);
+  // ✅ FIX: كلهم يستعملو products كـdeps
+  const shopRef = useScrollReveal([products]);
+  const videoRef = useScrollReveal([products]);
+  const stepsRef = useScrollReveal([products]);
+  const quoteRef = useScrollReveal([products]);
   const newsletterRef = useScrollReveal([products]);
 
   useEffect(() => {
     api.get("/api/products").then(res => setProducts(res.data)).catch(console.error);
-    api.get("/api/promotions/").then(res => setPromotions(res.data)).catch(console.error);
   }, []);
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
-  const filtered   = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
+  const filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
 
-  // ── Newsletter subscribe (footer) ─────────────────────────────────────────
   const handleSubscribe = async () => {
     if (!isLoggedIn()) {
       setSubMsg('Please log in first to subscribe.');
-      setTimeout(() => {
-        setSubMsg('');
-        navigate('/login');
-      }, 1500);
+      setTimeout(() => { setSubMsg(''); navigate('/login'); }, 1500);
       return;
     }
-
     setSubLoading(true);
     try {
       await api.post('/api/newsletters', { email, tags: [] });
@@ -428,13 +378,9 @@ export function HomePage() {
         setSubMsg('You are already subscribed!');
       } else if (err.response?.status === 403) {
         const msg = err.response?.data?.detail;
-        if (msg?.includes("Only customers")) {
-          setSubMsg('Only customers can subscribe.');
-        } else if (msg?.includes("Email does not match")) {
-          setSubMsg('Email does not match your account.');
-        } else {
-          setSubMsg('Access denied.');
-        }
+        if (msg?.includes("Only customers")) setSubMsg('Only customers can subscribe.');
+        else if (msg?.includes("Email does not match")) setSubMsg('Email does not match your account.');
+        else setSubMsg('Access denied.');
       } else {
         setSubMsg('Something went wrong. Please try again.');
       }
@@ -462,13 +408,11 @@ export function HomePage() {
   const featuredProduct = products[0] || null;
   if (!featuredProduct) return null;
 
-  const activePromo = promotions.find(p => p.status === 'active' && !isExpired(p.expiry));
-
   return (
     <div className="bg-cream text-charcoal min-h-screen">
       <style>{FONTS}</style>
 
-      {/* Hero */}
+      {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="min-h-[90vh] flex items-center overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full py-20 md:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -483,135 +427,81 @@ export function HomePage() {
                 Preview any piece of furniture in your actual room with AR before you buy. Plus AI styling help from Roomie.
               </p>
               <div className="hero-cta">
-                <Button as="a" href="#shop" variant="black" size="lg">Start Shopping</Button>
+                <Button as="a" href="#shop" variant="black" size="lg">START SHOPPING</Button>
               </div>
             </div>
 
-            {/* ── Hero Image + Mini Cards ── */}
             <div className="hero-img order-2 relative flex justify-center lg:justify-end">
-              <div style={{ display: "flex", gap: "16px", alignItems: "stretch", width: "100%", maxWidth: "540px" }}>
-
-                {/* Main featured image */}
-                <div style={{ flex: 1, position: "relative", borderRadius: "28px", overflow: "hidden", aspectRatio: "3/4", background: "#d6cfc4", boxShadow: "0 8px 40px rgba(26,26,26,0.08)" }}>
-                  <img
-                    src={getImageUrl(featuredProduct)}
-                    onError={(e) => { e.target.src = PLACEHOLDER_SVG; }}
-                    alt={featuredProduct.name}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+              <div className="relative w-full max-w-[540px] flex gap-4 items-stretch">
+                <div className="flex-1 relative">
+                  <div className="rounded-3xl overflow-hidden aspect-[3/4] bg-surface shadow-[0_8px_40px_rgba(26,26,26,0.06)]">
+                    <img
+                      src={getImageUrl(featuredProduct)}
+                      onError={(e) => { e.target.src = PLACEHOLDER_SVG; }}
+                      alt={featuredProduct.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   {featuredProduct.badge && (
-                    <span style={{
-                      position: "absolute", top: "16px", left: "16px",
-                      background: "rgba(255,255,255,0.92)", color: "#1C1916",
-                      fontFamily: "sans-serif", fontSize: "0.62rem",
-                      letterSpacing: "0.14em", textTransform: "uppercase",
-                      fontWeight: 700, padding: "5px 12px", borderRadius: "2rem",
-                    }}>
+                    <span className="font-cormorant absolute top-6 left-6 bg-white text-charcoal text-sm uppercase tracking-[0.1em] font-semibold px-4 py-2 rounded-full shadow-sm">
                       {featuredProduct.badge}
                     </span>
                   )}
                 </div>
 
-                {/* Mini cards column */}
-                <div style={{ width: "118px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center" }}>
+                <div className="flex flex-col justify-center gap-3" style={{ width: "130px", flexShrink: 0 }}>
                   {products.slice(1, 4).map((product, i) => (
                     <div
                       key={product.id}
+                      className="mini-card cursor-pointer rounded-2xl overflow-hidden bg-white shadow-[0_4px_16px_rgba(26,26,26,0.08)]"
+                      style={{ animation: `fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) ${0.2 + i * 0.09}s both` }}
                       onClick={() => navigate(`/product/${product.id}`)}
-                      style={{
-                        borderRadius: "18px", overflow: "hidden",
-                        background: "#FAF8F4", cursor: "pointer",
-                        border: "1px solid rgba(0,0,0,0.06)",
-                        transition: "transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease",
-                        animation: `fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) ${0.18 + i * 0.08}s both`,
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = "translateX(-4px)";
-                        e.currentTarget.style.boxShadow = "4px 0 20px rgba(0,0,0,0.12)";
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = "translateX(0)";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
                     >
-                      {/* Image */}
-                      <div style={{ height: "88px", overflow: "hidden", background: "#ece6dc", position: "relative" }}>
+                      <div className="relative" style={{ height: "100px", background: "#f5f0e8", overflow: "hidden" }}>
                         <img
                           src={getImageUrl(product)}
                           onError={(e) => { e.target.src = PLACEHOLDER_SVG; }}
                           alt={product.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s ease" }}
-                          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.06)"}
-                          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
                         {product.badge && (
-                          <span style={{
-                            position: "absolute", top: "6px", left: "6px",
-                            background: "#C8A96A", color: "#1C1916",
-                            fontSize: "0.5rem", letterSpacing: "0.12em",
-                            textTransform: "uppercase", fontWeight: 700,
-                            padding: "2px 7px", borderRadius: "2rem",
-                            fontFamily: "sans-serif",
-                          }}>
+                          <span style={{ position: "absolute", top: "7px", left: "7px", background: "#C8A96A", color: "#1C1916", fontSize: "0.52rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, padding: "2px 7px", borderRadius: "2rem", fontFamily: "sans-serif" }}>
                             {product.badge}
                           </span>
                         )}
                       </div>
-
-                      {/* Info */}
                       <div style={{ padding: "8px 10px 10px" }}>
-                        <p style={{
-                          fontFamily: "'Cormorant Garamond', serif",
-                          fontSize: "0.88rem", fontWeight: 600,
-                          color: "#1C1916", margin: 0,
-                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                        }}>
+                        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "0.82rem", fontWeight: 600, color: "#1C1916", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {product.name}
                         </p>
-                        <p style={{
-                          fontFamily: "sans-serif", fontSize: "0.6rem",
-                          color: "#9e8e7a", margin: "2px 0 0", letterSpacing: "0.04em",
-                        }}>
-                          {product.price.toLocaleString()} DA
+                        <p style={{ fontFamily: "sans-serif", fontSize: "0.62rem", color: "#9e8e7a", margin: "2px 0 0", letterSpacing: "0.04em" }}>
+                          {Number(product.price).toLocaleString()} DA
                         </p>
                       </div>
                     </div>
                   ))}
-
-                  {/* More button */}
                   <button
                     onClick={() => { const el = document.getElementById('shop'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
-                    style={{
-                      marginTop: "2px",
-                      background: "#1C1916", color: "#FAF8F4",
-                      border: "none", borderRadius: "14px",
-                      padding: "11px 0", width: "100%",
-                      fontFamily: "sans-serif", fontSize: "0.56rem",
-                      letterSpacing: "0.2em", textTransform: "uppercase",
-                      fontWeight: 700, cursor: "pointer",
-                      transition: "background 0.2s ease",
-                      animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.42s both",
-                    }}
+                    style={{ marginTop: "4px", background: "#1C1916", color: "#FAF8F4", border: "none", borderRadius: "2rem", padding: "10px 0", width: "100%", fontFamily: "sans-serif", fontSize: "0.58rem", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, cursor: "pointer", transition: "background 0.25s ease", animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.42s both" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#C8A96A"}
                     onMouseLeave={e => e.currentTarget.style.background = "#1C1916"}
                   >
-                    More Positions
+                    MORE PIECES
                   </button>
                 </div>
-
               </div>
             </div>
-            {/* ── End Hero Image + Mini Cards ── */}
-
           </div>
         </div>
       </section>
 
-      <AnnouncementBar promotions={promotions} />
-      <Divider variant="diamond" className="max-w-7xl mx-auto px-6" />
-      <PromotionsBanner promotions={promotions} />
+      <Divider className="max-w-7xl mx-auto px-6" />
 
-      {/* Shop */}
+      {/* ── Campaigns ─────────────────────────────────────────── */}
+      <CampaignsSection />
+      <Divider className="max-w-7xl mx-auto px-6" />
+
+      {/* ── Shop ─────────────────────────────────────────────── */}
       <Section size="lg" id="shop">
         <div ref={shopRef}>
           <h2 className="sr sr-left font-cinzel text-[clamp(2.5rem,5vw,3.5rem)] font-bold leading-[0.95] tracking-tight mb-8">
@@ -627,48 +517,51 @@ export function HomePage() {
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
-            {filtered.map((product, i) => {
-              const shouldShowPromo = (i + 1) % 3 === 0 && activePromo && i !== filtered.length - 1;
-              return (
-                <React.Fragment key={product.id}>
-                  <div
-                    className={`sr sr-scale sr-d${Math.min((i % 3) + 1, 6)} product-card group relative cursor-pointer flex flex-col items-center text-center bg-white rounded-3xl pt-10 pb-8 px-6 shadow-[0_4px_24px_rgba(26,26,26,0.04)] hover:shadow-[0_8px_32px_rgba(26,26,26,0.08)]`}
-                    onClick={() => navigate(`/product/${product.id}`)}
-                  >
-                    {product.badge && (
-                      <span className="font-cormorant absolute top-4 right-4 z-10 bg-charcoal text-cream text-xs uppercase tracking-[0.1em] font-semibold px-3 py-1 rounded-full shadow-sm">
-                        {product.badge}
-                      </span>
-                    )}
-                    <div className="relative mb-8">
-                      <div className="w-[220px] h-[220px] md:w-[260px] md:h-[260px] rounded-full overflow-hidden bg-surface shadow-[0_4px_24px_rgba(26,26,26,0.05)] transition-transform duration-500 ease-out group-hover:scale-[1.03]">
-                        <img
-                          src={getImageUrl(product)}
-                          onError={(e) => { e.target.src = PLACEHOLDER_SVG; }}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="font-cormorant absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 bg-charcoal text-cream text-base font-semibold tracking-wide px-5 py-2 rounded-full shadow-md whitespace-nowrap">
-                        {product.price.toLocaleString()} DA
-                      </span>
-                    </div>
-                    <h3 className="font-cormorant text-xl font-semibold mt-8 mb-1 group-hover:text-rose transition-colors duration-300">
-                      {product.name}
-                    </h3>
-                    <p className="font-cormorant italic text-muted text-base leading-relaxed max-w-[220px]">
-                      {product.description}
-                    </p>
+            {filtered.map((product, i) => (
+              <div
+                key={product.id}
+                className={`sr sr-scale sr-d${Math.min((i % 3) + 1, 6)} product-card group relative cursor-pointer flex flex-col items-center text-center bg-white rounded-3xl pt-10 pb-8 px-6 shadow-[0_4px_24px_rgba(26,26,26,0.04)] hover:shadow-[0_8px_32px_rgba(26,26,26,0.08)]`}
+                onClick={() => navigate(`/product/${product.id}`)}
+              >
+                {product.badge && (
+                  <span className="font-cormorant absolute top-4 right-4 z-10 bg-charcoal text-cream text-xs uppercase tracking-[0.1em] font-semibold px-3 py-1 rounded-full shadow-sm">
+                    {product.badge}
+                  </span>
+                )}
+                <div className="relative mb-8">
+                  <div className="w-[220px] h-[220px] md:w-[260px] md:h-[260px] rounded-full overflow-hidden bg-surface shadow-[0_4px_24px_rgba(26,26,26,0.05)] transition-transform duration-500 ease-out group-hover:scale-[1.03]">
+                    <img
+                      src={getImageUrl(product)}
+                      onError={(e) => { e.target.src = PLACEHOLDER_SVG; }}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  {shouldShowPromo && <InlinePromoCard promotion={activePromo} />}
-                </React.Fragment>
-              );
-            })}
+                  {product.on_sale && product.discount_price && (
+                    <span style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", background: "#C8A96A", color: "#1C1916", fontSize: "0.55rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, padding: "3px 10px", borderRadius: "2rem", fontFamily: "sans-serif", whiteSpace: "nowrap" }}>
+                      Sale
+                    </span>
+                  )}
+                  <span className="font-cormorant absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 bg-charcoal text-cream text-base font-semibold tracking-wide px-5 py-2 rounded-full shadow-md whitespace-nowrap">
+                    {product.on_sale && product.discount_price
+                      ? <>{Number(product.discount_price).toLocaleString()} DA <s style={{ opacity: 0.5, fontSize: '0.8em' }}>{Number(product.price).toLocaleString()}</s></>
+                      : <>{Number(product.price).toLocaleString()} DA</>
+                    }
+                  </span>
+                </div>
+                <h3 className="font-cormorant text-xl font-semibold mt-8 mb-1 group-hover:text-rose transition-colors duration-300">
+                  {product.name}
+                </h3>
+                <p className="font-cormorant italic text-muted text-base leading-relaxed max-w-[220px]">
+                  {product.description}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </Section>
 
-      {/* Video */}
+      {/* ── Video ────────────────────────────────────────────── */}
       <section style={{ position: "relative", height: "560px", overflow: "hidden" }}>
         <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}>
           <source src="/video/room.mp4" type="video/mp4" />
@@ -699,7 +592,7 @@ export function HomePage() {
 
       <Divider className="max-w-7xl mx-auto" />
 
-      {/* How It Works */}
+      {/* ── How It Works ─────────────────────────────────────── */}
       <Section size="lg">
         <div ref={stepsRef}>
           <h2 className="sr font-cinzel text-[2.5rem] font-bold tracking-tight text-center mb-24">How It Works</h2>
@@ -719,7 +612,7 @@ export function HomePage() {
 
       <Divider variant="diamond" className="max-w-3xl mx-auto" />
 
-      {/* Quote */}
+      {/* ── Quote ────────────────────────────────────────────── */}
       <Section size="md" maxWidth="3xl">
         <div ref={quoteRef}>
           <blockquote className="sr text-center">
@@ -730,7 +623,7 @@ export function HomePage() {
         </div>
       </Section>
 
-      {/* Newsletter footer */}
+      {/* ── Newsletter ───────────────────────────────────────── */}
       <section className="bg-charcoal w-full">
         <div className="max-w-xl mx-auto px-6 py-20 md:py-28 text-center" ref={newsletterRef}>
           <h2 className="sr font-cinzel text-cream text-[2.5rem] font-bold tracking-tight mb-4">Stay in touch</h2>

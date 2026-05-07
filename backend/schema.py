@@ -1,25 +1,11 @@
 """
 schema.py - Request/Response validation schemas (Pydantic models)
-==================================================================
-Pydantic models define the SHAPE of data that our API accepts and returns.
-When the frontend sends a JSON body, FastAPI uses these schemas to:
-  1. Validate that all required fields are present
-  2. Check that field types are correct (string, int, etc.)
-  3. Automatically return a 422 error if validation fails
-
-Think of these as "contracts" between frontend and backend:
-  - Frontend says: "I'll send you {username, password, email, phone_num}"
-  - Backend says: "OK, I expect exactly those fields in those types"
-
-NAMING CONVENTION:
-  - "Request" suffix = data coming FROM the frontend
-  - No suffix = data going TO the frontend or used internally
 """
 
-from pydantic import BaseModel,Field,EmailStr, field_validator,validator, model_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, validator, model_validator
 from enums import UserRole
-from fastapi import Form,File
-from datetime import datetime,date
+from fastapi import Form, File
+from datetime import datetime, date
 from typing import Optional, List
 
 
@@ -28,106 +14,74 @@ def today():
 
 
 class CreateUserRequest(BaseModel):
-    """
-    Data required to register a new customer account.
-    Sent by: SignupPage.jsx → POST /register
-    """
-    username: str      # Display name (must be unique)
-    password: str      # Plain text password (will be hashed before storing)
-    email: str         # Email address (must be unique, used for verification)
-    phone_num: str      # Phone number
+    username: str
+    password: str
+    email: str
+    phone_num: str
 
 
 class LoginUserRequest(BaseModel):
-    """
-    Data required to log in.
-    Sent by: LoginPage.jsx → POST /login
-    Note: The actual login uses OAuth2PasswordRequestForm, not this schema.
-    """
     username: str
     password: str
 
 
 class Token(BaseModel):
-    """
-    The response returned after successful login or registration.
-    Contains the JWT access token the frontend stores in localStorage.
-    """
-    access_token: str   # The JWT token string
-    token_type: str     # Always "bearer"
+    access_token: str
+    token_type: str
 
 
 class UserRoleUpdate(BaseModel):
-    """
-    Data required to change a user's role.
-    Sent by: Admin dashboard → PUT /setrole
-    """
-    name: str           # The new role name (e.g., "admin", "customer")
+    name: str
 
 
 class CreateUser(BaseModel):
-    """
-    Data required for an ADMIN to create a new user.
-    Unlike CreateUserRequest, this doesn't include a password because
-    admin-created users set their password later via email verification.
-    Sent by: AccountsPage.jsx → POST /api/users
-    """
     username: str
     email: str
-    role: UserRole      # The role to assign (uses the UserRole enum)
+    role: UserRole
 
 
 class VerifyCode(BaseModel):
-    """
-    Data for email verification.
-    Sent by: VerifyCode.jsx → GET /verify-code
-    """
     email: str
     code: str
 
 
 class SetPassword(BaseModel):
-    """
-    Data for setting a password after email verification.
-    Sent by: SetPassword.jsx → POST /set-password
-    """
-    user_name: str      # The username (received from verify-code response)
-    password: str       # The new password (will be validated and hashed)
+    user_name: str
+    password: str
 
 
 class UpdateUser(BaseModel):
-    """
-    Data for updating an existing user's info.
-    Sent by: AccountsPage.jsx → PUT /api/users/{user_id}
-    """
     username: str
     email: str
     role: UserRole
+
 
 class ProfileUpdate(BaseModel):
     username: str | None = None
     email: str | None = None
     avatar_url: str | None = None
 
-#_____Campaigns ________________________________________________________
+
+# ── Campaigns ──────────────────────────────────────────────────────────────
 
 class CampaignCreate(BaseModel):
     name:          str
     title:         str
     channel:       Optional[str]   = None
-    status:        str             = "draft"
+    status:        str             = "active"       # FIX: was "draft"
+    is_active:     bool            = True           # FIX: added, default True
+    campaign_type: Optional[str]   = None           # FIX: added ("sale" | "new")
     budget:        float           = 0
     spent:         float           = 0
     impressions:   int             = 0
     clicks:        int             = 0
     start_date:    Optional[date]  = None
     end_date:      Optional[date]  = None
-    # ── discount / coupon ──
     discount:      Optional[float] = None
-    discount_type: Optional[str]   = None   # "percentage" | "fixed"
+    discount_type: Optional[str]   = None           # "percent" | "fixed"
     code:          Optional[str]   = None
     usage_max:     int             = 0
-    usage_current: int             = 0      # allow seeding on creation; normally 0
+    usage_current: int             = 0
 
     @field_validator("status")
     @classmethod
@@ -142,7 +96,7 @@ class CampaignCreate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percentage", "fixed"}
+        allowed = {"percent", "fixed"}              # FIX: was "percentage"
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
@@ -157,7 +111,6 @@ class CampaignCreate(BaseModel):
     @field_validator("code")
     @classmethod
     def code_strip(cls, v):
-        """Uppercase and strip whitespace from coupon codes."""
         if v is not None:
             v = v.strip().upper()
             return v or None
@@ -167,8 +120,8 @@ class CampaignCreate(BaseModel):
     def validate_dates_and_discount(self):
         if self.start_date and self.end_date and self.end_date < self.start_date:
             raise ValueError("end_date must be on or after start_date")
-        if self.discount is not None and self.discount_type == "percentage" and self.discount > 100:
-            raise ValueError("percentage discount cannot exceed 100")
+        if self.discount is not None and self.discount_type == "percent" and self.discount > 100:
+            raise ValueError("percent discount cannot exceed 100")
         if self.discount is not None and self.discount_type is None:
             raise ValueError("discount_type is required when discount is set")
         if self.usage_max > 0 and self.usage_current > self.usage_max:
@@ -181,13 +134,13 @@ class CampaignUpdate(BaseModel):
     title:         Optional[str]   = None
     channel:       Optional[str]   = None
     status:        Optional[str]   = None
+    campaign_type: Optional[str]   = None           # FIX: added
     budget:        Optional[float] = None
     spent:         Optional[float] = None
     impressions:   Optional[int]   = None
     clicks:        Optional[int]   = None
     start_date:    Optional[date]  = None
     end_date:      Optional[date]  = None
-    # ── discount / coupon ──
     discount:      Optional[float] = None
     discount_type: Optional[str]   = None
     code:          Optional[str]   = None
@@ -209,7 +162,7 @@ class CampaignUpdate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percentage", "fixed"}
+        allowed = {"percent", "fixed"}              # FIX: was "percentage"
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
@@ -224,27 +177,27 @@ class CampaignUpdate(BaseModel):
     @field_validator("code")
     @classmethod
     def code_strip(cls, v):
-        """Uppercase and strip whitespace from coupon codes."""
         if v is not None:
             v = v.strip().upper()
             return v or None
         return v
 
 
-# ── Subscribers ─────────────────────────────
- 
+# ── Subscribers ─────────────────────────────────────────────────────────────
+
 VALID_Sub_STATUSES = ["subscribed", "unsubscribed"]
-VALID_TAGS     = ["VIP", "Deals", "New Arrivals", "Sales"]
- 
+VALID_TAGS = ["VIP", "Deals", "New Arrivals", "Sales"]
+
+
 class NewsletterCreate(BaseModel):
-    email:  str
-    tags:   List[str] = []
- 
+    email: str
+    tags:  List[str] = []
+
     @field_validator("email")
     @classmethod
     def normalise_email(cls, v: str) -> str:
         return v.strip().lower()
- 
+
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, v: List[str]) -> List[str]:
@@ -252,11 +205,11 @@ class NewsletterCreate(BaseModel):
             if tag not in VALID_TAGS:
                 raise ValueError(f"Invalid tag '{tag}'. Must be one of: {', '.join(VALID_TAGS)}")
         return v
- 
- 
+
+
 class NewsletterUpdate(BaseModel):
-    tags:   Optional[List[str]] = None
- 
+    tags: Optional[List[str]] = None
+
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, v: Optional[List[str]]) -> Optional[List[str]]:
@@ -265,8 +218,9 @@ class NewsletterUpdate(BaseModel):
                 if tag not in VALID_TAGS:
                     raise ValueError(f"Invalid tag '{tag}'. Must be one of: {', '.join(VALID_TAGS)}")
         return v
- 
-# ── Blogs ────────────────────────────────────
+
+
+# ── Blogs ────────────────────────────────────────────────────────────────────
 
 class BlogCreate(BaseModel):
     title:    str
@@ -288,33 +242,33 @@ class BlogUpdate(BaseModel):
     image:    Optional[str] = None
     tag:      Optional[str] = None
     content:  Optional[str] = None
-    
+
+
 class OrderCreate(BaseModel):
-    deliverydate: date
-    delivery_type :  str
-    wilaya: str
-    city: str
+    deliverydate:  date
+    delivery_type: str
+    wilaya:        str
+    city:          str
     streetAddress: str
 
 
 class PatchDeliveryRequest(BaseModel):
-    deliveryman: Optional[str] = None 
-    status: Optional[str] = None
-    deliverydate: Optional[date] = None 
+    deliveryman:  Optional[str]  = None
+    status:       Optional[str]  = None
+    deliverydate: Optional[date] = None
 
-# ── Deliveryman ───────────────────────────────────────────────────────────────
- 
+
+# ── Deliveryman ──────────────────────────────────────────────────────────────
+
 class ProblemReportBody(BaseModel):
     reason: str
     notes:  str = ""
- 
- 
+
+
 class StatusUpdateBody(BaseModel):
     status: str
- 
- 
-# ── Order item (nested inside order response) ─────────────────────────────────
- 
+
+
 class OrderItemOut(BaseModel):
     id:           int
     product_id:   int
@@ -323,19 +277,17 @@ class OrderItemOut(BaseModel):
     price:        float
     quantity:     int
     status:       str
- 
+
     class Config:
         from_attributes = True
- 
- 
-# ── Order response ────────────────────────────────────────────────────────────
- 
+
+
 class OrderOut(BaseModel):
-    id:             str          # "ORD-001"
+    id:             str
     id_raw:         int
     customer:       str
     address:        str
-    eta:            int          # minutes remaining (0 if not pending)
+    eta:            int
     km:             float
     amount:         float
     status:         str
@@ -344,63 +296,55 @@ class OrderOut(BaseModel):
     problem_reason: Optional[str]
     problem_notes:  Optional[str]
     items:          List[OrderItemOut]
- 
+
     class Config:
         from_attributes = True
- 
- 
-# ── Stats (embedded in today / schedule responses) ────────────────────────────
- 
+
+
 class TodayStatsOut(BaseModel):
     total:      int
     delivered:  int
     in_transit: int
     pending:    int
- 
- 
+
+
 class TodayOrdersOut(BaseModel):
     stats:  TodayStatsOut
     orders: List[OrderOut]
     date:   str
- 
- 
-# ── Schedule ──────────────────────────────────────────────────────────────────
- 
+
+
 class ScheduleDayOut(BaseModel):
-    dot:    str          # "pending" | "delivered" | "problem"
+    dot:    str
     count:  int
     orders: List[OrderOut]
- 
- 
+
+
 class ScheduleOut(BaseModel):
     year:     int
     month:    int
-    schedule: dict       # date string → ScheduleDayOut
- 
- 
-# ── History stats ─────────────────────────────────────────────────────────────
- 
+    schedule: dict
+
+
 class HistoryStatsOut(BaseModel):
     total:        int
     delivered:    int
-    canceled:       int
+    canceled:     int
     total_earned: float
- 
- 
+
+
 class HistoryOut(BaseModel):
     stats:  HistoryStatsOut
     orders: List[OrderOut]
- 
- 
-# ── Profile ───────────────────────────────────────────────────────────────────
- 
+
+
 class ProfileStatsOut(BaseModel):
     total_orders: int
     delivered:    int
     issues:       int
     total_earned: float
- 
- 
+
+
 class ProfileOut(BaseModel):
     id:           int
     name:         str
@@ -409,35 +353,31 @@ class ProfileOut(BaseModel):
     member_since: Optional[str]
     avg_rating:   Optional[float]
     stats:        ProfileStatsOut
- 
- 
-# ── Status update response ────────────────────────────────────────────────────
- 
+
+
 class StatusUpdateOut(BaseModel):
     message:  str
     order_id: int
     status:   str
 
-# ── Problem report response ───────────────────────────────────────────────────
- 
+
 class ProblemReportOut(BaseModel):
     order_id:       int
     problem_reason: str
     problem_notes:  str
 
-# ── Pydantic schemas ──────────────────────────────────────────────────────────
 
 class ReviewCreate(BaseModel):
-    rating: int = Field(..., ge=1, le=5)
+    rating:  int = Field(..., ge=1, le=5)
     comment: str = Field(..., min_length=3, max_length=500)
 
 
 class ReviewOut(BaseModel):
-    id: int
+    id:         int
     product_id: int
-    user_name: str
-    rating: int
-    comment: str
+    user_name:  str
+    rating:     int
+    comment:    str
     created_at: datetime
 
     class Config:
@@ -445,54 +385,43 @@ class ReviewOut(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """
-    The data sent by the frontend when the user sends a chat message.
-    """
-    message: str              # The user's message text
-    context: str = "before_ar"  # Shopping context (before_ar, during_ar, after_ar)
-    product_name: str = ""    # Name of the product being viewed (if any)
-    history: list = []        # Previous messages in the conversation
+    message:      str
+    context:      str  = "before_ar"
+    product_name: str  = ""
+    history:      list = []
 
 
 class ChatResponse(BaseModel):
-    """The AI's reply sent back to the frontend."""
     reply: str
 
-# forget password _______________________________________________
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
 class VerifyResetCodeRequest(BaseModel):
     email: EmailStr
-    code: str           # 6-digit string sent to the user's email
+    code:  str
 
 
 class ResetPasswordRequest(BaseModel):
-    email: EmailStr
-    code: str           # re-validated to prevent skipping step 2
+    email:        EmailStr
+    code:         str
     new_password: str
 
-#___Complaints_____________________________________________________
 
 class ComplaintCreate(BaseModel):
-    name:    str
-    email:   str
-    subject: str          # maps to title AND type_c
-    message: str          # maps to description
+    name:     str
+    email:    str
+    subject:  str
+    message:  str
     priority: Optional[str] = "low"
 
-"""
-validation_schemas.py - Pydantic request/response schemas for the Validation API
-"""
-# ── Request Bodies ──────────────────────────────────────────────────────────
+
+# ── Validation ───────────────────────────────────────────────────────────────
 
 class ValidationSubmit(BaseModel):
-    """
-    Used when a manager/editor submits a new item for admin review.
-    The frontend sends the type and the id of the item to be validated.
-    """
-    item_type: str   # "Products" | "AR" | "Campaigns" | "Blogs"
+    item_type: str
     item_id:   int
     title:     str
 
@@ -507,7 +436,6 @@ class ValidationSubmit(BaseModel):
 
 
 class RejectionPayload(BaseModel):
-    """Body for the reject endpoint — rejection note is required."""
     rejection_note: str
 
     class Config:
@@ -515,8 +443,6 @@ class RejectionPayload(BaseModel):
             "example": {"rejection_note": "Missing dimension specs and weight information."}
         }
 
-
-# ── Response Schemas ─────────────────────────────────────────────────────────
 
 class SubmitterOut(BaseModel):
     id:       int
@@ -527,13 +453,12 @@ class SubmitterOut(BaseModel):
 
 
 class ValidationOut(BaseModel):
-    """Full detail response for one validation request."""
     id:             int
     item_type:      str
     item_id:        int
     title:          str
     status:         str
-    rejection_note: Optional[str] = None
+    rejection_note: Optional[str]      = None
     submitted_at:   datetime
     reviewed_at:    Optional[datetime] = None
     submitter:      Optional[SubmitterOut] = None
@@ -544,20 +469,18 @@ class ValidationOut(BaseModel):
 
 
 class ValidationListItem(BaseModel):
-    """Lightweight row used in the queue list."""
     id:           int
     item_type:    str
     title:        str
     status:       str
     submitted_at: datetime
-    user:         Optional[str] = None   # submitter username for display
+    user:         Optional[str] = None
 
     class Config:
         from_attributes = True
 
 
 class ValidationStats(BaseModel):
-    """Summary counts shown in the dashboard stat cards."""
     pending:  int
     approved: int
     rejected: int

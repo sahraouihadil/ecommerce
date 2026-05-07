@@ -1,13 +1,12 @@
 import os
 import uuid
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from models import Campaigns
 from database import get_db
 from schema import CampaignCreate, CampaignUpdate
 from user_crud import get_current_user
-import validation_crud as vcrud
-from schema import ValidationSubmit
 
 UPLOAD_DIR = "uploads/campaigns"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -26,6 +25,7 @@ def campaign_dict(c: Campaigns) -> dict:
         "channel":       c.channel,
         "status":        c.status,
         "is_active":     bool(c.is_active) if c.is_active is not None else False,
+        "campaign_type": c.campaign_type,
         "budget":        float(c.budget        or 0),
         "spent":         float(c.spent         or 0),
         "impressions":   int(c.impressions     or 0),
@@ -39,7 +39,7 @@ def campaign_dict(c: Campaigns) -> dict:
         "end_date":      str(c.end_date)    if c.end_date    else None,
         "image_url":     c.image_url,
         "created_at":    c.created_at.isoformat() if c.created_at else None,
-        "validation_status": c.validation_status if hasattr(c, "validation_status") else "pending_review",
+        "validation_status": "approved",
     }
 
 
@@ -47,6 +47,29 @@ def campaign_dict(c: Campaigns) -> dict:
 def list_campaigns(db: Session = Depends(get_db)):
     campaigns = (
         db.query(Campaigns)
+        .order_by(Campaigns.created_at.desc())
+        .all()
+    )
+    return [campaign_dict(c) for c in campaigns]
+
+
+@router.get("/active")
+def list_active_campaigns(db: Session = Depends(get_db)):
+    campaigns = (
+        db.query(Campaigns)
+        .filter(Campaigns.is_active == True)
+        .filter(
+            or_(
+                Campaigns.start_date == None,
+                Campaigns.start_date <= func.now()
+            )
+        )
+        .filter(
+            or_(
+                Campaigns.end_date == None,
+                Campaigns.end_date >= func.now()
+            )
+        )
         .order_by(Campaigns.created_at.desc())
         .all()
     )
@@ -73,8 +96,9 @@ def create_campaign(
         name          = data["name"],
         title         = data["title"],
         channel       = data["channel"],
-        status        = data.get("status", "draft"),
-        is_active     = False,
+        status        = data.get("status", "active"),
+        is_active     = True,  # ✅ تفعيل مباشر
+        campaign_type = data.get("campaign_type"),
         budget        = data["budget"],
         spent         = data.get("spent", 0),
         impressions   = data.get("impressions", 0),
@@ -91,13 +115,6 @@ def create_campaign(
     db.add(c)
     db.commit()
     db.refresh(c)
-
-    vcrud.upsert_for_validation(
-        db,
-        ValidationSubmit(item_type="Campaigns", item_id=c.id, title=c.name),
-        submitted_by=current_user["id"],
-    )
-
     return campaign_dict(c)
 
 
@@ -129,17 +146,59 @@ def update_campaign(
     for k, v in updates.items():
         setattr(c, k, v)
 
-    c.is_active = False
+    # ✅ is_active تبقى كما هي — ما نحطوهاش False
     db.commit()
     db.refresh(c)
-
-    vcrud.upsert_for_validation(
-        db,
-        ValidationSubmit(item_type="Campaigns", item_id=c.id, title=c.name),
-        submitted_by=current_user["id"],
-    )
-
     return campaign_dict(c)
+
+
+@router.patch("/{campaign_id}/activate")
+def toggle_campaign_active(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Toggle is_active on/off."""
+    c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    c.is_active = not bool(c.is_active)
+    db.commit()
+    db.refresh(c)
+    return campaign_dict(c)
+
+
+@router.post("/{campaign_id}/redeem")
+def redeem_campaign_code(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+):
+    from sqlalchemy import text
+    now = db.execute(text("SELECT NOW()")).fetchone()[0]
+
+    c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if not c.is_active:
+        raise HTTPException(status_code=400, detail="Campaign is not active")
+    if c.start_date and c.start_date > now:
+        raise HTTPException(status_code=400, detail="Campaign has not started yet")
+    if c.end_date and c.end_date < now:
+        raise HTTPException(status_code=400, detail="Campaign has expired")
+    if c.usage_max and c.usage_current >= c.usage_max:
+        raise HTTPException(status_code=400, detail="Campaign usage limit reached")
+
+    c.usage_current = (c.usage_current or 0) + 1
+    db.commit()
+    db.refresh(c)
+    return {
+        "valid":         True,
+        "discount":      c.discount,
+        "discount_type": c.discount_type,
+        "code":          c.code,
+        "usage_current": c.usage_current,
+        "usage_max":     c.usage_max,
+    }
 
 
 @router.post("/{campaign_id}/image")
@@ -200,15 +259,12 @@ def delete_campaign(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """
-    Does NOT immediately delete the campaign.
-    Instead, submits a Campaigns_Delete validation request for admin approval.
-    The campaign is actually deleted only when the admin approves the request.
-    """
     c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
+    import validation_crud as vcrud
+    from schema import ValidationSubmit
     try:
         vcrud.submit_delete_request(
             db,

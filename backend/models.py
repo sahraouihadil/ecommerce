@@ -36,24 +36,27 @@ class Users(Base):
 class Products(Base):
     __tablename__ = "products"
 
-    id          = Column(Integer, primary_key=True, index=True)
-    name        = Column(String, index=True, nullable=False)
-    description = Column(String)
-    price       = Column(Float, nullable=False)
-    quantity    = Column(Integer, default=0)
-    min_stock   = Column(Integer, default=10)
-    sku         = Column(String, unique=True, index=True)
-    category    = Column(String, index=True)
-    badge       = Column(String)
-    model_src   = Column(String)
-    model_3d    = Column(String)
-    ios_src     = Column(String)
-    able_3d     = Column(Boolean, default=False)
-    able_ar     = Column(Boolean, default=False)
-    is_active   = Column(Boolean, default=False)
-    valid_ar    = Column(Boolean, default=False)
-    valid_3d    = Column(Boolean, default=False)
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    id             = Column(Integer, primary_key=True, index=True)
+    name           = Column(String, index=True, nullable=False)
+    description    = Column(String)
+    price          = Column(Float, nullable=False)
+    discount_price = Column(Float, nullable=True)       # FIX: sale price
+    on_sale        = Column(Boolean, default=False)     # FIX: sale flag
+    new_arrival    = Column(Boolean, default=False)     # FIX: new arrival flag
+    quantity       = Column(Integer, default=0)
+    min_stock      = Column(Integer, default=10)
+    sku            = Column(String, unique=True, index=True)
+    category       = Column(String, index=True)
+    badge          = Column(String)
+    model_src      = Column(String)
+    model_3d       = Column(String)
+    ios_src        = Column(String)
+    able_3d        = Column(Boolean, default=False)
+    able_ar        = Column(Boolean, default=False)
+    is_active      = Column(Boolean, default=False)
+    valid_ar       = Column(Boolean, default=False)
+    valid_3d       = Column(Boolean, default=False)
+    created_at     = Column(DateTime, default=datetime.utcnow)
 
     colors = relationship("ProductColor", back_populates="product",
                           cascade="all, delete-orphan")
@@ -80,7 +83,7 @@ class ProductImage(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"),
                         nullable=False, index=True)
     image_url  = Column(String, nullable=False)
-    order  = Column(Integer, default=0)
+    order      = Column(Integer, default=0)
 
     product = relationship("Products", back_populates="images")
 
@@ -165,25 +168,27 @@ class Complaints(Base):
 class Campaigns(Base):
     __tablename__ = "campaigns"
 
-    id          = Column(Integer, primary_key=True, index=True)
-    name        = Column(String, nullable=False)
-    title       = Column(String, nullable=False)
-    channel     = Column(String)
-    status      = Column(String, default="draft")
-    budget      = Column(Float, default=0)
-    spent       = Column(Float, default=0)
-    impressions = Column(Integer, default=0)
-    clicks      = Column(Integer, default=0)
-    code        = Column(String)
+    id            = Column(Integer, primary_key=True, index=True)
+    name          = Column(String, nullable=False)
+    title         = Column(String, nullable=False)
+    channel       = Column(String)
+    status        = Column(String, default="draft")
+    budget        = Column(Float, default=0)
+    spent         = Column(Float, default=0)
+    impressions   = Column(Integer, default=0)
+    clicks        = Column(Integer, default=0)
+    code          = Column(String)
     discount      = Column(Float)
     discount_type = Column(String)
     usage_max     = Column(Integer, default=0)
     usage_current = Column(Integer, default=0)
-    image_url   = Column(String)
-    start_date  = Column(DateTime)
-    end_date    = Column(DateTime)
-    is_active   = Column(String)
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    image_url     = Column(String)
+    start_date    = Column(DateTime)
+    end_date      = Column(DateTime)
+    is_active     = Column(Boolean, default=False)      # FIX: was String
+    campaign_type = Column(String, nullable=True)       # FIX: "sale" | "new"
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
 
 class Newsletters(Base):
     __tablename__ = "newsletters"
@@ -212,7 +217,6 @@ class Blogs(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ── SINGLE Notification class — replaces the old Notifications class ──
 class Notification(Base):
     __tablename__ = "notifications"
     __table_args__ = {"extend_existing": True}
@@ -224,7 +228,6 @@ class Notification(Base):
     body       = Column(String, nullable=True)
     is_read    = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    # Legacy columns kept so existing rows don't break
     role       = Column(String, nullable=True)
     order_id   = Column(Integer, ForeignKey("orders.id"), nullable=True)
     message    = Column(String, nullable=True)
