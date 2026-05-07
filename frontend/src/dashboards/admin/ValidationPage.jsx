@@ -6,6 +6,8 @@
  * - 3D type  → only "View 3D Model" button shown (no AR button)
  * - Products → shows whichever flags are set (has3D / hasAR)
  * - Stat card counts always global (never zeroed by type filter)
+ * - Campaigns → rich detail panel: image, name, title, budget, discount, channels, dates, usage
+ * - Campaigns filter → returns both "Campaigns" and "Campaigns_Delete" item types
  */
 
 import Header from "../ui/Header";
@@ -16,6 +18,8 @@ import {
   LayoutDashboard, Users, MessageSquare, CheckSquare,
   BarChart, Activity, Settings, X, Loader2,
   AlignLeft, Calendar, Tag, Layers, Palette, ArrowLeft,
+  Hash, DollarSign, TrendingUp, MousePointer, Eye,
+  Store, Globe, ShieldCheck, ShieldOff, Megaphone,
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -44,8 +48,6 @@ function ColorDot({ name }) {
 }
 
 // ── Smooth modal wrapper ───────────────────────────────────────────────────────
-// Mounts children immediately, animates in via data-shown="true", then
-// waits `duration` ms after visible=false before unmounting.
 function AnimatedModal({ visible, onExited, duration = 260, children, overlayClass, onOverlayClick }) {
   const [mounted, setMounted] = useState(false);
   const [shown,   setShown]   = useState(false);
@@ -54,8 +56,6 @@ function AnimatedModal({ visible, onExited, duration = 260, children, overlayCla
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      // Two rAFs ensure the browser has painted the initial (invisible) state
-      // before we flip data-shown and trigger the CSS transition.
       requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
     } else {
       setShown(false);
@@ -77,6 +77,259 @@ function AnimatedModal({ visible, onExited, duration = 260, children, overlayCla
       onClick={onOverlayClick}
     >
       {children}
+    </div>
+  );
+}
+
+// ── Campaign channel badges ────────────────────────────────────────────────────
+function ChannelBadges({ channel }) {
+  const map = {
+    'Ads on Shop': { emoji: '🛍️', bg: '#EEF0FF', color: '#5B47E0' },
+    'Facebook':    { emoji: '📘', bg: '#E7F0FD', color: '#1877F2' },
+    'Instagram':   { emoji: '📸', bg: '#FDE7F3', color: '#E1306C' },
+  };
+  const parts = (channel || '').split(',').map(s => s.trim()).filter(Boolean);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {parts.map(p => {
+        const m = map[p] || { emoji: '📣', bg: '#F3F4F6', color: '#6B7280' };
+        return (
+          <span key={p} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 99,
+            background: m.bg, color: m.color,
+            fontSize: '0.75rem', fontWeight: 700,
+          }}>
+            {m.emoji} {p}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Campaign detail panel ─────────────────────────────────────────────────────
+function CampaignDetail({ d, selected }) {
+  const BASE = "http://127.0.0.1:8000";
+  const imageUrl = d?.image_url
+    ? (d.image_url.startsWith('http') ? d.image_url : `${BASE}/${d.image_url.replace(/^\//, '')}`)
+    : null;
+
+  const hasDiscount = d?.discount != null && Number(d.discount) > 0;
+  const discountLabel = hasDiscount
+    ? (d.discount_type === 'percentage' ? `${d.discount}% off` : `${d.discount} DA off`)
+    : null;
+
+  const budgetPct = d?.budget > 0 ? Math.min(100, Math.round(((d.spent || 0) / d.budget) * 100)) : 0;
+  const usagePct  = d?.usage_max > 0
+    ? Math.min(100, Math.round(((d.usage_current || 0) / d.usage_max) * 100))
+    : null;
+
+  const stockColor = usagePct === null ? null
+    : usagePct >= 90 ? '#dc2626'
+    : usagePct >= 60 ? '#d97706'
+    : '#16a34a';
+
+  const statCells = [
+    { icon: <DollarSign size={12}/>, label: "Budget",      value: `${Number(d?.budget || 0).toLocaleString()} DA` },
+    { icon: <TrendingUp size={12}/>, label: "Spent",       value: `${Number(d?.spent || 0).toLocaleString()} DA` },
+    { icon: <Eye size={12}/>,        label: "Impressions", value: Number(d?.impressions || 0).toLocaleString() },
+    { icon: <MousePointer size={12}/>,label:"Clicks",      value: Number(d?.clicks || 0).toLocaleString() },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+      {/* ── Campaign image ── */}
+      {imageUrl && (
+        <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: '1px solid #f1f5f9' }}>
+          <img
+            src={imageUrl}
+            alt={d?.name || selected.title}
+            style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
+          />
+          {discountLabel && (
+            <span style={{
+              position: 'absolute', top: 10, left: 10,
+              padding: '5px 12px', borderRadius: 99,
+              fontSize: '0.75rem', fontWeight: 700,
+              background: '#fef9c3', color: '#b45309',
+              boxShadow: '0 1px 6px rgba(0,0,0,0.12)',
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              <Tag size={11}/> {discountLabel}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── Name / Title / Channel ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {d?.name && (
+          <div>
+            <p className="val-section-label"><Megaphone size={10}/> Campaign Name</p>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{d.name}</p>
+          </div>
+        )}
+        {d?.title && d.title !== d?.name && (
+          <div>
+            <p className="val-section-label"><AlignLeft size={10}/> Headline</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#5B47E0' }}>{d.title}</p>
+          </div>
+        )}
+        {d?.channel && (
+          <div>
+            <p className="val-section-label"><Globe size={10}/> Ad Placement</p>
+            <ChannelBadges channel={d.channel} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Stats grid ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {statCells.map(({ icon, label, value }) => (
+          <div key={label} className="val-detail-cell">
+            <p className="val-section-label">{icon} {label}</p>
+            <p className="val-cell-value">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Budget progress bar ── */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget Used</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>{budgetPct}%</span>
+        </div>
+        <div style={{ height: 6, borderRadius: 99, background: '#f1f5f9', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', width: `${budgetPct}%`,
+            background: budgetPct >= 90 ? '#ef4444' : budgetPct >= 60 ? '#f59e0b' : '#5B47E0',
+            borderRadius: 99, transition: 'width 0.5s ease',
+          }} />
+        </div>
+      </div>
+
+      {/* ── Discount & coupon ── */}
+      {hasDiscount && (
+        <div style={{
+          border: '1px dashed #c4b5fd', borderRadius: 12,
+          padding: '14px 16px', background: '#faf5ff',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <p className="val-section-label" style={{ marginBottom: 0 }}><Tag size={10}/> Discount & Coupon</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <p style={{ margin: '0 0 2px', fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Value</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#7c3aed' }}>{discountLabel}</p>
+            </div>
+            <div>
+              <p style={{ margin: '0 0 2px', fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Type</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
+                {d.discount_type === 'percentage' ? 'Percentage (%)' : 'Fixed Amount (DA)'}
+              </p>
+            </div>
+          </div>
+
+          {d?.code && (
+            <div>
+              <p style={{ margin: '0 0 5px', fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Coupon Code</p>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '5px 12px', borderRadius: 8,
+                background: '#ede9fe', color: '#7c3aed',
+                fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'monospace', letterSpacing: '0.1em',
+                border: '1.5px dashed #a78bfa',
+              }}>
+                <Hash size={11}/> {d.code}
+              </span>
+            </div>
+          )}
+
+          {/* Redemption usage */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+              <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Users size={10}/> Redemptions
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>
+                {d?.usage_current ?? 0} / {d?.usage_max > 0 ? d.usage_max : '∞'}
+              </span>
+            </div>
+            {usagePct !== null && (
+              <div style={{ height: 5, borderRadius: 99, background: '#ede9fe', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: `${usagePct}%`,
+                  background: stockColor, borderRadius: 99, transition: 'width 0.5s ease',
+                }}/>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Status / Storefront badge ── */}
+      {d?.status && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8,
+            background: d.status === 'active' ? '#ecfdf5' : d.status === 'draft' ? '#fef9c3' : d.status === 'paused' ? '#fff7ed' : '#eff6ff',
+            color: d.status === 'active' ? '#16a34a' : d.status === 'draft' ? '#b45309' : d.status === 'paused' ? '#c2410c' : '#2563eb',
+            fontSize: '0.75rem', fontWeight: 700,
+          }}>
+            {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
+          </div>
+          {d.is_active !== undefined && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8,
+              background: d.is_active ? '#ecfdf5' : '#f3f4f6',
+              color: d.is_active ? '#16a34a' : '#6b7280',
+              fontSize: '0.75rem', fontWeight: 700,
+            }}>
+              {d.is_active ? <ShieldCheck size={11}/> : <ShieldOff size={11}/>}
+              {d.is_active ? 'Live on Storefront' : 'Hidden from Storefront'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Dates ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {d?.start_date && (
+          <div className="val-detail-cell">
+            <p className="val-section-label"><Calendar size={10}/> Start Date</p>
+            <p className="val-cell-value" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+              {new Date(d.start_date).toLocaleDateString('en-GB', { dateStyle: 'medium' })}
+            </p>
+          </div>
+        )}
+        {d?.end_date && (
+          <div className="val-detail-cell">
+            <p className="val-section-label"><Calendar size={10}/> End Date</p>
+            <p className="val-cell-value" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+              {new Date(d.end_date).toLocaleDateString('en-GB', { dateStyle: 'medium' })}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Submission dates ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="val-detail-cell">
+          <p className="val-section-label"><Calendar size={10}/> Submitted</p>
+          <p className="val-cell-value" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+            {selected.submitted_at
+              ? new Date(selected.submitted_at).toLocaleString('en-GB', { dateStyle:'medium', timeStyle:'short' })
+              : '—'}
+          </p>
+        </div>
+        {selected.reviewed_at && (
+          <div className="val-detail-cell">
+            <p className="val-section-label"><Calendar size={10}/> Reviewed</p>
+            <p className="val-cell-value" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+              {new Date(selected.reviewed_at).toLocaleString('en-GB', { dateStyle:'medium', timeStyle:'short' })}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -112,15 +365,16 @@ export default function ValidationPage() {
   };
 
   const TYPE_STYLE = {
-    Products:   { bg:"#eff6ff", color:"#2563eb" },
-    AR:         { bg:"#f5f3ff", color:"#7c3aed" },
-    "3D":       { bg:"#fdf4ff", color:"#9333ea" },
-    Campaigns:  { bg:"#fef3c7", color:"#92400e" },
-    Promotions: { bg:"#fce7f3", color:"#9d174d" },
+    Products:          { bg:"#eff6ff", color:"#2563eb" },
+    AR:                { bg:"#f5f3ff", color:"#7c3aed" },
+    "3D":              { bg:"#fdf4ff", color:"#9333ea" },
+    Campaigns:         { bg:"#fef3c7", color:"#92400e" },
+    Blogs:             { bg:"#fce7f3", color:"#9d174d" },
+    Campaigns_Delete:  { bg:"#fff1f2", color:"#991b1b" },
   };
 
-  const TYPE_ICON = { Products:"📦", AR:"🥽", "3D":"🧊", Campaigns:"📣", Promotions:"🎁" };
-  const filters   = ["All", "Products", "AR", "3D", "Campaigns", "Promotions"];
+  const TYPE_ICON = { Products:"📦", AR:"🥽", "3D":"🧊", Campaigns:"📣", Blogs:"" };
+  const filters   = ["All", "Products", "AR", "3D", "Campaigns", "Blogs"];
 
   const STAT_CARDS = [
     {
@@ -167,15 +421,29 @@ export default function ValidationPage() {
     finally { setLoadingAll(false); }
   }, []);
 
+  // ── FIX: when activeFilter === "Campaigns", fetch both
+  //         "Campaigns" and "Campaigns_Delete" and merge them.
   const fetchList = useCallback(async () => {
     setLoadingList(true);
     setError(null);
     try {
-      const params = {};
-      if (activeFilter !== "All")       params.item_type = activeFilter;
-      if (activeStatusFilter !== "All") params.status    = activeStatusFilter;
-      const res = await api.get("/api/validation/", { params });
-      setItems(res.data);
+      if (activeFilter === "Campaigns") {
+        // Fetch both campaign types in parallel
+        const baseParams = activeStatusFilter !== "All" ? { status: activeStatusFilter } : {};
+        const [resNormal, resDelete] = await Promise.all([
+          api.get("/api/validation/", { params: { ...baseParams, item_type: "Campaigns" } }),
+          api.get("/api/validation/", { params: { ...baseParams, item_type: "Campaigns_Delete" } }),
+        ]);
+        // Merge and sort by id descending (most recent first)
+        const merged = [...resNormal.data, ...resDelete.data].sort((a, b) => b.id - a.id);
+        setItems(merged);
+      } else {
+        const params = {};
+        if (activeFilter !== "All")       params.item_type = activeFilter;
+        if (activeStatusFilter !== "All") params.status    = activeStatusFilter;
+        const res = await api.get("/api/validation/", { params });
+        setItems(res.data);
+      }
     } catch (err) {
       console.error("Failed to load validation queue:", err);
       setError("Failed to load the validation queue. Please try again.");
@@ -214,11 +482,11 @@ export default function ValidationPage() {
       setLoadingDetail(true);
       try {
         const endpointMap = {
-          Products:   `/api/products/${selected.item_id}`,
-          AR:         `/api/products/${selected.item_id}`,
-          "3D":       `/api/products/${selected.item_id}`,
-          Campaigns:  `/api/campaigns/${selected.item_id}`,
-          Promotions: `/api/promotions/${selected.item_id}`,
+          Products:          `/api/products/${selected.item_id}`,
+          AR:                `/api/products/${selected.item_id}`,
+          "3D":              `/api/products/${selected.item_id}`,
+          Campaigns:         `/api/campaigns/${selected.item_id}`,
+          Campaigns_Delete:  `/api/campaigns/${selected.item_id}`,
         };
         const endpoint = endpointMap[selected.item_type];
         if (!endpoint) { setItemDetail(null); return; }
@@ -232,7 +500,7 @@ export default function ValidationPage() {
     run();
   }, [selected?.id]);
 
-  // ── Global stats (always all-types, never zeroed by type filter) ──────────
+  // ── Global stats ──────────────────────────────────────────────────────────
   const globalStats = {
     pending:  stats.pending,
     approved: stats.approved,
@@ -291,7 +559,6 @@ export default function ValidationPage() {
   };
 
   // ── Open model viewer ─────────────────────────────────────────────────────
-  // Close detail first; after its exit animation completes, open the viewer.
   const openModelViewer = (mode, d, sel) => {
     closeDetail();
     setTimeout(() => {
@@ -305,11 +572,18 @@ export default function ValidationPage() {
         mode,
       });
       setViewerVisible(true);
-    }, 280); // slightly longer than detail exit duration (260ms)
+    }, 280);
   };
 
-  const isFinal   = selected?.status === "Approved" || selected?.status === "Rejected";
-  const typeCount = (type) => allItems.filter(i => i.item_type === type).length;
+  const isFinal = selected?.status === "Approved" || selected?.status === "Rejected";
+
+  // ── FIX: typeCount for "Campaigns" includes both Campaigns and Campaigns_Delete
+  const typeCount = (type) => {
+    if (type === "Campaigns") {
+      return allItems.filter(i => i.item_type === "Campaigns" || i.item_type === "Campaigns_Delete").length;
+    }
+    return allItems.filter(i => i.item_type === type).length;
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -385,6 +659,8 @@ export default function ValidationPage() {
 
         .val-hero             { width:100%; height:220px; object-fit:cover; border-radius:22px 22px 0 0; display:block; background:#f1f5f9; }
         .val-hero-placeholder { width:100%; height:180px; background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:22px 22px 0 0; display:flex; align-items:center; justify-content:center; font-size:56px; }
+        .val-hero-placeholder.campaign { background:linear-gradient(135deg,#78350f,#92400e); }
+        .val-hero-placeholder.campaign-delete { background:linear-gradient(135deg,#7f1d1d,#991b1b); }
         .val-modal-body   { padding:26px 28px 0; display:flex; flex-direction:column; gap:18px; }
         .val-modal-footer { padding:20px 28px 26px; display:flex; gap:12px; border-top:1px solid #f1f5f9; margin-top:20px; }
         .val-modal-close  {
@@ -431,8 +707,14 @@ export default function ValidationPage() {
           box-shadow:0 6px 20px rgba(5,150,105,0.35); transform:translateY(-2px);
         }
 
+        /* ── campaign divider ── */
+        .val-campaign-divider {
+          height:1px; background:linear-gradient(to right,transparent,#e2e8f0,transparent);
+          margin:4px 0;
+        }
+
         /* ════════════════════════════════════════
-           VIEWER MODAL — fade backdrop + slide children
+           VIEWER MODAL
         ════════════════════════════════════════ */
         .val-viewer-overlay {
           position:fixed; inset:0;
@@ -447,7 +729,6 @@ export default function ValidationPage() {
           backdrop-filter:blur(14px);
         }
 
-        /* Topbar and body slide up independently */
         .val-viewer-topbar {
           flex-shrink:0;
           display:flex; align-items:center; justify-content:space-between;
@@ -523,7 +804,7 @@ export default function ValidationPage() {
 
           <div className="val-inner">
 
-            {/* ── Stat Cards ── always global, never scoped to type filter */}
+            {/* ── Stat Cards ── */}
             <div className="val-stats-grid">
               {STAT_CARDS.map(s => {
                 const isActive = activeStatusFilter === s.key;
@@ -667,10 +948,13 @@ export default function ValidationPage() {
           const ts = TYPE_STYLE[selected.item_type] || { bg:"#f8fafc", color:"#64748b" };
           const d  = itemDetail;
 
-          const isARType  = selected.item_type === "AR";
-          const is3DType  = selected.item_type === "3D";
-          const isProduct = selected.item_type === "Products";
+          // ── Treat both Campaigns and Campaigns_Delete as campaign-type ──
+          const isCampaign = selected.item_type === "Campaigns" || selected.item_type === "Campaigns_Delete";
+          const isARType   = selected.item_type === "AR";
+          const is3DType   = selected.item_type === "3D";
+          const isProduct  = selected.item_type === "Products";
 
+          // ── Product-specific image logic ──────────────────────────────────
           const images     = d?.images || (d?.image_url ? [d.image_url] : []);
           const primaryImg = images[0] ? `http://127.0.0.1:8000/${images[0]}` : null;
           const extraImgs  = images.slice(1, 4);
@@ -685,10 +969,6 @@ export default function ValidationPage() {
 
           const hasModelFile = !!(d?.model_3d || d?.model_src);
 
-          // ── Strict button logic ────────────────────────────────────────────
-          // AR   type → ONLY AR  button (never show 3D)
-          // 3D   type → ONLY 3D  button (never show AR)
-          // Products  → respect the able_3d / able_ar flags; fallback to 3D if neither set
           const show3DBtn = hasModelFile && (
             is3DType  ? true
             : isARType ? false
@@ -699,11 +979,14 @@ export default function ValidationPage() {
             : is3DType ? false
             : !!(d?.able_ar || d?.valid_ar)
           );
-          // Fallback: Product with a model file but neither flag set → show 3D
           const showFallback3D = isProduct && hasModelFile && !show3DBtn && !showARBtn;
-
           const forceViewer = isARType || is3DType;
           const showViewer  = forceViewer || (isProduct && hasModelFile);
+
+          // Hero class for delete campaigns
+          const campaignHeroClass = selected.item_type === "Campaigns_Delete"
+            ? "val-hero-placeholder campaign-delete"
+            : "val-hero-placeholder campaign";
 
           return (
             <div className="val-modal">
@@ -711,23 +994,32 @@ export default function ValidationPage() {
                 <X size={16} />
               </button>
 
-              {/* ── Hero ── */}
-              {loadingDetail ? (
-                <div className="val-hero-placeholder">
-                  <Loader2 size={32} className="val-spin" style={{ color:"rgba(255,255,255,0.6)" }} />
-                </div>
-              ) : primaryImg && !forceViewer ? (
-                <img src={primaryImg} alt={d?.name || selected.title} className="val-hero" />
-              ) : (
-                <div className="val-hero-placeholder">
-                  <span>{TYPE_ICON[selected.item_type] || "📄"}</span>
+              {/* ── Hero — campaigns skip this (their image is inside CampaignDetail) ── */}
+              {!isCampaign && (
+                loadingDetail ? (
+                  <div className="val-hero-placeholder">
+                    <Loader2 size={32} className="val-spin" style={{ color:"rgba(255,255,255,0.6)" }} />
+                  </div>
+                ) : primaryImg && !forceViewer ? (
+                  <img src={primaryImg} alt={d?.name || selected.title} className="val-hero" />
+                ) : (
+                  <div className="val-hero-placeholder">
+                    <span>{TYPE_ICON[selected.item_type] || "📄"}</span>
+                  </div>
+                )
+              )}
+
+              {/* Campaigns & Campaigns_Delete: toned placeholder header */}
+              {isCampaign && (
+                <div className={campaignHeroClass} style={{ height: 100, fontSize: 44 }}>
+                  <span>{selected.item_type === "Campaigns_Delete" ? "🗑️" : "📣"}</span>
                 </div>
               )}
 
               {/* ── Body ── */}
               <div className="val-modal-body">
 
-                {/* Header */}
+                {/* ── Common header ── */}
                 <div style={{ display:"flex", gap:12, alignItems:"flex-start", paddingRight:8 }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
@@ -748,119 +1040,149 @@ export default function ValidationPage() {
                   </div>
                 </div>
 
-                {/* ── 3D / AR launch buttons ── */}
-                {!loadingDetail && showViewer && (
-                  <div>
-                    <p className="val-section-label" style={{ marginBottom:10 }}>
-                      {forceViewer ? "Model Preview" : "3D / AR Preview"}
-                    </p>
-                    {hasModelFile ? (
-                      <div className="val-model-launch-row">
-                        {show3DBtn && (
-                          <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
-                            <span style={{ fontSize:20 }}>🧊</span> View 3D Model
-                          </button>
-                        )}
-                        {showARBtn && (
-                          <button className="val-model-launch-btn btn-ar" onClick={() => openModelViewer("ar", d, selected)}>
-                            <span style={{ fontSize:20 }}>🥽</span> View in AR
-                          </button>
-                        )}
-                        {showFallback3D && (
-                          <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
-                            <span style={{ fontSize:20 }}>🧊</span> View 3D Model
-                          </button>
-                        )}
+                {/* ══════════════════════════════════════════
+                    CAMPAIGN-SPECIFIC DETAIL SECTION
+                ══════════════════════════════════════════ */}
+                {isCampaign && (
+                  <>
+                    <div className="val-campaign-divider" />
+                    {loadingDetail ? (
+                      <div style={{ display:"flex", alignItems:"center", gap:8, color:"#94a3b8", fontSize:13 }}>
+                        <Loader2 size={15} className="val-spin" /> Loading campaign details…
                       </div>
+                    ) : d ? (
+                      <CampaignDetail d={d} selected={selected} />
                     ) : (
                       <div style={{ padding:"14px 16px", background:"#fff1f2", border:"1px solid #fecaca", borderRadius:12 }}>
-                        <p style={{ margin:0, fontSize:13, color:"#dc2626", fontWeight:600 }}>⚠️ No model file found on this product.</p>
-                        <p style={{ margin:"4px 0 0", fontSize:12, color:"#94a3b8" }}>model_3d / model_src is not set.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── Extra images (non-AR/3D) ── */}
-                {!loadingDetail && !forceViewer && extraImgs.length > 0 && (
-                  <div>
-                    <p className="val-section-label">More Images</p>
-                    <div className="val-img-strip">
-                      {extraImgs.map((url, i) => (
-                        <img key={i} src={`http://127.0.0.1:8000/${url}`} alt={`img-${i+2}`} className="val-img-thumb" />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Description ── */}
-                {!forceViewer && d?.description && (
-                  <div>
-                    <p className="val-section-label"><AlignLeft size={10} /> Description</p>
-                    <p style={{ margin:0, fontSize:13, color:"#475569", lineHeight:1.6, background:"#f8fafc", border:"1px solid #f1f5f9", borderRadius:12, padding:"12px 14px" }}>
-                      {d.description}
-                    </p>
-                  </div>
-                )}
-
-                {/* ── Detail grid ── */}
-                {!loadingDetail && (
-                  <div className="val-detail-grid">
-                    {!forceViewer && d?.category && (
-                      <div className="val-detail-cell">
-                        <p className="val-section-label"><Tag size={10} /> Category</p>
-                        <p className="val-cell-value" style={{ textTransform:"capitalize" }}>{d.category}</p>
-                      </div>
-                    )}
-                    {!forceViewer && stockLabel && (
-                      <div className="val-detail-cell">
-                        <p className="val-section-label"><Layers size={10} /> Stock</p>
-                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          <p className="val-cell-value">{d.quantity} units</p>
-                          <span style={{ background:stockBg, color:stockColor, fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99 }}>{stockLabel}</span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="val-detail-cell">
-                      <p className="val-section-label"><Calendar size={10} /> Submitted</p>
-                      <p className="val-cell-value" style={{ fontFamily:"monospace", fontSize:12 }}>
-                        {selected.submitted_at
-                          ? new Date(selected.submitted_at).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" })
-                          : "—"}
-                      </p>
-                    </div>
-                    {selected.reviewed_at && (
-                      <div className="val-detail-cell">
-                        <p className="val-section-label"><Calendar size={10} /> Reviewed</p>
-                        <p className="val-cell-value" style={{ fontFamily:"monospace", fontSize:12 }}>
-                          {new Date(selected.reviewed_at).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" })}
+                        <p style={{ margin:0, fontSize:13, color:"#dc2626", fontWeight:600 }}>
+                          ⚠️ Could not load campaign details.
                         </p>
                       </div>
                     )}
-                  </div>
+                    <div className="val-campaign-divider" />
+                  </>
                 )}
 
-                {/* ── Colors ── */}
-                {!loadingDetail && !forceViewer && d?.colors?.length > 0 && (
-                  <div>
-                    <p className="val-section-label"><Palette size={10} /> Colors</p>
-                    <div className="val-color-strip">
-                      {d.colors.map(name => (
-                        <span key={name} className="val-color-chip">
-                          <ColorDot name={name} /> {name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                {/* ══════════════════════════════════════════
+                    PRODUCT / AR / 3D SECTIONS (unchanged)
+                ══════════════════════════════════════════ */}
+                {!isCampaign && (
+                  <>
+                    {/* ── 3D / AR launch buttons ── */}
+                    {!loadingDetail && showViewer && (
+                      <div>
+                        <p className="val-section-label" style={{ marginBottom:10 }}>
+                          {forceViewer ? "Model Preview" : "3D / AR Preview"}
+                        </p>
+                        {hasModelFile ? (
+                          <div className="val-model-launch-row">
+                            {show3DBtn && (
+                              <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
+                                <span style={{ fontSize:20 }}>🧊</span> View 3D Model
+                              </button>
+                            )}
+                            {showARBtn && (
+                              <button className="val-model-launch-btn btn-ar" onClick={() => openModelViewer("ar", d, selected)}>
+                                <span style={{ fontSize:20 }}>🥽</span> View in AR
+                              </button>
+                            )}
+                            {showFallback3D && (
+                              <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
+                                <span style={{ fontSize:20 }}>🧊</span> View 3D Model
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ padding:"14px 16px", background:"#fff1f2", border:"1px solid #fecaca", borderRadius:12 }}>
+                            <p style={{ margin:0, fontSize:13, color:"#dc2626", fontWeight:600 }}>⚠️ No model file found on this product.</p>
+                            <p style={{ margin:"4px 0 0", fontSize:12, color:"#94a3b8" }}>model_3d / model_src is not set.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Extra images ── */}
+                    {!loadingDetail && !forceViewer && extraImgs.length > 0 && (
+                      <div>
+                        <p className="val-section-label">More Images</p>
+                        <div className="val-img-strip">
+                          {extraImgs.map((url, i) => (
+                            <img key={i} src={`http://127.0.0.1:8000/${url}`} alt={`img-${i+2}`} className="val-img-thumb" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Description ── */}
+                    {!forceViewer && d?.description && (
+                      <div>
+                        <p className="val-section-label"><AlignLeft size={10} /> Description</p>
+                        <p style={{ margin:0, fontSize:13, color:"#475569", lineHeight:1.6, background:"#f8fafc", border:"1px solid #f1f5f9", borderRadius:12, padding:"12px 14px" }}>
+                          {d.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* ── Detail grid ── */}
+                    {!loadingDetail && (
+                      <div className="val-detail-grid">
+                        {!forceViewer && d?.category && (
+                          <div className="val-detail-cell">
+                            <p className="val-section-label"><Tag size={10} /> Category</p>
+                            <p className="val-cell-value" style={{ textTransform:"capitalize" }}>{d.category}</p>
+                          </div>
+                        )}
+                        {!forceViewer && stockLabel && (
+                          <div className="val-detail-cell">
+                            <p className="val-section-label"><Layers size={10} /> Stock</p>
+                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                              <p className="val-cell-value">{d.quantity} units</p>
+                              <span style={{ background:stockBg, color:stockColor, fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99 }}>{stockLabel}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="val-detail-cell">
+                          <p className="val-section-label"><Calendar size={10} /> Submitted</p>
+                          <p className="val-cell-value" style={{ fontFamily:"monospace", fontSize:12 }}>
+                            {selected.submitted_at
+                              ? new Date(selected.submitted_at).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" })
+                              : "—"}
+                          </p>
+                        </div>
+                        {selected.reviewed_at && (
+                          <div className="val-detail-cell">
+                            <p className="val-section-label"><Calendar size={10} /> Reviewed</p>
+                            <p className="val-cell-value" style={{ fontFamily:"monospace", fontSize:12 }}>
+                              {new Date(selected.reviewed_at).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" })}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Colors ── */}
+                    {!loadingDetail && !forceViewer && d?.colors?.length > 0 && (
+                      <div>
+                        <p className="val-section-label"><Palette size={10} /> Colors</p>
+                        <div className="val-color-strip">
+                          {d.colors.map(name => (
+                            <span key={name} className="val-color-chip">
+                              <ColorDot name={name} /> {name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {loadingDetail && (
+                      <div style={{ display:"flex", alignItems:"center", gap:8, color:"#94a3b8", fontSize:13 }}>
+                        <Loader2 size={15} className="val-spin" /> Loading details…
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {loadingDetail && (
-                  <div style={{ display:"flex", alignItems:"center", gap:8, color:"#94a3b8", fontSize:13 }}>
-                    <Loader2 size={15} className="val-spin" /> Loading details…
-                  </div>
-                )}
-
-                {/* ── Rejection note ── */}
+                {/* ── Rejection note — always shown ── */}
                 <div>
                   <p className="val-section-label">
                     Rejection Note{" "}

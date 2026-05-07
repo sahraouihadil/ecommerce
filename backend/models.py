@@ -80,7 +80,7 @@ class ProductImage(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"),
                         nullable=False, index=True)
     image_url  = Column(String, nullable=False)
-    order      = Column(Integer, default=0)
+    order  = Column(Integer, default=0)
 
     product = relationship("Products", back_populates="images")
 
@@ -154,11 +154,11 @@ class Complaints(Base):
     id            = Column(Integer, primary_key=True, index=True)
     title         = Column(String)
     description   = Column(String)
-    date          = Column(DateTime, default=datetime.utcnow)
     type_c        = Column(String)
     priority      = Column(String)
     status        = Column(String, default='pending')
     internal_note = Column(String)
+    created_at    = Column(DateTime, default=datetime.utcnow)
     user_id       = Column(Integer, ForeignKey("users.id"))
 
 
@@ -182,6 +182,7 @@ class Campaigns(Base):
     image_url   = Column(String)
     start_date  = Column(DateTime)
     end_date    = Column(DateTime)
+    is_active   = Column(String)
     created_at  = Column(DateTime, default=datetime.utcnow)
 
 class Newsletters(Base):

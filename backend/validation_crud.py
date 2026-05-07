@@ -1,37 +1,17 @@
 """
 validation_crud.py - Database operations for the Validation queue
-=================================================================
-All database queries are isolated here so the router stays thin.
-
-Side-effects on status change
-──────────────────────────────
-  Approve  →  _activate_item()
-               Products   → is_active = True
-               AR         → valid_ar  = True          ← AR flag only
-               3D         → valid_3d  = True          ← 3D flag only
-               Campaigns  → status = "active"
-               Blogs      → status = "published"
-
-  Reject   →  _deactivate_item()
-               Products   → is_active = False
-               AR         → valid_ar  = False
-               3D         → valid_3d  = False
-               Campaigns  → status = "inactive"
-               Blogs      → status = "draft"
 """
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from models import ValidationRequest
 from schema import ValidationSubmit
 
 
-# ── Allowed types ────────────────────────────────────────────────────────────
-
-VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Blogs"}
+VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Blogs", "Campaigns_Delete"}
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -41,14 +21,9 @@ def submit_for_validation(
     payload:      ValidationSubmit,
     submitted_by: Optional[int] = None,
 ) -> ValidationRequest:
-    """
-    Create a new Pending validation request.
-    Raises ValueError if the same item is already awaiting review.
-    """
     if payload.item_type not in VALID_TYPES:
         raise ValueError(f"item_type must be one of: {', '.join(sorted(VALID_TYPES))}")
 
-    # Prevent duplicate pending submissions for the same item
     existing = (
         db.query(ValidationRequest)
         .filter(
@@ -74,16 +49,96 @@ def submit_for_validation(
     return request
 
 
+def upsert_for_validation(
+    db:           Session,
+    payload:      ValidationSubmit,
+    submitted_by: Optional[int] = None,
+) -> ValidationRequest:
+    if payload.item_type not in VALID_TYPES:
+        raise ValueError(f"item_type must be one of: {', '.join(sorted(VALID_TYPES))}")
+
+    # Expire all cached objects so we get a fresh read from the DB,
+    # avoiding stale-cache misses that caused the "existing not found" bug.
+    db.expire_all()
+
+    existing = (
+        db.query(ValidationRequest)
+        .filter(
+            ValidationRequest.item_type == payload.item_type,
+            ValidationRequest.item_id   == payload.item_id,
+        )
+        # Order by primary key (always reliable) instead of submitted_at,
+        # which can be NULL and sorts differently across database engines.
+        .order_by(ValidationRequest.id.desc())
+        .first()
+    )
+
+    if existing:
+        existing.status         = "Pending"
+        existing.title          = payload.title
+        existing.rejection_note = None
+        existing.reviewed_at    = None
+        existing.reviewed_by    = None
+        existing.submitted_by   = submitted_by
+        existing.submitted_at   = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    # No row found at all — first-ever submission for this item.
+    request = ValidationRequest(
+        item_type    = payload.item_type,
+        item_id      = payload.item_id,
+        title        = payload.title,
+        status       = "Pending",
+        submitted_by = submitted_by,
+    )
+    db.add(request)
+    db.commit()
+    db.refresh(request)
+    return request
+
+
+def submit_delete_request(
+    db:            Session,
+    campaign_id:   int,
+    campaign_name: str,
+    submitted_by:  Optional[int] = None,
+) -> ValidationRequest:
+    existing = (
+        db.query(ValidationRequest)
+        .filter(
+            ValidationRequest.item_type == "Campaigns_Delete",
+            ValidationRequest.item_id   == campaign_id,
+            ValidationRequest.status    == "Pending",
+        )
+        .first()
+    )
+    if existing:
+        raise ValueError("A deletion request for this campaign is already pending.")
+
+    request = ValidationRequest(
+        item_type    = "Campaigns_Delete",
+        item_id      = campaign_id,
+        title        = f"DELETE: {campaign_name}",
+        status       = "Pending",
+        submitted_by = submitted_by,
+    )
+    db.add(request)
+    db.commit()
+    db.refresh(request)
+    return request
+
+
 # ── Read ─────────────────────────────────────────────────────────────────────
 
 def get_all(
-    db:          Session,
-    status:      Optional[str] = None,
-    item_type:   Optional[str] = None,
-    skip:        int = 0,
-    limit:       int = 50,
+    db:        Session,
+    status:    Optional[str] = None,
+    item_type: Optional[str] = None,
+    skip:      int = 0,
+    limit:     int = 50,
 ) -> list[ValidationRequest]:
-    """Return validation requests, optionally filtered."""
     q = db.query(ValidationRequest)
     if status:
         q = q.filter(ValidationRequest.status == status)
@@ -97,7 +152,6 @@ def get_by_id(db: Session, request_id: int) -> Optional[ValidationRequest]:
 
 
 def get_stats(db: Session) -> dict:
-    """Aggregate counts for the stat cards."""
     rows = (
         db.query(ValidationRequest.status, func.count(ValidationRequest.id))
         .group_by(ValidationRequest.status)
@@ -121,10 +175,12 @@ def approve(
     db:          Session,
     request_id:  int,
     reviewed_by: Optional[int] = None,
-) -> ValidationRequest:
+) -> Union[ValidationRequest, dict]:
     """
-    Mark a request as Approved and trigger the item's activation side-effect.
-    Raises ValueError if already reviewed.
+    Approve a validation request.
+    For Campaigns_Delete: deletes the campaign and all its validation rows,
+    then returns a plain snapshot dict (since the DB row is gone).
+    For all other types: returns the updated ValidationRequest ORM object.
     """
     req = get_by_id(db, request_id)
     if not req:
@@ -138,8 +194,26 @@ def approve(
     db.commit()
     db.refresh(req)
 
-    _activate_item(db, req.item_type, req.item_id)
+    # For Campaigns_Delete, snapshot the data BEFORE _activate_item wipes the rows
+    if req.item_type == "Campaigns_Delete":
+        snapshot = {
+            "id":             req.id,
+            "item_type":      req.item_type,
+            "item_id":        req.item_id,
+            "title":          req.title,
+            "status":         req.status,
+            "rejection_note": req.rejection_note,
+            "submitted_at":   req.submitted_at,
+            "reviewed_at":    req.reviewed_at,
+            "submitted_by":   req.submitted_by,
+            "reviewed_by":    req.reviewed_by,
+            "submitter":      None,
+            "reviewer":       None,
+        }
+        _activate_item(db, req.item_type, req.item_id)
+        return snapshot  # ← plain dict, never touches deleted ORM object again
 
+    _activate_item(db, req.item_type, req.item_id)
     return req
 
 
@@ -149,10 +223,6 @@ def reject(
     rejection_note: str,
     reviewed_by:    Optional[int] = None,
 ) -> ValidationRequest:
-    """
-    Mark a request as Rejected and trigger the item's deactivation side-effect.
-    Raises ValueError if already reviewed.
-    """
     req = get_by_id(db, request_id)
     if not req:
         raise LookupError("Validation request not found.")
@@ -174,98 +244,105 @@ def reject(
 # ── Private helpers ──────────────────────────────────────────────────────────
 
 def _activate_item(db: Session, item_type: str, item_id: int) -> None:
-    """
-    After approval, flip the relevant flag(s) on the item's own table.
+    from models import Products, Campaigns, Blogs
 
-    Mapping
-    ───────
-    Products   →  is_active = True
-    AR         →  valid_ar  = True   ← AR flag only (independent from 3D)
-    3D         →  valid_3d  = True   ← 3D flag only (independent from AR)
-    Campaigns  →  status    = "active"
-    Blogs      →  status    = "published"
-    """
-    from models import Products, Campaigns, Blogs   # local import avoids circular
-
-    # ── AR: flip only the AR validation flag ──────────────────────────────
     if item_type == "AR":
         item = db.query(Products).filter(Products.id == item_id).first()
         if item:
-            item.valid_ar = True
+            item.valid_ar  = True
             item.is_active = True
             db.commit()
         return
 
-    # ── 3D: flip only the 3D validation flag ──────────────────────────────
     if item_type == "3D":
         item = db.query(Products).filter(Products.id == item_id).first()
         if item:
-            item.valid_3d = True
+            item.valid_3d  = True
             item.is_active = True
             db.commit()
         return
 
-    # ── All other types: single-field mapping ─────────────────────────────
-    table_map = {
-        "Products":   (Products,   "is_active", True),
-        "Campaigns":  (Campaigns,  "status",    "active"),
-        "Blogs":      (Blogs,      "status",    "published"),
-    }
-
-    if item_type not in table_map:
+    if item_type == "Campaigns":
+        item = db.query(Campaigns).filter(Campaigns.id == item_id).first()
+        if item:
+            item.is_active = True
+            db.commit()
         return
 
-    model_cls, field, value = table_map[item_type]
-    item = db.query(model_cls).filter(model_cls.id == item_id).first()
-    if item:
-        setattr(item, field, value)
+    if item_type == "Campaigns_Delete":
+        import os
+        item = db.query(Campaigns).filter(Campaigns.id == item_id).first()
+        if item:
+            if item.image_url:
+                old_path = item.image_url.lstrip("/")
+                if os.path.isfile(old_path):
+                    os.remove(old_path)
+            db.delete(item)
+            db.commit()
+
+        # Remove ALL validation rows for this campaign
+        db.query(ValidationRequest).filter(
+            ValidationRequest.item_id.in_([item_id]),
+            ValidationRequest.item_type.in_(["Campaigns", "Campaigns_Delete"]),
+        ).delete(synchronize_session=False)
         db.commit()
+        return
+
+    if item_type == "Blogs":
+        item = db.query(Blogs).filter(Blogs.id == item_id).first()
+        if item:
+            item.status = "published"
+            db.commit()
+        return
+
+    if item_type == "Products":
+        item = db.query(Products).filter(Products.id == item_id).first()
+        if item:
+            item.is_active = True
+            db.commit()
+        return
 
 
 def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
-    """
-    After rejection, flip the relevant flag(s) on the item's own table.
+    from models import Products, Campaigns, Blogs
 
-    Mapping
-    ───────
-    Products   →  is_active = False
-    AR         →  valid_ar  = False  ← AR flag only (independent from 3D)
-    3D         →  valid_3d  = False  ← 3D flag only (independent from AR)
-    Campaigns  →  status    = "inactive"
-    Blogs      →  status    = "draft"
-    """
-    from models import Products, Campaigns, Blogs   # local import avoids circular
-
-    # ── AR: reset only the AR validation flag ─────────────────────────────
     if item_type == "AR":
         item = db.query(Products).filter(Products.id == item_id).first()
         if item:
-            item.valid_ar = False
+            item.valid_ar  = False
             item.is_active = True
             db.commit()
         return
 
-    # ── 3D: reset only the 3D validation flag ─────────────────────────────
     if item_type == "3D":
         item = db.query(Products).filter(Products.id == item_id).first()
         if item:
-            item.valid_3d = False
+            item.valid_3d  = False
             item.is_active = True
             db.commit()
         return
 
-    # ── All other types: single-field mapping ─────────────────────────────
-    table_map = {
-        "Products":   (Products,   "is_active", False),
-        "Campaigns":  (Campaigns,  "status",    "inactive"),
-        "Blogs":      (Blogs,      "status",    "draft"),
-    }
-
-    if item_type not in table_map:
+    if item_type == "Campaigns":
+        item = db.query(Campaigns).filter(Campaigns.id == item_id).first()
+        if item:
+            item.is_active = False
+            db.commit()
         return
 
-    model_cls, field, value = table_map[item_type]
-    item = db.query(model_cls).filter(model_cls.id == item_id).first()
-    if item:
-        setattr(item, field, value)
-        db.commit()
+    if item_type == "Campaigns_Delete":
+        # Rejected deletion — campaign stays, nothing to do
+        return
+
+    if item_type == "Blogs":
+        item = db.query(Blogs).filter(Blogs.id == item_id).first()
+        if item:
+            item.status = "draft"
+            db.commit()
+        return
+
+    if item_type == "Products":
+        item = db.query(Products).filter(Products.id == item_id).first()
+        if item:
+            item.is_active = False
+            db.commit()
+        return

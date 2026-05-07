@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Pencil, Trash2, Plus, Calendar,
-  LayoutDashboard, Megaphone, BadgePercent,
+  LayoutDashboard, Megaphone,
   Mail, FileText, X, Check, Loader2,
   ChevronDown, ImagePlus, Trash, Store, Globe, ChevronUp,
   Heart, MessageCircle, Share2, Bookmark, MoreHorizontal,
-  ThumbsUp, Send, Tag, Users, Hash,
+  ThumbsUp, Send, Tag, Users, Hash, Clock, AlertCircle,
+  ShieldCheck, ShieldOff,
 } from 'lucide-react'
 import api from '../../services/api'
 import Sidebar from '../ui/Sidebar'
 import Header from '../ui/Header'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const BASE = "http://127.0.0.1:8000"
 
 const img = path => {
@@ -21,8 +21,7 @@ const img = path => {
 }
 
 const PURPLE = '#5B47E0'
-const STATUS_OPTIONS = ['active', 'draft', 'paused', 'completed']
-const DISCOUNT_TYPES = ['percentage', 'fixed']
+const STATUS_OPTIONS = ['draft', 'paused', 'active', 'completed']
 
 const statusStyle = {
   active:    { bg: '#ECFDF5', color: '#16A34A' },
@@ -31,20 +30,26 @@ const statusStyle = {
   completed: { bg: '#EFF6FF', color: '#2563EB' },
 }
 
+const VALIDATION_BADGE = {
+  pending_review:    { bg: '#FEF9C3', color: '#B45309', icon: <Clock size={10} />, label: 'Pending Review' },
+  Pending:           { bg: '#FEF9C3', color: '#B45309', icon: <Clock size={10} />, label: 'Pending Review' },
+  Approved:          { bg: '#ECFDF5', color: '#16A34A', icon: <Check size={10} />, label: 'Approved' },
+  Rejected:          { bg: '#FEF2F2', color: '#DC2626', icon: <AlertCircle size={10} />, label: 'Rejected' },
+  deletion_pending:  { bg: '#FEE2E2', color: '#991B1B', icon: <Trash2 size={10} />, label: 'Deletion Pending Admin Approval' },
+}
+
+const IS_ACTIVE_BADGE = {
+  true:  { bg: '#ECFDF5', color: '#16A34A', icon: <ShieldCheck size={10} />, label: 'Live on Storefront' },
+  false: { bg: '#F3F4F6', color: '#6B7280', icon: <ShieldOff  size={10} />, label: 'Hidden from Storefront' },
+}
+
 const EMPTY_FORM = {
-  name:          '',
-  title:         '',
-  tactics:       { shop: false, facebook: false, instagram: false },
-  status:        'draft',
-  budget:        0,
-  start_date:    '',
-  end_date:      '',
-  // discount / coupon
-  discount:      '',
-  discount_type: 'percentage',
-  code:          '',
-  usage_max:     0,
-  usage_current: 0,
+  name: '', title: '',
+  tactics: { shop: false, facebook: false, instagram: false },
+  status: 'draft', budget: 0,
+  start_date: '', end_date: '',
+  discount: '', discount_type: 'percentage',
+  code: '', usage_max: 0, usage_current: 0,
 }
 
 const marketingmanagerLinks = [
@@ -54,7 +59,6 @@ const marketingmanagerLinks = [
   { to: "/marketing-manager-dash/blogs",       label: "Blogs",       icon: <FileText size={18} /> },
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) {
   const num = Number(n) || 0
   if (num >= 1000) return `${(num / 1000).toFixed(1)}k`
@@ -83,12 +87,10 @@ function parseApiError(err) {
   if (!detail) return 'Failed to save.'
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) {
-    return detail
-      .map(e => {
-        const field = Array.isArray(e.loc) ? e.loc.filter(l => l !== 'body').join(' → ') : ''
-        return field ? `${field}: ${e.msg}` : e.msg
-      })
-      .join('\n')
+    return detail.map(e => {
+      const field = Array.isArray(e.loc) ? e.loc.filter(l => l !== 'body').join(' → ') : ''
+      return field ? `${field}: ${e.msg}` : e.msg
+    }).join('\n')
   }
   return JSON.stringify(detail)
 }
@@ -100,7 +102,6 @@ function fmtDiscount(discount, discount_type) {
   return discount_type === 'percentage' ? `${num}% off` : `${num} DA off`
 }
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
 const labelStyle = {
   display: 'block', fontSize: '0.6875rem', fontWeight: 600,
   letterSpacing: '0.07em', color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px',
@@ -114,23 +115,10 @@ const inputStyle = {
 // ─── Facebook Ad Preview ──────────────────────────────────────────────────────
 function FacebookPreview({ title, previewImg }) {
   return (
-    <div style={{
-      border: '1px solid #E4E6EB', borderRadius: 12, overflow: 'hidden',
-      background: '#fff', fontFamily: 'Helvetica Neue, Arial, sans-serif',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-    }}>
+    <div style={{ border: '1px solid #E4E6EB', borderRadius: 12, overflow: 'hidden', background: '#fff', fontFamily: 'Helvetica Neue, Arial, sans-serif', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img
-  src="/logo.png" 
-  alt="ARoom"
-  style={{
-    width: 40,
-    height: 40,
-    borderRadius: '50%',
-    objectFit: 'cover'
-  }}
-/>
+          <img src="/logo.png" alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
           <div>
             <p style={{ fontWeight: 700, fontSize: '0.875rem', color: '#050505', margin: 0 }}>{'ARoom'}</p>
             <p style={{ fontSize: '0.6875rem', color: '#65676B', margin: 0 }}>Sponsored · 🌐</p>
@@ -138,13 +126,11 @@ function FacebookPreview({ title, previewImg }) {
         </div>
         <MoreHorizontal size={18} color="#65676B" />
       </div>
-
       <div style={{ padding: '0 14px 10px' }}>
         <p style={{ fontSize: '0.875rem', color: '#050505', margin: 0, lineHeight: 1.5 }}>
           {title || "Discover our latest offer — don't miss out!"}
         </p>
       </div>
-
       <div style={{ width: '100%', height: 200, background: 'linear-gradient(135deg, #EEF0FF 0%, #F5F3FF 100%)', overflow: 'hidden' }}>
         {previewImg
           ? <img src={previewImg} alt="Ad" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -154,17 +140,13 @@ function FacebookPreview({ title, previewImg }) {
             </div>
         }
       </div>
-
       <div style={{ padding: '10px 14px', background: '#F0F2F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={{ fontSize: '0.6875rem', color: '#65676B', margin: 0 }}>marketingcore.app</p>
           <p style={{ fontWeight: 700, fontSize: '0.875rem', color: '#050505', margin: 0 }}>{title || 'Shop Now'}</p>
         </div>
-        <button style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#E4E6EB', color: '#050505', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}>
-          Shop now
-        </button>
+        <button style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#E4E6EB', color: '#050505', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}>Shop now</button>
       </div>
-
       <div style={{ padding: '8px 14px', display: 'flex', gap: 4 }}>
         {[{ icon: <ThumbsUp size={14} />, label: 'Like' }, { icon: <MessageCircle size={14} />, label: 'Comment' }, { icon: <Share2 size={14} />, label: 'Share' }].map(a => (
           <button key={a.label} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', border: 'none', background: 'transparent', color: '#65676B', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', borderRadius: 6 }}>
@@ -183,20 +165,15 @@ function InstagramPreview({ name, title, previewImg }) {
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, padding: 2, background: 'linear-gradient(45deg, #F09433, #E6683C, #DC2743, #CC2366, #BC1888)' }}>
-            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'linear-gradient(135deg, #5B47E0, #8B75F5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '0.875rem' }}>
-              {(name || 'B')[0].toUpperCase()}
-            </div>
+            <img src="/logo.png" alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
           </div>
           <div>
-            <p style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#262626', margin: 0 }}>
-              {'ARoom'}
-            </p>
+            <p style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#262626', margin: 0 }}>{'ARoom'}</p>
             <p style={{ fontSize: '0.6875rem', color: '#8E8E8E', margin: 0 }}>Sponsored</p>
           </div>
         </div>
         <MoreHorizontal size={18} color="#262626" />
       </div>
-
       <div style={{ width: '100%', aspectRatio: '1', background: 'linear-gradient(135deg, #FFECD2, #FCB69F)', overflow: 'hidden' }}>
         {previewImg
           ? <img src={previewImg} alt="Ad" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -206,7 +183,6 @@ function InstagramPreview({ name, title, previewImg }) {
             </div>
         }
       </div>
-
       <div style={{ padding: '10px 14px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 14 }}>
           <Heart size={22} color="#262626" />
@@ -215,15 +191,12 @@ function InstagramPreview({ name, title, previewImg }) {
         </div>
         <Bookmark size={22} color="#262626" />
       </div>
-
       <div style={{ padding: '4px 14px 14px' }}>
         <p style={{ fontSize: '0.8125rem', color: '#262626', margin: '0 0 4px', lineHeight: 1.5 }}>
           <span style={{ fontWeight: 700 }}>{(name || 'your_brand').toLowerCase().replace(/\s+/g, '_')}</span>
           {' '}{title || 'Check out our latest collection! Tap the link in bio to explore. 🔥'}
         </p>
-        <button style={{ marginTop: 6, width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #DBDBDB', background: '#fff', color: '#262626', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}>
-          Shop Now
-        </button>
+        <button style={{ marginTop: 6, width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #DBDBDB', background: '#fff', color: '#262626', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}>Shop Now</button>
       </div>
     </div>
   )
@@ -301,17 +274,8 @@ function ImageUploadField({ pendingFile, existingUrl, onFile, onClear }) {
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
 function Toggle({ on }) {
   return (
-    <div style={{
-      width: 40, height: 22, borderRadius: 99,
-      background: on ? PURPLE : '#D1D5DB',
-      position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-    }}>
-      <div style={{
-        position: 'absolute', top: 3, left: on ? 20 : 3,
-        width: 16, height: 16, borderRadius: '50%',
-        background: '#fff', transition: 'left 0.2s',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-      }} />
+    <div style={{ width: 40, height: 22, borderRadius: 99, background: on ? PURPLE : '#D1D5DB', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+      <div style={{ position: 'absolute', top: 3, left: on ? 20 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
     </div>
   )
 }
@@ -342,21 +306,9 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
 
   return (
     <div>
-      <label style={labelStyle}>
-        Ad Placement <span style={{ color: '#D1D5DB', fontWeight: 400 }}>(select all that apply)</span>
-      </label>
+      <label style={labelStyle}>Ad Placement <span style={{ color: '#D1D5DB', fontWeight: 400 }}>(select all that apply)</span></label>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-
-        {/* ── Ads on Shop ── */}
-        <div
-          onClick={() => toggle('shop')}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
-            border: `1px solid ${tactics.shop ? PURPLE : '#E5E7EB'}`,
-            background: tactics.shop ? '#F5F3FF' : '#FAFAFA', transition: 'all 0.15s',
-          }}
-        >
+        <div onClick={() => toggle('shop')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${tactics.shop ? PURPLE : '#E5E7EB'}`, background: tactics.shop ? '#F5F3FF' : '#FAFAFA', transition: 'all 0.15s' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 34, height: 34, borderRadius: 8, background: tactics.shop ? PURPLE : '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
               <Store size={16} color={tactics.shop ? '#fff' : '#9CA3AF'} />
@@ -369,12 +321,8 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
           <Toggle on={tactics.shop} />
         </div>
 
-        {/* ── Ads on Platforms ── */}
         <div style={{ border: `1px solid ${anyPlatform ? PURPLE : '#E5E7EB'}`, borderRadius: 10, overflow: 'hidden' }}>
-          <div
-            onClick={() => setPlatformOpen(p => !p)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: anyPlatform ? '#F5F3FF' : '#FAFAFA', cursor: 'pointer' }}
-          >
+          <div onClick={() => setPlatformOpen(p => !p)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: anyPlatform ? '#F5F3FF' : '#FAFAFA', cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 34, height: 34, borderRadius: 8, background: anyPlatform ? PURPLE : '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Globe size={16} color={anyPlatform ? '#fff' : '#9CA3AF'} />
@@ -389,11 +337,7 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {anyPlatform && (
-                <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: PURPLE, background: '#EEF0FF', padding: '2px 8px', borderRadius: 99 }}>
-                  {activeCount} active
-                </span>
-              )}
+              {anyPlatform && <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: PURPLE, background: '#EEF0FF', padding: '2px 8px', borderRadius: 99 }}>{activeCount} active</span>}
               {platformOpen ? <ChevronUp size={14} color="#9CA3AF" /> : <ChevronDown size={14} color="#9CA3AF" />}
             </div>
           </div>
@@ -409,13 +353,7 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
                   return (
                     <div key={key}
                       onClick={e => { e.stopPropagation(); toggle(key); setActivePreview(key) }}
-                      style={{
-                        flex: 1, padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                        border: `2px solid ${active ? color : '#E5E7EB'}`,
-                        background: active ? bg : '#FAFAFA',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        transition: 'all 0.15s',
-                      }}>
+                      style={{ flex: 1, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: `2px solid ${active ? color : '#E5E7EB'}`, background: active ? bg : '#FAFAFA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.15s' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                         <span style={{ fontSize: '1.1rem' }}>{emoji}</span>
                         <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: active ? color : '#6B7280' }}>{label}</span>
@@ -425,40 +363,24 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
                   )
                 })}
               </div>
-
               {anyPlatform && (
                 <div>
                   {tactics.facebook && tactics.instagram && (
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                      {[
-                        { key: 'facebook', label: '📘 Facebook' },
-                        { key: 'instagram', label: '📸 Instagram' },
-                      ].map(t => (
-                        <button key={t.key}
-                          onClick={() => setActivePreview(t.key)}
-                          style={{
-                            padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                            fontWeight: 600, fontSize: '0.75rem',
-                            background: activePreview === t.key ? PURPLE : '#F3F4F6',
-                            color: activePreview === t.key ? '#fff' : '#6B7280',
-                            transition: 'all 0.15s',
-                          }}>
+                      {[{ key: 'facebook', label: '📘 Facebook' }, { key: 'instagram', label: '📸 Instagram' }].map(t => (
+                        <button key={t.key} onClick={() => setActivePreview(t.key)}
+                          style={{ padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', background: activePreview === t.key ? PURPLE : '#F3F4F6', color: activePreview === t.key ? '#fff' : '#6B7280', transition: 'all 0.15s' }}>
                           {t.label}
                         </button>
                       ))}
                     </div>
                   )}
-
                   {(() => {
                     const show = activePreview || (tactics.facebook ? 'facebook' : 'instagram')
-                    if (show === 'facebook' && tactics.facebook)
-                      return <FacebookPreview title={campaignTitle} previewImg={previewImg} />
-                    if (show === 'instagram' && tactics.instagram)
-                      return <InstagramPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
-                    if (tactics.facebook)
-                      return <FacebookPreview title={campaignTitle} previewImg={previewImg} />
-                    if (tactics.instagram)
-                      return <InstagramPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
+                    if (show === 'facebook' && tactics.facebook) return <FacebookPreview title={campaignTitle} previewImg={previewImg} />
+                    if (show === 'instagram' && tactics.instagram) return <InstagramPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
+                    if (tactics.facebook) return <FacebookPreview title={campaignTitle} previewImg={previewImg} />
+                    if (tactics.instagram) return <InstagramPreview name={campaignName} title={campaignTitle} previewImg={previewImg} />
                     return null
                   })()}
                 </div>
@@ -474,10 +396,8 @@ function TacticsSelector({ tactics, onChange, previewImg, campaignName, campaign
 // ─── Discount Section ─────────────────────────────────────────────────────────
 function DiscountSection({ form, set, setForm, isEdit }) {
   const hasDiscount = form.discount !== '' && Number(form.discount) > 0
-
   return (
     <div style={{ border: '1px solid #E5E7EB', borderRadius: 12 }}>
-      {/* Header */}
       <div style={{ padding: '14px 16px', background: hasDiscount ? '#F5F3FF' : '#FAFAFA', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: 8, background: hasDiscount ? PURPLE : '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
           <Tag size={16} color={hasDiscount ? '#fff' : '#9CA3AF'} />
@@ -491,106 +411,45 @@ function DiscountSection({ form, set, setForm, isEdit }) {
           </p>
         </div>
       </div>
-
-      {/* Fields */}
       <div style={{ padding: '16px', borderTop: '1px solid #F3F4F6', display: 'flex', flexDirection: 'column', gap: 14, background: '#fff' }}>
-
-        {/* Discount value + type */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={labelStyle}>Discount Value</label>
-            <input
-              style={inputStyle} type="number" min="0" step="0.01"
-              placeholder="e.g. 20"
-              value={form.discount}
-              onChange={set('discount')}
-              onFocus={e => e.target.style.borderColor = PURPLE}
-              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
-            />
+            <input style={inputStyle} type="number" min="0" step="0.01" placeholder="e.g. 20" value={form.discount} onChange={set('discount')} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
           </div>
           <div>
             <label style={labelStyle}>Discount Type</label>
             <div style={{ position: 'relative' }}>
-              <select
-                style={{ ...inputStyle, paddingRight: 36 }}
-                value={form.discount_type}
-                onChange={set('discount_type')}
-              >
+              <select style={{ ...inputStyle, paddingRight: 36 }} value={form.discount_type} onChange={set('discount_type')}>
                 <option value="percentage">Percentage (%)</option>
                 <option value="fixed">Fixed (DA)</option>
               </select>
-              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}>
-                <ChevronDown size={15} />
-              </span>
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}><ChevronDown size={15} /></span>
             </div>
           </div>
         </div>
-
-        {/* Coupon code */}
         <div>
-          <label style={labelStyle}>
-            Coupon Code
-            <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(optional)</span>
-          </label>
+          <label style={labelStyle}>Coupon Code <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(optional)</span></label>
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }}>
-              <Hash size={14} />
-            </span>
-            <input
-              style={{ ...inputStyle, paddingLeft: 34, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, fontFamily: 'monospace' }}
-              placeholder="e.g. SUMMER25"
-              value={form.code}
-              onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
-              onFocus={e => e.target.style.borderColor = PURPLE}
-              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
-            />
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }}><Hash size={14} /></span>
+            <input style={{ ...inputStyle, paddingLeft: 34, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, fontFamily: 'monospace' }} placeholder="e.g. SUMMER25" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
           </div>
         </div>
-
-        {/* Max usage + current usage */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <label style={labelStyle}>
-              Max Redemptions
-              <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(0 = unlimited)</span>
-            </label>
-            <input
-              style={inputStyle} type="number" min="0"
-              placeholder="e.g. 500"
-              value={form.usage_max}
-              onChange={set('usage_max')}
-              onFocus={e => e.target.style.borderColor = PURPLE}
-              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
-            />
+            <label style={labelStyle}>Max Redemptions <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(0 = unlimited)</span></label>
+            <input style={inputStyle} type="number" min="0" placeholder="e.g. 500" value={form.usage_max} onChange={set('usage_max')} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
           </div>
           <div>
-            <label style={labelStyle}>
-              Current Redemptions
-              {!isEdit && <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(starts at 0)</span>}
-            </label>
-            <input
-              style={{ ...inputStyle, background: !isEdit ? '#F9FAFB' : '#fff', color: !isEdit ? '#9CA3AF' : '#111827' }}
-              type="number" min="0"
-              placeholder="0"
-              value={form.usage_current}
-              onChange={set('usage_current')}
-              disabled={!isEdit}
-              onFocus={e => { if (isEdit) e.target.style.borderColor = PURPLE }}
-              onBlur={e => { if (isEdit) e.target.style.borderColor = '#E5E7EB' }}
-            />
+            <label style={labelStyle}>Current Redemptions {!isEdit && <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4 }}>(starts at 0)</span>}</label>
+            <input style={{ ...inputStyle, background: !isEdit ? '#F9FAFB' : '#fff', color: !isEdit ? '#9CA3AF' : '#111827' }} type="number" min="0" placeholder="0" value={form.usage_current} onChange={set('usage_current')} disabled={!isEdit} onFocus={e => { if (isEdit) e.target.style.borderColor = PURPLE }} onBlur={e => { if (isEdit) e.target.style.borderColor = '#E5E7EB' }} />
           </div>
         </div>
-
-        {/* Live usage progress bar — only shown when editing and usage_max > 0 */}
         {isEdit && Number(form.usage_max) > 0 && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: '0.6875rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Users size={10} /> Redemption Progress
-              </span>
-              <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#374151' }}>
-                {form.usage_current} / {form.usage_max}
-              </span>
+              <span style={{ fontSize: '0.6875rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}><Users size={10} /> Redemption Progress</span>
+              <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#374151' }}>{form.usage_current} / {form.usage_max}</span>
             </div>
             {(() => {
               const pct = Math.min(100, Math.round((Number(form.usage_current) / Number(form.usage_max)) * 100))
@@ -648,6 +507,7 @@ function CampaignModal({ initial, onClose, onSaved }) {
     if (!form.name.trim())               return setError('Campaign name is required.')
     if (!form.title.trim())              return setError('Headline is required.')
     if (!form.start_date)                return setError('Start date is required.')
+    if (!form.budget)                    return setError('budget is required.')
     if (!form.end_date)                  return setError('End date is required.')
     if (form.start_date > form.end_date) return setError('Start date must be before end date.')
     const channel = tacticsToChannel(form.tactics)
@@ -656,13 +516,11 @@ function CampaignModal({ initial, onClose, onSaved }) {
     const discountVal = form.discount !== '' ? parseFloat(form.discount) : null
     if (discountVal !== null && isNaN(discountVal)) return setError('Discount value must be a number.')
     if (discountVal !== null && discountVal < 0)    return setError('Discount value cannot be negative.')
-    if (form.discount_type === 'percentage' && discountVal > 100)
-      return setError('Percentage discount cannot exceed 100%.')
+    if (form.discount_type === 'percentage' && discountVal > 100) return setError('Percentage discount cannot exceed 100%.')
 
     const usageMax     = parseInt(form.usage_max) || 0
     const usageCurrent = parseInt(form.usage_current) || 0
-    if (usageMax > 0 && usageCurrent > usageMax)
-      return setError('Current redemptions cannot exceed max redemptions.')
+    if (usageMax > 0 && usageCurrent > usageMax) return setError('Current redemptions cannot exceed max redemptions.')
 
     setError('')
     setSaving(true)
@@ -694,10 +552,7 @@ function CampaignModal({ initial, onClose, onSaved }) {
       if (pendingFile) {
         const fd = new FormData()
         fd.append('file', pendingFile)
-        const imgRes = await api.post(
-          `/api/campaigns/${saved.id}/image`, fd,
-          { headers: { 'Content-Type': 'multipart/form-data' } }
-        )
+        const imgRes = await api.post(`/api/campaigns/${saved.id}/image`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         saved = imgRes.data
       }
 
@@ -706,8 +561,8 @@ function CampaignModal({ initial, onClose, onSaved }) {
         saved = imgRes.data
       }
 
-      onSaved(saved, isEdit)
       onClose()
+      onSaved(saved, isEdit)
     } catch (err) {
       setError(parseApiError(err))
     } finally {
@@ -720,117 +575,81 @@ function CampaignModal({ initial, onClose, onSaved }) {
   const livePreview = blobPreview || existingUrl
 
   return (
-    <div onClick={backdrop} style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '1rem', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)',
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: '18px', boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
-        width: '100%', maxWidth: '520px', overflow: 'hidden',
-        maxHeight: '94vh', display: 'flex', flexDirection: 'column',
-      }}>
-        {/* Header */}
+    <div onClick={backdrop} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}>
+      <div style={{ background: '#fff', borderRadius: '18px', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', width: '100%', maxWidth: '520px', overflow: 'hidden', maxHeight: '94vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '22px 24px 18px', borderBottom: '1px solid #F3F4F6', flexShrink: 0 }}>
-          <span style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#111827' }}>
-            {isEdit ? 'Edit Campaign' : 'New Campaign'}
-          </span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, borderRadius: 8 }}>
-            <X size={18} />
-          </button>
+          <div>
+            <span style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#111827' }}>{isEdit ? 'Edit Campaign' : 'New Campaign'}</span>
+            <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Clock size={11} />
+              {isEdit ? 'Saving changes will re-submit this campaign for admin approval' : 'Requires admin approval to go live on the storefront'}
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, borderRadius: 8 }}><X size={18} /></button>
         </div>
 
-        {/* Body */}
         <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           <ImageUploadField
             pendingFile={pendingFile} existingUrl={existingUrl}
             onFile={f => { setPendingFile(f); setClearImage(false) }}
             onClear={() => { setPendingFile(null); setClearImage(true) }}
           />
-
           <div>
             <label style={labelStyle}>Campaign Name</label>
-            <input style={inputStyle} value={form.name} onChange={set('name')} placeholder="e.g. Summer Sale 2025"
-              onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+            <input style={inputStyle} value={form.name} onChange={set('name')} placeholder="e.g. Summer Sale 2025" onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
           </div>
-
           <div>
             <label style={labelStyle}>Headline</label>
-            <input style={inputStyle} value={form.title} onChange={set('title')} placeholder="e.g. Discover our biggest deals of the year"
-              onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+            <input style={inputStyle} value={form.title} onChange={set('title')} placeholder="e.g. Discover our biggest deals of the year" onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
           </div>
-
-          <TacticsSelector
-            tactics={form.tactics}
-            onChange={t => setForm(f => ({ ...f, tactics: t }))}
-            previewImg={livePreview}
-            campaignName={form.name}
-            campaignTitle={form.title}
-          />
-
-            {/* Discount & Coupon section */}
-          <DiscountSection
-            form={form}
-            set={set}
-            setForm={setForm}
-            isEdit={isEdit}
-          />
-          
-
-          {/* Status + Budget row */}
+          <TacticsSelector tactics={form.tactics} onChange={t => setForm(f => ({ ...f, tactics: t }))} previewImg={livePreview} campaignName={form.name} campaignTitle={form.title} />
+          <DiscountSection form={form} set={set} setForm={setForm} isEdit={isEdit} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={labelStyle}>Status</label>
+              <label style={labelStyle}>Status <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0 }}>(operational)</span></label>
               <div style={{ position: 'relative' }}>
                 <select style={{ ...inputStyle, paddingRight: 36 }} value={form.status} onChange={set('status')}>
                   {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                 </select>
-                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}>
-                  <ChevronDown size={15} />
-                </span>
+                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}><ChevronDown size={15} /></span>
               </div>
             </div>
-
-            
             <div>
               <label style={labelStyle}>Budget (DA)</label>
-              <input style={inputStyle} type="number" min="0" value={form.budget} onChange={set('budget')}
-                onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+              <input style={inputStyle} type="number" min="0" value={form.budget} onChange={set('budget')} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
             </div>
           </div>
-
-          {/* Dates row */}
+          {isEdit && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: initial?.is_active ? '#ECFDF5' : '#F3F4F6', border: `1px solid ${initial?.is_active ? '#BBF7D0' : '#E5E7EB'}` }}>
+              {initial?.is_active ? <ShieldCheck size={15} color="#16A34A" /> : <ShieldOff size={15} color="#9CA3AF" />}
+              <div>
+                <p style={{ fontSize: '0.75rem', fontWeight: 600, color: initial?.is_active ? '#16A34A' : '#6B7280', margin: 0 }}>{initial?.is_active ? 'Currently Live on Storefront' : 'Currently Hidden from Storefront'}</p>
+                <p style={{ fontSize: '0.6875rem', color: '#9CA3AF', margin: 0 }}>Will be hidden again until admin re-approves your changes</p>
+              </div>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Start Date</label>
-              <input style={inputStyle} type="date" value={form.start_date} onChange={set('start_date')}
-                onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+              <input style={inputStyle} type="date" value={form.start_date} onChange={set('start_date')} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
             </div>
             <div>
               <label style={labelStyle}>End Date</label>
-              <input style={inputStyle} type="date" value={form.end_date} onChange={set('end_date')}
-                onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+              <input style={inputStyle} type="date" value={form.end_date} onChange={set('end_date')} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
             </div>
           </div>
-
-          {/* Error display */}
           {error && (
             <div style={{ fontSize: '0.8125rem', color: '#EF4444', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8 }}>
-              {error.split('\n').map((line, i) => (
-                <p key={i} style={{ margin: i === 0 ? 0 : '4px 0 0' }}>{line}</p>
-              ))}
+              {error.split('\n').map((line, i) => <p key={i} style={{ margin: i === 0 ? 0 : '4px 0 0' }}>{line}</p>)}
             </div>
           )}
         </div>
 
-        {/* Footer */}
         <div style={{ padding: '14px 24px 20px', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0, borderTop: '1px solid #F3F4F6' }}>
-          <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
-            Cancel
-          </button>
+          <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
           <button onClick={handleSubmit} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 10, border: 'none', background: PURPLE, color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
             {saving ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={14} />}
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : isEdit ? 'Save & Re-submit for Approval' : 'Submit for Approval'}
           </button>
         </div>
       </div>
@@ -844,15 +663,24 @@ function DeleteModal({ item, onClose, onConfirm, deleting }) {
   return (
     <div onClick={backdrop} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(3px)' }}>
       <div style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', width: '100%', maxWidth: '400px', padding: '28px 24px' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: 8 }}>Delete Campaign</h2>
-        <p style={{ fontSize: '0.875rem', color: '#6B7280', lineHeight: 1.6, marginBottom: 24 }}>
-          Are you sure you want to delete <strong style={{ color: '#374151' }}>"{item.name}"</strong>? This cannot be undone.
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Trash2 size={18} color="#EF4444" />
+          </div>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', margin: 0 }}>Request Campaign Deletion</h2>
+        </div>
+        <p style={{ fontSize: '0.875rem', color: '#6B7280', lineHeight: 1.6, marginBottom: 12 }}>
+          Are you sure you want to request deletion of <strong style={{ color: '#374151' }}>"{item.name}"</strong>?
         </p>
+        <div style={{ fontSize: '0.8125rem', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <Clock size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>This will send a deletion request to the admin. The campaign will only be removed after admin approval.</span>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
           <button onClick={onConfirm} disabled={deleting} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 10, border: 'none', background: '#EF4444', color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.7 : 1 }}>
-            {deleting && <Loader2 size={14} />}
-            {deleting ? 'Deleting…' : 'Yes, Delete'}
+            {deleting && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+            {deleting ? 'Submitting…' : 'Request Deletion'}
           </button>
         </div>
       </div>
@@ -882,30 +710,68 @@ function ChannelBadges({ channel }) {
   )
 }
 
-// ─── Campaign Card ────────────────────────────────────────────────────────────
-function CampaignCard({ item, onEdit, onDelete }) {
-  const pct      = item.budget > 0 ? Math.min(100, Math.round((item.spent / item.budget) * 100)) : 0
-  const st       = statusStyle[item.status] || { bg: '#F3F4F6', color: '#6B7280' }
-  const imageUrl = img(item.image_url)
+// ─── Validation Status Banner ─────────────────────────────────────────────────
+function ValidationBanner({ validationStatus, rejectionNote, isDeletionPending }) {
+  if (isDeletionPending) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', color: '#991B1B', fontSize: '0.6875rem', fontWeight: 600 }}>
+        <span style={{ marginTop: 1, flexShrink: 0 }}><Trash2 size={10} /></span>
+        <span>Deletion request pending admin approval</span>
+      </div>
+    )
+  }
+  const badge = VALIDATION_BADGE[validationStatus] || VALIDATION_BADGE['pending_review']
+  const isRejected = validationStatus === 'Rejected'
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 8, background: badge.bg, color: badge.color, fontSize: '0.6875rem', fontWeight: 600 }}>
+      <span style={{ marginTop: 1, flexShrink: 0 }}>{badge.icon}</span>
+      <div style={{ minWidth: 0 }}>
+        <span>Admin review: {badge.label}</span>
+        {isRejected && rejectionNote && (
+          <p style={{ margin: '3px 0 0', fontWeight: 400, color: '#B91C1C', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{rejectionNote}</p>
+        )}
+      </div>
+    </div>
+  )
+}
 
+// ─── Storefront Visibility Badge ──────────────────────────────────────────────
+function StorefrontBadge({ isActive }) {
+  const badge = IS_ACTIVE_BADGE[String(isActive)] || IS_ACTIVE_BADGE['false']
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8, background: badge.bg, color: badge.color, fontSize: '0.6875rem', fontWeight: 600 }}>
+      {badge.icon}
+      {badge.label}
+    </div>
+  )
+}
+
+// ─── Campaign Card ────────────────────────────────────────────────────────────
+function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) {
+  const pct           = item.budget > 0 ? Math.min(100, Math.round((item.spent / item.budget) * 100)) : 0
+  const st            = statusStyle[item.status] || { bg: '#F3F4F6', color: '#6B7280' }
+  const imageUrl      = img(item.image_url)
   const usagePct      = item.usage_max > 0 ? Math.min(100, Math.round((item.usage_current / item.usage_max) * 100)) : null
   const discountLabel = fmtDiscount(item.discount, item.discount_type)
 
+  const valStatus        = validationInfo?.status ?? 'Approved'
+  const isPending        = valStatus === 'Pending'
+  const isRejected       = valStatus === 'Rejected'
+  const isDeletionPending = deletionInfo?.status === 'Pending'
+
+  // Disable both edit and delete while either a review or deletion is pending
+  const isLocked = isPending || isDeletionPending
+
   return (
     <div
-      style={{ background: '#fff', borderRadius: 16, border: '1px solid #F0F0F5', boxShadow: '0 1px 6px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.2s', overflow: 'hidden' }}
+      style={{ background: '#fff', borderRadius: 16, border: `1px solid ${isDeletionPending ? '#FECACA' : isPending ? '#FDE68A' : isRejected ? '#FECACA' : '#F0F0F5'}`, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.2s', overflow: 'hidden' }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.04)'}
     >
-      {/* Banner image */}
       {imageUrl && (
         <div style={{ position: 'relative', width: '100%', height: 160, flexShrink: 0 }}>
-          <img src={imageUrl} alt={item.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            onError={e => { e.currentTarget.parentElement.style.display = 'none' }} />
-          <span style={{ position: 'absolute', top: 10, right: 10, padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color, boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>
-            {item.status}
-          </span>
+          <img src={imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.currentTarget.parentElement.style.display = 'none' }} />
+          <span style={{ position: 'absolute', top: 10, right: 10, padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color, boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>{item.status}</span>
           {discountLabel && (
             <span style={{ position: 'absolute', top: 10, left: 10, padding: '4px 10px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: '#FEF9C3', color: '#B45309', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }}>
               <Tag size={10} /> {discountLabel}
@@ -915,24 +781,15 @@ function CampaignCard({ item, onEdit, onDelete }) {
       )}
 
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Title row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {item.name}
-            </p>
-            {item.title && (
-              <p style={{ fontSize: '0.8rem', color: PURPLE, fontWeight: 500, marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {item.title}
-              </p>
-            )}
+            <p style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+            {item.title && <p style={{ fontSize: '0.8rem', color: PURPLE, fontWeight: 500, marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</p>}
             <ChannelBadges channel={item.channel} />
           </div>
           {!imageUrl && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, marginLeft: 10 }}>
-              <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color }}>
-                {item.status}
-              </span>
+              <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color }}>{item.status}</span>
               {discountLabel && (
                 <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: '#FEF9C3', color: '#B45309', display: 'flex', alignItems: 'center', gap: 3 }}>
                   <Tag size={9} /> {discountLabel}
@@ -942,23 +799,25 @@ function CampaignCard({ item, onEdit, onDelete }) {
           )}
         </div>
 
-        {/* Coupon code badge */}
+        <StorefrontBadge isActive={item.is_active} />
+
+        {/* Show deletion pending banner first if applicable, otherwise show normal validation banner */}
+        {(validationInfo || isDeletionPending) && (
+          <ValidationBanner
+            validationStatus={validationInfo?.status}
+            rejectionNote={validationInfo?.rejection_note}
+            isDeletionPending={isDeletionPending}
+          />
+        )}
+
         {item.code && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px', borderRadius: 6,
-              background: '#F5F3FF', color: PURPLE,
-              fontSize: '0.75rem', fontWeight: 700,
-              fontFamily: 'monospace', letterSpacing: '0.08em',
-              border: `1px dashed ${PURPLE}`,
-            }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: '#F5F3FF', color: PURPLE, fontSize: '0.75rem', fontWeight: 700, fontFamily: 'monospace', letterSpacing: '0.08em', border: `1px dashed ${PURPLE}` }}>
               <Hash size={10} /> {item.code}
             </span>
           </div>
         )}
 
-        {/* Metrics grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
           {[
             { label: 'Budget',      value: `${Number(item.budget).toLocaleString()} DA` },
@@ -973,7 +832,6 @@ function CampaignCard({ item, onEdit, onDelete }) {
           ))}
         </div>
 
-        {/* Budget progress */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: '0.6875rem', color: '#9CA3AF' }}>Budget Used</span>
@@ -984,45 +842,42 @@ function CampaignCard({ item, onEdit, onDelete }) {
           </div>
         </div>
 
-        {/* Redemption progress */}
         {usagePct !== null && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: '0.6875rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Users size={10} /> Redemptions
-              </span>
-              <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#374151' }}>
-                {item.usage_current} / {item.usage_max}
-              </span>
+              <span style={{ fontSize: '0.6875rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}><Users size={10} /> Redemptions</span>
+              <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#374151' }}>{item.usage_current} / {item.usage_max}</span>
             </div>
             <div style={{ height: 5, borderRadius: 99, background: '#F0F0F5', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', width: `${usagePct}%`,
-                background: usagePct >= 90 ? '#EF4444' : usagePct >= 60 ? '#F59E0B' : '#10B981',
-                borderRadius: 99, transition: 'width 0.5s ease',
-              }} />
+              <div style={{ height: '100%', width: `${usagePct}%`, background: usagePct >= 90 ? '#EF4444' : usagePct >= 60 ? '#F59E0B' : '#10B981', borderRadius: 99, transition: 'width 0.5s ease' }} />
             </div>
           </div>
         )}
 
-        {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid #F3F4F6' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#9CA3AF' }}>
             <Calendar size={12} />
             <span>{item.start_date?.slice(0, 10) || '—'} → {item.end_date?.slice(0, 10) || '—'}</span>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
-            {[
-              { icon: <Pencil size={14} />, color: '#F59E0B', hover: '#FFFBEB', action: () => onEdit(item) },
-              { icon: <Trash2 size={14} />, color: '#EF4444', hover: '#FEF2F2', action: () => onDelete(item) },
-            ].map((btn, i) => (
-              <button key={i} onClick={btn.action}
-                style={{ padding: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: btn.color, borderRadius: 8, display: 'flex', alignItems: 'center' }}
-                onMouseEnter={e => e.currentTarget.style.background = btn.hover}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                {btn.icon}
-              </button>
-            ))}
+            <button
+              onClick={() => !isLocked && onEdit(item)}
+              title={isPending ? 'Cannot edit while awaiting admin review' : isDeletionPending ? 'Cannot edit while deletion is pending' : 'Edit campaign'}
+              style={{ padding: 6, border: 'none', background: 'transparent', cursor: isLocked ? 'not-allowed' : 'pointer', color: isLocked ? '#D1D5DB' : '#F59E0B', borderRadius: 8, display: 'flex', alignItems: 'center', opacity: isLocked ? 0.5 : 1 }}
+              onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = '#FFFBEB' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => !isDeletionPending && onDelete(item)}
+              title={isDeletionPending ? 'Deletion already pending admin approval' : 'Request deletion'}
+              style={{ padding: 6, border: 'none', background: 'transparent', cursor: isDeletionPending ? 'not-allowed' : 'pointer', color: isDeletionPending ? '#D1D5DB' : '#EF4444', borderRadius: 8, display: 'flex', alignItems: 'center', opacity: isDeletionPending ? 0.5 : 1 }}
+              onMouseEnter={e => { if (!isDeletionPending) e.currentTarget.style.background = '#FEF2F2' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <Trash2 size={14} />
+            </button>
           </div>
         </div>
       </div>
@@ -1032,19 +887,60 @@ function CampaignCard({ item, onEdit, onDelete }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CampaignsPage() {
-  const [items,        setItems]        = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [openBar,      setOpenBar]      = useState(window.innerWidth >= 600)
-  const [showCreate,   setShowCreate]   = useState(false)
-  const [editTarget,   setEditTarget]   = useState(null)
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting,     setDeleting]     = useState(false)
+  const [items,          setItems]          = useState([])
+  const [validationMap,  setValidationMap]  = useState({})  // campaign_id → normal validation row
+  const [deletionMap,    setDeletionMap]    = useState({})  // campaign_id → deletion request row
+  const [loading,        setLoading]        = useState(true)
+  const [openBar,        setOpenBar]        = useState(window.innerWidth >= 600)
+  const [showCreate,     setShowCreate]     = useState(false)
+  const [editTarget,     setEditTarget]     = useState(null)
+  const [deleteTarget,   setDeleteTarget]   = useState(null)
+  const [deleting,       setDeleting]       = useState(false)
 
   useEffect(() => {
-    api.get('/api/campaigns/')
-      .then(r => setItems(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    const load = async () => {
+      try {
+        const [campaignsRes, validationRes] = await Promise.all([
+          api.get('/api/campaigns/'),
+          api.get('/api/validation/', { params: { item_type: 'Campaigns', limit: 500 } }),
+        ])
+
+        // Also fetch deletion requests separately
+        const deletionRes = await api.get('/api/validation/', {
+          params: { item_type: 'Campaigns_Delete', limit: 500 }
+        })
+
+        setItems(campaignsRes.data)
+
+        // Build normal validation map (Campaigns type only)
+        const vMap = {}
+        const rows = validationRes.data || []
+        const sorted = [...rows].sort((a, b) => {
+          if (a.status === 'Pending') return 1
+          if (b.status === 'Pending') return -1
+          return 0
+        })
+        for (const row of sorted) {
+          vMap[row.item_id] = row
+        }
+        setValidationMap(vMap)
+
+        // Build deletion map — only care about Pending ones
+        const dMap = {}
+        for (const row of (deletionRes.data || [])) {
+          if (row.status === 'Pending') {
+            dMap[row.item_id] = row
+          }
+        }
+        setDeletionMap(dMap)
+
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   const handleSaved = (saved, isEdit) => {
@@ -1053,6 +949,10 @@ export default function CampaignsPage() {
       const without = prev.filter(i => i.id !== saved.id)
       return [saved, ...without]
     })
+    setValidationMap(prev => ({
+      ...prev,
+      [saved.id]: { status: 'Pending', rejection_note: null, item_id: saved.id },
+    }))
   }
 
   const handleConfirmDelete = async () => {
@@ -1060,10 +960,19 @@ export default function CampaignsPage() {
     setDeleting(true)
     try {
       await api.delete(`/api/campaigns/${deleteTarget.id}`)
-      setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
+      // Don't remove from items list — campaign still exists, just awaiting admin deletion approval
+      // Mark it as deletion pending in the UI
+      setDeletionMap(prev => ({
+        ...prev,
+        [deleteTarget.id]: { status: 'Pending', item_id: deleteTarget.id },
+      }))
       setDeleteTarget(null)
-    } catch (err) { console.error(err) }
-    finally { setDeleting(false) }
+    } catch (err) {
+      const msg = err?.response?.data?.detail || 'Failed to submit deletion request.'
+      alert(msg)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -1073,7 +982,12 @@ export default function CampaignsPage() {
         <Header concept="Campaigns" onToggleSidebar={() => setOpenBar(p => !p)} />
         <main style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-            <p style={{ fontSize: '0.875rem', color: '#9CA3AF' }}>Track and manage marketing campaigns</p>
+            <div>
+              <p style={{ fontSize: '0.875rem', color: '#9CA3AF', margin: 0 }}>Track and manage marketing campaigns</p>
+              <p style={{ fontSize: '0.75rem', color: '#D1D5DB', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Clock size={11} /> New campaigns and edits require admin approval to appear on the storefront
+              </p>
+            </div>
             <button onClick={() => setShowCreate(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 7, background: PURPLE, color: '#fff', padding: '10px 20px', borderRadius: 12, border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(91,71,224,0.3)' }}
               onMouseEnter={e => e.currentTarget.style.background = '#4a38cc'}
@@ -1093,7 +1007,16 @@ export default function CampaignsPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-              {items.map(item => <CampaignCard key={item.id} item={item} onEdit={setEditTarget} onDelete={setDeleteTarget} />)}
+              {items.map(item => (
+                <CampaignCard
+                  key={item.id}
+                  item={item}
+                  validationInfo={validationMap[item.id] ?? null}
+                  deletionInfo={deletionMap[item.id] ?? null}
+                  onEdit={setEditTarget}
+                  onDelete={setDeleteTarget}
+                />
+              ))}
             </div>
           )}
         </main>
