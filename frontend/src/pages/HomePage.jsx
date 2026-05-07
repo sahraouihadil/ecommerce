@@ -429,6 +429,31 @@ export function HomePage() {
               <div className="hero-cta">
                 <Button as="a" href="#shop" variant="black" size="lg">START SHOPPING</Button>
               </div>
+
+              <button
+  onClick={() => {
+    const token = localStorage.getItem('token')
+    if (!token) navigate('/login', { state: { message: 'Sign in to personalize your furniture' } })
+    else navigate('/furniture/customize')
+  }}
+  style={{
+    marginTop: '1rem',
+    display: 'inline-flex', alignItems: 'center', gap: '0.6rem',
+    padding: '1rem 2.25rem',
+    fontFamily: 'sans-serif', fontSize: '0.625rem', letterSpacing: '0.28em',
+    textTransform: 'uppercase', fontWeight: 600,
+    color: '#1C1916',
+    background: 'transparent',
+    border: '1.5px solid #1C1916',
+    borderRadius: '2rem',
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+  }}
+  onMouseEnter={e => { e.currentTarget.style.background = '#1C1916'; e.currentTarget.style.color = '#F5F0E8' }}
+  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#1C1916' }}
+>
+  ✦ Personalize Your Furniture
+</button>
             </div>
 
             <div className="hero-img order-2 relative flex justify-center lg:justify-end">

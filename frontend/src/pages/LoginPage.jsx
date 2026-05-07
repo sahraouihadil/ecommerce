@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { login, isAuthenticated } from "../services/auth";
 import api from "../services/api";
-
 // ─── Global keyframes ──────────────────────────────────────────────────────────
 const KEYFRAMES = `
   @keyframes fadeUp       { from { opacity:0; transform:translateY(22px);    } to { opacity:1; transform:none;           } }
@@ -346,6 +345,8 @@ export function LoginPage() {
   const [showForgot, setShowForgot]       = useState(false);
   const [mounted, setMounted]             = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const message = location.state?.message;
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -436,6 +437,17 @@ export function LoginPage() {
         </div>
 
         <GoldRule delay={320} />
+          {message && (
+  <div style={{
+    background: 'rgba(200,169,106,0.1)', border: '1px solid rgba(200,169,106,0.4)',
+    borderRadius: '12px', padding: '0.75rem 1.25rem', marginBottom: '1rem',
+    fontFamily: 'sans-serif', fontSize: '0.62rem', letterSpacing: '0.12em',
+    color: '#9A7D4A', textAlign: 'center',
+    animation: 'fadeUp 0.5s ease both',
+  }}>
+    ✦ {message}
+  </div>
+)}
 
         {/* Form — each field staggered */}
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>

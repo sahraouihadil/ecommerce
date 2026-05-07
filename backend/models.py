@@ -124,6 +124,7 @@ class CartItems(Base):
     user_id    = Column(Integer, ForeignKey("users.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity   = Column(Integer, default=1)
+    custom_order = Column(Text, nullable=True)
 
 
 class Favorites(Base):

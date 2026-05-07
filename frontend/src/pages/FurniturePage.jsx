@@ -475,6 +475,38 @@ export function FurniturePage() {
         )}
       </div>
 
+<<<<<<< HEAD
+=======
+      {/* Personalize button */}
+<Appear delay={650} animation="fadeUp" duration={0.8} style={{ display: 'flex', justifyContent: 'center' }}>
+  <button
+    onClick={() => navigate('/furniture/customize')}
+    style={{
+      marginTop: '2.5rem',
+      display: 'inline-flex', alignItems: 'center', gap: '0.75rem',
+      padding: '1rem 2.5rem',
+      fontFamily: 'sans-serif', fontSize: '0.625rem', letterSpacing: '0.3em',
+      textTransform: 'uppercase', fontWeight: 600,
+      color: '#F5F0E8',
+      background: 'linear-gradient(135deg, #C8A96A 0%, #9A7D4A 100%)',
+      border: 'none',
+      borderRadius: '3px',
+      cursor: 'pointer',
+      boxShadow: '0 8px 32px rgba(200,169,106,0.35)',
+      transition: 'all 0.3s ease',
+      position: 'relative',
+    }}
+    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(200,169,106,0.5)' }}
+    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(200,169,106,0.35)' }}
+  >
+    <span style={{ fontSize: '0.75rem' }}>✦</span>
+    Personalize Your Furniture
+    <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>→</span>
+  </button>
+</Appear>
+
+      {/* ── Gold divider (draws in) ── */}
+>>>>>>> b4b9f20 (new feature: furniture personalizer with 3D configurator, door animation, cart integration)
       <Appear delay={620} animation="fadeIn" duration={0.6} style={{ padding: '0 clamp(1.5rem,6vw,6rem)' }}>
         <GoldRule />
       </Appear>

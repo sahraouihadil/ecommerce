@@ -52,6 +52,9 @@ import DlvProfilePage from './dashboards/deliveryman/DlvProfilePage'
 import DlvHistoryPage from './dashboards/deliveryman/DlvHistoryPage'
 import ProblemsPage from './dashboards/stockmanager/ProblemsPage'
 
+import FurnitureConfigPage from './pages/FurnitureConfigPage' 
+
+
 // ===================== AUTH GUARDS =====================
 
 const ProtectedRoute = ({ children }) => {
@@ -94,7 +97,7 @@ function CustomerChat() {
 
 function CustomerLayout() {
   const location = useLocation();
-  const isDash = location.pathname.includes('-dash');
+  const isDash = location.pathname.includes('-dash') || location.pathname === '/furniture/customize';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -117,9 +120,10 @@ function App() {
         <Routes>
           <Route element={<CustomerLayout />}>
 
-            {/* ===== PUBLIC ROUTES ===== */}
+           {/* ===== PUBLIC ROUTES ===== */}
             <Route index element={<HomePage />} />
             <Route path='/furniture' element={<FurniturePage />} />
+            <Route path='/furniture/customize' element={<FurnitureConfigPage />} />   
             <Route path='/journal' element={<JournalPage />} />
             <Route path='/search' element={<SearchPage />} />
             <Route path='/product/:productId' element={<ProductPage />} />
@@ -132,6 +136,7 @@ function App() {
             <Route path='/privacy' element={<PrivacyPolicy />} />
             <Route path='/terms' element={<TermsOfService />} />
             <Route path='/faq' element={<FAQPage />} />
+            
 
             {/* ===== PROTECTED USER ROUTES ===== */}
             <Route path='/cart' element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
@@ -183,8 +188,7 @@ function App() {
               <Route path='schedule' element={<SchedulePage />} />
               <Route path='history' element={<DlvHistoryPage />} />
               <Route path='profile' element={<DlvProfilePage />} />
-            </Route>
-
+            </Route>         
           </Route>
         </Routes>
       </AuthProvider>
