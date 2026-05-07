@@ -475,8 +475,6 @@ export function FurniturePage() {
         )}
       </div>
 
-<<<<<<< HEAD
-=======
       {/* Personalize button */}
 <Appear delay={650} animation="fadeUp" duration={0.8} style={{ display: 'flex', justifyContent: 'center' }}>
   <button
@@ -506,7 +504,6 @@ export function FurniturePage() {
 </Appear>
 
       {/* ── Gold divider (draws in) ── */}
->>>>>>> b4b9f20 (new feature: furniture personalizer with 3D configurator, door animation, cart integration)
       <Appear delay={620} animation="fadeIn" duration={0.6} style={{ padding: '0 clamp(1.5rem,6vw,6rem)' }}>
         <GoldRule />
       </Appear>
