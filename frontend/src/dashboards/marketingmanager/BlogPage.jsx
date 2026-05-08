@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Eye, Pencil, Trash2, Plus, User, Calendar, LayoutDashboard,
-         Megaphone, BadgePercent, Mail, FileText, X, Loader2 } from 'lucide-react'
+         Megaphone, BadgePercent, Mail, FileText, X, Loader2, Clock } from 'lucide-react'
 import api from '../../services/api'
 import Sidebar from '../ui/Sidebar'
 import Header from '../ui/Header'
@@ -13,6 +13,7 @@ const statusStyle = {
   published: 'bg-green-100 text-green-600',
   draft:     'bg-yellow-100 text-yellow-700',
   scheduled: 'bg-blue-100 text-blue-600',
+  pending:   'bg-purple-100 text-purple-600',   // ← validation pending
 }
 const categoryStyle = {
   AR:         'bg-violet-50 text-violet-600',
@@ -41,11 +42,43 @@ function Field({ label, children }) {
 const inputCls = `w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800
   focus:outline-none focus:ring-2 focus:ring-[#5B47E0]/30 focus:border-[#5B47E0] transition`
 
+// ── Pending-validation banner ────────────────────────────────────────────────
+
+function PendingBanner({ onClose }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: '14px 18px', borderRadius: 14,
+      background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)',
+      border: '1.5px solid #c4b5fd',
+    }}>
+      <Clock size={18} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 1 }} />
+      <div style={{ flex: 1 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#5b21b6' }}>
+          Blog submitted for admin review
+        </p>
+        <p style={{ margin: '3px 0 0', fontSize: 12, color: '#7c3aed', lineHeight: 1.5 }}>
+          Your post has been saved as <strong>draft</strong> and is pending validation.
+          It will go live on the Journal page once an admin approves it.
+        </p>
+      </div>
+      {onClose && (
+        <button
+          onClick={onClose}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a78bfa', padding: 2 }}
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Blog modal (create / edit) ───────────────────────────────────────────────
 
 function BlogModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial?.id
-  const [form, setForm]       = useState(initial ? {
+  const [form, setForm]     = useState(initial ? {
     title:    initial.title    ?? '',
     excerpt:  initial.excerpt  ?? '',
     category: initial.category ?? 'AR',
@@ -55,8 +88,8 @@ function BlogModal({ initial, onClose, onSaved }) {
     tag:      initial.tag      ?? '',
     content:  initial.body     ?? '',   // backend returns "body" mapped from "content"
   } : EMPTY_FORM)
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
@@ -89,7 +122,6 @@ function BlogModal({ initial, onClose, onSaved }) {
     }
   }
 
-  // Close on backdrop click
   const handleBackdrop = (e) => { if (e.target === e.currentTarget) onClose() }
 
   return (
@@ -107,7 +139,9 @@ function BlogModal({ initial, onClose, onSaved }) {
               {isEdit ? 'Edit Blog Post' : 'New Blog Post'}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {isEdit ? 'Update the fields below and save.' : 'Fill in the details to publish a new post.'}
+              {isEdit
+                ? 'Update the fields below and save.'
+                : 'Fill in the details — your post will be sent for admin review before going live.'}
             </p>
           </div>
           <button
@@ -120,6 +154,20 @@ function BlogModal({ initial, onClose, onSaved }) {
 
         {/* Body */}
         <div className="overflow-y-auto px-6 py-5 flex flex-col gap-4">
+
+          {/* Validation notice for new posts */}
+          {!isEdit && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '11px 14px', borderRadius: 12,
+              background: '#f5f3ff', border: '1px solid #ddd6fe',
+            }}>
+              <Clock size={14} style={{ color: '#7c3aed', flexShrink: 0 }} />
+              <p style={{ margin: 0, fontSize: 12, color: '#6d28d9', fontWeight: 600 }}>
+                New posts require admin approval before being published on the Journal.
+              </p>
+            </div>
+          )}
 
           <Field label="Title *">
             <input
@@ -155,11 +203,18 @@ function BlogModal({ initial, onClose, onSaved }) {
                 {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="Status">
-              <select className={inputCls} value={form.status} onChange={set('status')}>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
-            </Field>
+            {/* Status selector only shown in edit mode — new posts are always draft */}
+            {isEdit && (
+              <Field label="Status">
+                <select className={inputCls} value={form.status} onChange={set('status')}>
+                  {STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
           </div>
 
           <Field label="Image URL">
@@ -219,7 +274,11 @@ function BlogModal({ initial, onClose, onSaved }) {
             style={{ background: GOLD }}
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
-            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Publish Post'}
+            {saving
+              ? 'Saving…'
+              : isEdit
+                ? 'Save Changes'
+                : 'Submit for Review'}
           </button>
         </div>
       </div>
@@ -241,7 +300,8 @@ function DeleteModal({ item, onClose, onConfirm, deleting }) {
         <div className="flex flex-col gap-1.5">
           <h2 className="text-base font-bold text-gray-800">Delete Blog Post</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Are you sure you want to delete <span className="font-semibold text-gray-700">"{item.title}"</span>?
+            Are you sure you want to delete{' '}
+            <span className="font-semibold text-gray-700">"{item.title}"</span>?
             This action cannot be undone.
           </p>
         </div>
@@ -268,13 +328,22 @@ function DeleteModal({ item, onClose, onConfirm, deleting }) {
 
 // ── Blog card ────────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, validationPending }) {
+  // Override badge if this post is waiting for admin review
+  if (validationPending) {
+    return (
+      <span className="px-3 py-1 text-xs rounded-full font-medium bg-purple-100 text-purple-600 flex items-center gap-1">
+        <Clock size={10} /> Pending review
+      </span>
+    )
+  }
   return (
     <span className={`px-3 py-1 text-xs rounded-full font-medium ${statusStyle[status] || 'bg-gray-100 text-gray-500'}`}>
       {status}
     </span>
   )
 }
+
 function CategoryBadge({ category }) {
   return (
     <span className={`px-2.5 py-1 text-xs rounded-full font-medium ${categoryStyle[category] || 'bg-gray-100 text-gray-500'}`}>
@@ -284,9 +353,16 @@ function CategoryBadge({ category }) {
 }
 
 function BlogCard({ item, onEdit, onDelete }) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-3 hover:shadow-md transition-shadow overflow-hidden">
+  // A post is "pending review" if it is still a draft and has validation_status=pending
+  // (set by the backend on create) OR if its status field is 'draft' and it was
+  // just submitted.  We store validation_status on the item object after create.
+  const pendingReview = item.validation_status === 'pending' || item._pendingValidation
 
+  return (
+    <div
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-3 hover:shadow-md transition-shadow overflow-hidden"
+      style={pendingReview ? { borderColor: '#c4b5fd', boxShadow: '0 0 0 2px #ede9fe' } : {}}
+    >
       {/* Cover image */}
       {item.image && (
         <img
@@ -297,10 +373,25 @@ function BlogCard({ item, onEdit, onDelete }) {
         />
       )}
 
+      {/* Pending-review top ribbon */}
+      {pendingReview && (
+        <div style={{
+          margin: item.image ? '-8px 0 0' : '0',
+          padding: '7px 16px',
+          background: 'linear-gradient(90deg,#7c3aed,#a78bfa)',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <Clock size={12} style={{ color: '#fff' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '.04em' }}>
+            Awaiting admin approval
+          </span>
+        </div>
+      )}
+
       <div className="p-5 flex flex-col gap-3 flex-1">
         <div className="flex justify-between items-center">
           <CategoryBadge category={item.category} />
-          <StatusBadge status={item.status} />
+          <StatusBadge status={item.status} validationPending={pendingReview} />
         </div>
 
         <div className="flex-1">
@@ -341,22 +432,25 @@ function BlogCard({ item, onEdit, onDelete }) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-  const marketingmanagerLinks = [
-    { to: "/marketing-manager-dash",             label: "Dashboard",     icon: <LayoutDashboard size={18} />, end: true },
-    { to: "/marketing-manager-dash/campaigns",   label: "Campaigns",     icon: <Megaphone size={18} /> },
-    { to: "/marketing-manager-dash/newsletters", label: "Newsletters",   icon: <Mail size={18} /> },
-    { to: "/marketing-manager-dash/blogs",       label: "Blogs",         icon: <FileText size={18} /> },
-  ]
+const marketingmanagerLinks = [
+  { to: "/marketing-manager-dash",             label: "Dashboard",   icon: <LayoutDashboard size={18} />, end: true },
+  { to: "/marketing-manager-dash/campaigns",   label: "Campaigns",   icon: <Megaphone size={18} /> },
+  { to: "/marketing-manager-dash/newsletters", label: "Newsletters", icon: <Mail size={18} /> },
+  { to: "/marketing-manager-dash/blogs",       label: "Blogs",       icon: <FileText size={18} /> },
+]
 
 export default function BlogsPage() {
   const [items,    setItems]    = useState([])
   const [loading,  setLoading]  = useState(true)
   const [openBar,  setOpenBar]  = useState(window.innerWidth >= 600)
 
+  // Banner shown after a new post is submitted for review
+  const [showPendingBanner, setShowPendingBanner] = useState(false)
+
   // Modal state
-  const [editTarget,   setEditTarget]   = useState(null)   // item being edited (null = create mode)
+  const [editTarget,   setEditTarget]   = useState(null)
   const [showCreate,   setShowCreate]   = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState(null)   // item pending deletion
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting,     setDeleting]     = useState(false)
 
   useEffect(() => {
@@ -366,12 +460,15 @@ export default function BlogsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Called when modal saves successfully
+  // Called when a modal saves successfully
   const handleSaved = (saved, isEdit) => {
     if (isEdit) {
       setItems(prev => prev.map(i => i.id === saved.id ? saved : i))
     } else {
-      setItems(prev => [saved, ...prev])
+      // New post: mark it as pending in local state and show the banner
+      const newItem = { ...saved, _pendingValidation: true }
+      setItems(prev => [newItem, ...prev])
+      setShowPendingBanner(true)
     }
   }
 
@@ -392,14 +489,14 @@ export default function BlogsPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F6FB' }}>
       <Sidebar
-            openBar={openBar}
-            setOpenBar={setOpenBar}
-            links={marketingmanagerLinks}
-            title="MarketingCore"
-            subtitle="Enterprise Suite"
-            role="Marketing Manager"
-            profilePath="/marketing-manager-dash/profile"
-          />
+        openBar={openBar}
+        setOpenBar={setOpenBar}
+        links={marketingmanagerLinks}
+        title="MarketingCore"
+        subtitle="Enterprise Suite"
+        role="Marketing Manager"
+        profilePath="/marketing-manager-dash/profile"
+      />
 
       <main style={{ flex: 1, overflowY: 'auto' }}>
         <Header concept="Blog Posts" setOpenBar={setOpenBar} openBar={openBar} />
@@ -408,7 +505,9 @@ export default function BlogsPage() {
 
           {/* Top bar */}
           <div className="flex justify-between items-start">
-            <p className="text-sm text-gray-400 mt-0.5">Create and manage marketing blog content</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Create and manage marketing blog content — new posts require admin approval.
+            </p>
             <button
               onClick={() => setShowCreate(true)}
               className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition shadow-sm"
@@ -418,6 +517,11 @@ export default function BlogsPage() {
             </button>
           </div>
 
+          {/* Pending validation banner */}
+          {showPendingBanner && (
+            <PendingBanner onClose={() => setShowPendingBanner(false)} />
+          )}
+
           {/* Grid */}
           {loading ? (
             <div className="flex justify-center py-12">
@@ -426,7 +530,9 @@ export default function BlogsPage() {
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3 text-gray-400">
               <FileText size={40} className="opacity-30" />
-              <p className="text-sm">No blog posts yet. Click <strong>New Post</strong> to get started.</p>
+              <p className="text-sm">
+                No blog posts yet. Click <strong>New Post</strong> to get started.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

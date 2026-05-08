@@ -11,7 +11,7 @@ from models import ValidationRequest
 from schema import ValidationSubmit
 
 
-VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Blogs", "Campaigns_Delete"}
+VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Blogs", "Campaigns_Delete", "Products_Delete"}
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -57,8 +57,6 @@ def upsert_for_validation(
     if payload.item_type not in VALID_TYPES:
         raise ValueError(f"item_type must be one of: {', '.join(sorted(VALID_TYPES))}")
 
-    # Expire all cached objects so we get a fresh read from the DB,
-    # avoiding stale-cache misses that caused the "existing not found" bug.
     db.expire_all()
 
     existing = (
@@ -67,8 +65,6 @@ def upsert_for_validation(
             ValidationRequest.item_type == payload.item_type,
             ValidationRequest.item_id   == payload.item_id,
         )
-        # Order by primary key (always reliable) instead of submitted_at,
-        # which can be NULL and sorts differently across database engines.
         .order_by(ValidationRequest.id.desc())
         .first()
     )
@@ -85,7 +81,6 @@ def upsert_for_validation(
         db.refresh(existing)
         return existing
 
-    # No row found at all — first-ever submission for this item.
     request = ValidationRequest(
         item_type    = payload.item_type,
         item_id      = payload.item_id,
@@ -178,8 +173,9 @@ def approve(
 ) -> Union[ValidationRequest, dict]:
     """
     Approve a validation request.
-    For Campaigns_Delete: deletes the campaign and all its validation rows,
+    For Products_Delete: deletes the product and its validation rows,
     then returns a plain snapshot dict (since the DB row is gone).
+    For Campaigns_Delete: same pattern.
     For all other types: returns the updated ValidationRequest ORM object.
     """
     req = get_by_id(db, request_id)
@@ -194,8 +190,8 @@ def approve(
     db.commit()
     db.refresh(req)
 
-    # For Campaigns_Delete, snapshot the data BEFORE _activate_item wipes the rows
-    if req.item_type == "Campaigns_Delete":
+    # Snapshot BEFORE _activate_item may delete rows
+    if req.item_type in ("Campaigns_Delete", "Products_Delete"):
         snapshot = {
             "id":             req.id,
             "item_type":      req.item_type,
@@ -211,7 +207,7 @@ def approve(
             "reviewer":       None,
         }
         _activate_item(db, req.item_type, req.item_id)
-        return snapshot  # ← plain dict, never touches deleted ORM object again
+        return snapshot
 
     _activate_item(db, req.item_type, req.item_id)
     return req
@@ -288,6 +284,32 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
         db.commit()
         return
 
+    if item_type == "Products_Delete":
+        import os
+        from models import CartItems, OrderItems, ProductImage, ProductColor
+
+        item = db.query(Products).filter(Products.id == item_id).first()
+        if item:
+            # Guard: don't delete if referenced in cart or orders
+            in_cart  = db.query(CartItems).filter(CartItems.product_id   == item_id).first()
+            in_order = db.query(OrderItems).filter(OrderItems.product_id == item_id).first()
+            if not in_cart and not in_order:
+                # Remove image files from disk
+                for img in item.images:
+                    path = img.image_url.lstrip("/")
+                    if os.path.isfile(path):
+                        os.remove(path)
+                db.delete(item)
+                db.commit()
+
+        # Remove ALL Products / Products_Delete validation rows for this product
+        db.query(ValidationRequest).filter(
+            ValidationRequest.item_id.in_([item_id]),
+            ValidationRequest.item_type.in_(["Products", "Products_Delete"]),
+        ).delete(synchronize_session=False)
+        db.commit()
+        return
+
     if item_type == "Blogs":
         item = db.query(Blogs).filter(Blogs.id == item_id).first()
         if item:
@@ -331,6 +353,10 @@ def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
 
     if item_type == "Campaigns_Delete":
         # Rejected deletion — campaign stays, nothing to do
+        return
+
+    if item_type == "Products_Delete":
+        # Rejected deletion — product stays, nothing to do
         return
 
     if item_type == "Blogs":
