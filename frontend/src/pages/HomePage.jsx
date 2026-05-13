@@ -9,6 +9,15 @@ const steps = [
   { num: '03', title: 'Ask Roomie', desc: 'Get AI-powered styling advice, color matching, and layout recommendations.' },
 ];
 
+// ── Cycling hero headlines ───────────────────────────────────────────────────
+const HERO_LINES = [
+  { line1: 'Seeing is', line2: 'Believing' },
+  { line1: 'Your Room,', line2: 'Reimagined' },
+  { line1: 'Style Meets', line2: 'Space' },
+  { line1: 'Try Before', line2: 'You Buy' },
+  { line1: 'Design', line2: 'Without Doubt' },
+];
+
 const FONTS = `
   @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap');
   .font-cinzel    { font-family: 'Cinzel Decorative', serif !important; }
@@ -23,6 +32,30 @@ const FONTS = `
     from { opacity: 0; transform: translateX(40px); }
     to   { opacity: 1; transform: translateX(0); }
   }
+
+  /* ── Hero headline cycling animations ── */
+  @keyframes heroLineIn {
+    from { opacity: 0; transform: translateY(48px) skewY(2deg); }
+    to   { opacity: 1; transform: translateY(0)    skewY(0deg); }
+  }
+  @keyframes heroLineOut {
+    from { opacity: 1; transform: translateY(0)    skewY(0deg); }
+    to   { opacity: 0; transform: translateY(-40px) skewY(-1.5deg); }
+  }
+
+  .hero-line-enter {
+    animation: heroLineIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  .hero-line-enter-delay {
+    animation: heroLineIn 0.6s cubic-bezier(0.16,1,0.3,1) 0.08s both;
+  }
+  .hero-line-exit {
+    animation: heroLineOut 0.45s cubic-bezier(0.4,0,0.6,1) both;
+  }
+  .hero-line-exit-delay {
+    animation: heroLineOut 0.45s cubic-bezier(0.4,0,0.6,1) 0.06s both;
+  }
+
   .hero-eyebrow { animation: fadeUp       0.4s  cubic-bezier(0.16,1,0.3,1) 0.02s both; }
   .hero-title   { animation: fadeUp       0.45s cubic-bezier(0.16,1,0.3,1) 0.1s  both; }
   .hero-sub     { animation: fadeUp       0.45s cubic-bezier(0.16,1,0.3,1) 0.18s both; }
@@ -84,6 +117,63 @@ function useScrollReveal(deps = []) {
     return () => io.disconnect();
   }, deps);
   return ref;
+}
+
+// ── Cycling hero headline component ─────────────────────────────────────────
+function CyclingHeroTitle() {
+  const [current, setCurrent] = useState(0);
+  const [phase, setPhase] = useState('idle'); // 'idle' | 'exiting' | 'entering'
+  const [displayed, setDisplayed] = useState(0);
+
+  useEffect(() => {
+    // Each headline shows for 3.2 s, then fades out (0.5 s), swaps, fades in (0.65 s)
+    const interval = setInterval(() => {
+      // Start exit
+      setPhase('exiting');
+
+      setTimeout(() => {
+        // Swap text while invisible
+        setCurrent(prev => {
+          const next = (prev + 1) % HERO_LINES.length;
+          setDisplayed(next);
+          return next;
+        });
+        setPhase('entering');
+
+        setTimeout(() => {
+          setPhase('idle');
+        }, 650);
+      }, 500);
+    }, 3200);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const { line1, line2 } = HERO_LINES[displayed];
+
+  const line1Class =
+    phase === 'exiting' ? 'hero-line-exit'
+      : phase === 'entering' ? 'hero-line-enter'
+        : '';
+
+  const line2Class =
+    phase === 'exiting' ? 'hero-line-exit-delay'
+      : phase === 'entering' ? 'hero-line-enter-delay'
+        : '';
+
+  return (
+    <h1
+      className="hero-title font-cinzel font-bold leading-[0.95] tracking-tight mb-8"
+      style={{
+        fontSize: 'clamp(3rem,6vw,5.5rem)',
+        minHeight: '2em',          // prevent layout shift
+        overflow: 'hidden',
+      }}
+    >
+      <span key={`l1-${displayed}`} className={`block ${line1Class}`}>{line1}</span>
+      <span key={`l2-${displayed}`} className={`block ${line2Class}`}>{line2}</span>
+    </h1>
+  );
 }
 
 function getExitPopupKey() {
@@ -211,7 +301,6 @@ function CampaignsSection() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ✅ FIX: فعّل الـsr مباشرة بعد ما تجي الdata
   useEffect(() => {
     if (campaigns.length === 0) return;
     const container = ref.current;
@@ -348,7 +437,6 @@ export function HomePage() {
   const [subMsg, setSubMsg] = useState('');
   const [subLoading, setSubLoading] = useState(false);
 
-  // ✅ FIX: كلهم يستعملو products كـdeps
   const shopRef = useScrollReveal([products]);
   const videoRef = useScrollReveal([products]);
   const stepsRef = useScrollReveal([products]);
@@ -420,9 +508,10 @@ export function HomePage() {
               <p className="hero-eyebrow font-cormorant italic text-muted text-lg font-light uppercase tracking-[0.2em] mb-8">
                 AR-Powered Furniture Shopping
               </p>
-              <h1 className="hero-title font-cinzel text-[clamp(3rem,6vw,5.5rem)] font-bold leading-[0.95] tracking-tight mb-8">
-                Seeing is<br />Believing
-              </h1>
+
+              {/* ── Animated cycling headline ── */}
+              <CyclingHeroTitle />
+
               <p className="hero-sub font-cormorant italic text-muted text-xl font-light max-w-md mb-12 leading-relaxed">
                 Preview any piece of furniture in your actual room with AR before you buy. Plus AI styling help from Roomie.
               </p>
@@ -431,29 +520,29 @@ export function HomePage() {
               </div>
 
               <button
-  onClick={() => {
-    const token = localStorage.getItem('token')
-    if (!token) navigate('/login', { state: { message: 'Sign in to personalize your furniture' } })
-    else navigate('/furniture/customize')
-  }}
-  style={{
-    marginTop: '1rem',
-    display: 'inline-flex', alignItems: 'center', gap: '0.6rem',
-    padding: '1rem 2.25rem',
-    fontFamily: 'sans-serif', fontSize: '0.625rem', letterSpacing: '0.28em',
-    textTransform: 'uppercase', fontWeight: 600,
-    color: '#1C1916',
-    background: 'transparent',
-    border: '1.5px solid #1C1916',
-    borderRadius: '2rem',
-    cursor: 'pointer',
-    transition: 'all 0.25s ease',
-  }}
-  onMouseEnter={e => { e.currentTarget.style.background = '#1C1916'; e.currentTarget.style.color = '#F5F0E8' }}
-  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#1C1916' }}
->
-  ✦ Personalize Your Furniture
-</button>
+                onClick={() => {
+                  const token = localStorage.getItem('token');
+                  if (!token) navigate('/login', { state: { message: 'Sign in to personalize your furniture' } });
+                  else navigate('/furniture/customize');
+                }}
+                style={{
+                  marginTop: '1rem',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.6rem',
+                  padding: '1rem 2.25rem',
+                  fontFamily: 'sans-serif', fontSize: '0.625rem', letterSpacing: '0.28em',
+                  textTransform: 'uppercase', fontWeight: 600,
+                  color: '#1C1916',
+                  background: 'transparent',
+                  border: '1.5px solid #1C1916',
+                  borderRadius: '2rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.25s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#1C1916'; e.currentTarget.style.color = '#F5F0E8'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#1C1916'; }}
+              >
+                ✦ Personalize Your Furniture
+              </button>
             </div>
 
             <div className="hero-img order-2 relative flex justify-center lg:justify-end">
