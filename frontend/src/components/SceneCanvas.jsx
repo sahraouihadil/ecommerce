@@ -16,7 +16,13 @@ function SceneLighting() {
   return (
     <>
       <ambientLight intensity={0.8} />
-      <directionalLight position={[4, 8, 4]} intensity={1.2} castShadow shadow-mapSize={[2048, 2048]} />
+      <directionalLight
+  position={[4, 8, 4]}
+  intensity={1.2}
+  castShadow
+  shadow-mapSize-width={2048}
+  shadow-mapSize-height={2048}
+/>
       <directionalLight position={[-3, 4, -2]} intensity={0.4} />
     </>
   )

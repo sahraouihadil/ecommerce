@@ -54,6 +54,8 @@ origins = [
     "http://localhost:5173",
     "http://localhost:5174",
     "https://aroom.com",
+    "https://aroom-sigma.vercel.app",
+    "https://aroom-ydtd.onrender.com"
 ]
 
 app.add_middleware(

@@ -295,11 +295,14 @@ function CampaignsSection() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get('/api/campaigns/active')
-      .then(res => setCampaigns(res.data))
-      .catch(err => { setError(err.message); setCampaigns([]); })
-      .finally(() => setLoading(false));
-  }, []);
+  api.get('/api/campaigns/active')
+    .then(res => {
+      const data = res.data;
+      setCampaigns(Array.isArray(data) ? data : data.items ?? []);
+    })
+    .catch(err => { setError(err.message); setCampaigns([]); })
+    .finally(() => setLoading(false));
+}, []);
 
   useEffect(() => {
     if (campaigns.length === 0) return;
@@ -444,8 +447,11 @@ export function HomePage() {
   const newsletterRef = useScrollReveal([products]);
 
   useEffect(() => {
-    api.get("/api/products").then(res => setProducts(res.data)).catch(console.error);
-  }, []);
+  api.get("/api/products").then(res => {
+    const data = res.data;
+    setProducts(Array.isArray(data) ? data : data.items ?? data.products ?? []);
+  }).catch(console.error);
+}, []);
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
   const filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
