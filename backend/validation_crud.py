@@ -11,7 +11,10 @@ from models import ValidationRequest
 from schema import ValidationSubmit
 
 
-VALID_TYPES = {"Products", "AR", "3D", "Campaigns", "Blogs", "Campaigns_Delete", "Products_Delete"}
+VALID_TYPES = {
+    "Products", "AR", "3D", "Campaigns", "Blogs",
+    "Campaigns_Delete", "Products_Delete", "Blogs_Delete",   # ← added Blogs_Delete
+}
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -125,6 +128,41 @@ def submit_delete_request(
     return request
 
 
+def submit_blog_delete_request(
+    db:           Session,
+    blog_id:      int,
+    blog_title:   str,
+    submitted_by: Optional[int] = None,
+) -> ValidationRequest:
+    """
+    Submit a deletion request for a blog post.
+    Raises ValueError if one is already pending for this blog.
+    """
+    existing = (
+        db.query(ValidationRequest)
+        .filter(
+            ValidationRequest.item_type == "Blogs_Delete",
+            ValidationRequest.item_id   == blog_id,
+            ValidationRequest.status    == "Pending",
+        )
+        .first()
+    )
+    if existing:
+        raise ValueError("A deletion request for this blog post is already pending.")
+
+    request = ValidationRequest(
+        item_type    = "Blogs_Delete",
+        item_id      = blog_id,
+        title        = f"DELETE: {blog_title}",
+        status       = "Pending",
+        submitted_by = submitted_by,
+    )
+    db.add(request)
+    db.commit()
+    db.refresh(request)
+    return request
+
+
 # ── Read ─────────────────────────────────────────────────────────────────────
 
 def get_all(
@@ -173,9 +211,8 @@ def approve(
 ) -> Union[ValidationRequest, dict]:
     """
     Approve a validation request.
-    For Products_Delete: deletes the product and its validation rows,
+    For *_Delete types: deletes the target row and its validation rows,
     then returns a plain snapshot dict (since the DB row is gone).
-    For Campaigns_Delete: same pattern.
     For all other types: returns the updated ValidationRequest ORM object.
     """
     req = get_by_id(db, request_id)
@@ -191,7 +228,7 @@ def approve(
     db.refresh(req)
 
     # Snapshot BEFORE _activate_item may delete rows
-    if req.item_type in ("Campaigns_Delete", "Products_Delete"):
+    if req.item_type in ("Campaigns_Delete", "Products_Delete", "Blogs_Delete"):
         snapshot = {
             "id":             req.id,
             "item_type":      req.item_type,
@@ -276,7 +313,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
             db.delete(item)
             db.commit()
 
-        # Remove ALL validation rows for this campaign
         db.query(ValidationRequest).filter(
             ValidationRequest.item_id.in_([item_id]),
             ValidationRequest.item_type.in_(["Campaigns", "Campaigns_Delete"]),
@@ -286,15 +322,13 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
 
     if item_type == "Products_Delete":
         import os
-        from models import CartItems, OrderItems, ProductImage, ProductColor
+        from models import CartItems, OrderItems
 
         item = db.query(Products).filter(Products.id == item_id).first()
         if item:
-            # Guard: don't delete if referenced in cart or orders
             in_cart  = db.query(CartItems).filter(CartItems.product_id   == item_id).first()
             in_order = db.query(OrderItems).filter(OrderItems.product_id == item_id).first()
             if not in_cart and not in_order:
-                # Remove image files from disk
                 for img in item.images:
                     path = img.image_url.lstrip("/")
                     if os.path.isfile(path):
@@ -302,7 +336,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
                 db.delete(item)
                 db.commit()
 
-        # Remove ALL Products / Products_Delete validation rows for this product
         db.query(ValidationRequest).filter(
             ValidationRequest.item_id.in_([item_id]),
             ValidationRequest.item_type.in_(["Products", "Products_Delete"]),
@@ -311,10 +344,28 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
         return
 
     if item_type == "Blogs":
+        # Approve a create/edit — publish the blog
         item = db.query(Blogs).filter(Blogs.id == item_id).first()
         if item:
             item.status = "published"
+            if not item.created_at:
+                item.created_at = datetime.utcnow()
             db.commit()
+        return
+
+    if item_type == "Blogs_Delete":
+        # Approve a delete request — permanently remove the blog
+        item = db.query(Blogs).filter(Blogs.id == item_id).first()
+        if item:
+            db.delete(item)
+            db.commit()
+
+        # Clean up ALL validation rows for this blog (create + delete)
+        db.query(ValidationRequest).filter(
+            ValidationRequest.item_id   == item_id,
+            ValidationRequest.item_type.in_(["Blogs", "Blogs_Delete"]),
+        ).delete(synchronize_session=False)
+        db.commit()
         return
 
     if item_type == "Products":
@@ -360,10 +411,15 @@ def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
         return
 
     if item_type == "Blogs":
+        # Rejected create/edit — keep as draft (hidden from public journal)
         item = db.query(Blogs).filter(Blogs.id == item_id).first()
         if item:
             item.status = "draft"
             db.commit()
+        return
+
+    if item_type == "Blogs_Delete":
+        # Rejected deletion — blog stays published, nothing to do
         return
 
     if item_type == "Products":

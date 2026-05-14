@@ -212,7 +212,7 @@ function RoomieLamp({ isOpen, onToggle }) {
 function ChatWidget({ apiUrl = "http://localhost:8000/api/chat", chatContext = "before_ar", productName = "" }) {
   const [isOpen, setIsOpen] = useState(false);         // Is the chat panel open?
   const [messages, setMessages] = useState([            // Conversation history
-    { role: 'bot', text: "Hi! I'm Roomie, your ARoomX assistant. Looking for furniture? I can help you find the perfect piece." }
+    { role: 'bot', text: "Hi! I'm Roomie, your ARoom assistant. Looking for furniture? I can help you find the perfect piece." }
   ]);
   const [input, setInput] = useState('');               // Current text in the input field
   const [isLoading, setIsLoading] = useState(false);    // Is the AI currently thinking?
@@ -222,9 +222,9 @@ function ChatWidget({ apiUrl = "http://localhost:8000/api/chat", chatContext = "
   // Quick-reply suggestion chips shown before the user types anything
   const suggestions = [
     'Help me find a sofa',
-    'Bedroom furniture',
+    'I want a whole living room set',
     'I have a small budget',
-    'Show me something modern',
+    'I am not sure',
   ];
 
   // Scroll to bottom when messages change

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 
-// ── Google Fonts loader (same as AboutUs) ─────────────────────────
+// ── Google Fonts loader ───────────────────────────────────────────
 function useLuxuryFonts() {
   useEffect(() => {
     const link = document.createElement("link");
@@ -13,7 +13,7 @@ function useLuxuryFonts() {
   }, []);
 }
 
-// ── Shared ornamental dividers (identical to AboutUs) ────────────
+// ── Ornamental dividers ───────────────────────────────────────────
 const GoldRule = () => (
   <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0" }}>
     <div style={{ height: "1px", flex: 1, background: "linear-gradient(to right, transparent, rgba(200,169,106,0.5))" }} />
@@ -32,9 +32,9 @@ const GoldRuleShort = ({ maxWidth = "14rem" }) => (
 
 // ── Tag colour map ────────────────────────────────────────────────
 const TAG_STYLES = {
-  Technology: { bg: "rgba(59,130,246,0.08)", color: "#2563eb", border: "rgba(59,130,246,0.2)" },
-  Insight: { bg: "rgba(200,169,106,0.12)", color: "#9E6E20", border: "rgba(200,169,106,0.35)" },
-  Design: { bg: "rgba(92,74,58,0.08)", color: "#5c4a3a", border: "rgba(92,74,58,0.2)" },
+  Technology: { bg: "rgba(59,130,246,0.08)",   color: "#2563eb", border: "rgba(59,130,246,0.2)" },
+  Insight:    { bg: "rgba(200,169,106,0.12)",  color: "#9E6E20", border: "rgba(200,169,106,0.35)" },
+  Design:     { bg: "rgba(92,74,58,0.08)",     color: "#5c4a3a", border: "rgba(92,74,58,0.2)" },
 };
 
 function TagPill({ tag, small }) {
@@ -57,7 +57,7 @@ function TagPill({ tag, small }) {
   );
 }
 
-// ── Fade-up entry (kept light, no delay bloat) ───────────────────
+// ── Fade-up entry ────────────────────────────────────────────────
 function FadeUp({ children, delay = 0 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -75,18 +75,47 @@ function FadeUp({ children, delay = 0 }) {
   );
 }
 
+// ── Empty state ──────────────────────────────────────────────────
+function EmptyJournal() {
+  return (
+    <div style={{
+      maxWidth: "1200px", margin: "0 auto",
+      padding: "4rem 1.5rem 8rem",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem",
+    }}>
+      <GoldRuleShort maxWidth="10rem" />
+      <p style={{
+        fontFamily: "'Cormorant Garamond', serif",
+        fontSize: "1.2rem",
+        fontStyle: "italic",
+        fontWeight: 300,
+        color: "#9E8E7A",
+        textAlign: "center",
+        lineHeight: 1.9,
+      }}>
+        No stories have been published yet.<br />
+        Check back soon for our first reflections.
+      </p>
+      <GoldRuleShort maxWidth="10rem" />
+    </div>
+  );
+}
+
 // ── Main Journal listing ──────────────────────────────────────────
 export function JournalPage() {
   useLuxuryFonts();
 
   const [activeBlog, setActiveBlog] = useState(null);
-  const [hoveredId, setHoveredId] = useState(null);
-  const [blogs, setBlogs] = useState([]);
+  const [hoveredId,  setHoveredId]  = useState(null);
+  const [blogs,      setBlogs]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
-    api.get("/api/blogs/")
+    // ← Only fetch published posts; drafts / pending are hidden from visitors
+    api.get("/api/blogs/published")
       .then(res => setBlogs(res.data))
-      .catch(err => console.error("FAILED:", err));
+      .catch(err => console.error("Failed to load journal:", err))
+      .finally(() => setLoading(false));
   }, []);
 
   if (activeBlog) {
@@ -94,7 +123,7 @@ export function JournalPage() {
   }
 
   const featured = blogs[0];
-  const rest = blogs.slice(1);
+  const rest     = blogs.slice(1);
 
   return (
     <div style={{
@@ -155,8 +184,25 @@ export function JournalPage() {
         <GoldRule />
       </div>
 
+      {/* Loading spinner */}
+      {loading && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "6rem 0" }}>
+          <div style={{
+            width: 36, height: 36,
+            border: "2px solid rgba(200,169,106,0.3)",
+            borderTopColor: "#C8A96A",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {/* No published posts yet */}
+      {!loading && blogs.length === 0 && <EmptyJournal />}
+
       {/* ── FEATURED POST ── */}
-      {featured && (
+      {!loading && featured && (
         <section style={{ maxWidth: "1200px", margin: "0 auto", padding: "5rem 1.5rem" }}>
           <FadeUp delay={0}>
             <p style={{
@@ -208,7 +254,6 @@ export function JournalPage() {
                 display: "flex", flexDirection: "column", justifyContent: "center",
                 gap: "1.25rem",
               }}>
-                {/* Top ornament line */}
                 <div style={{ width: "2rem", height: "1px", background: "#C8A96A", opacity: 0.7 }} />
 
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -271,12 +316,14 @@ export function JournalPage() {
       )}
 
       {/* ── DIVIDER ── */}
-      <div style={{ padding: "0 1.5rem" }}>
-        <GoldRule />
-      </div>
+      {!loading && featured && (
+        <div style={{ padding: "0 1.5rem" }}>
+          <GoldRule />
+        </div>
+      )}
 
       {/* ── REST OF POSTS ── */}
-      {rest.length > 0 && (
+      {!loading && rest.length > 0 && (
         <section style={{ maxWidth: "1200px", margin: "0 auto", padding: "5rem 1.5rem 6rem" }}>
           <FadeUp delay={0}>
             <p style={{
@@ -403,21 +450,22 @@ export function JournalPage() {
       )}
 
       {/* ── FOOTER ORNAMENT ── */}
-      <div style={{ padding: "0 1.5rem 5rem" }}>
-        <GoldRule />
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "2.5rem" }}>
-          <span style={{
-            fontFamily: "'Cinzel Decorative', serif",
-            fontSize: "0.575rem",
-            letterSpacing: "0.5em",
-            textTransform: "uppercase",
-            color: "rgba(200,169,106,0.35)",
-          }}>
-            enter your sanctuary
-          </span>
+      {!loading && (
+        <div style={{ padding: "0 1.5rem 5rem" }}>
+          <GoldRule />
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "2.5rem" }}>
+            <span style={{
+              fontFamily: "'Cinzel Decorative', serif",
+              fontSize: "0.575rem",
+              letterSpacing: "0.5em",
+              textTransform: "uppercase",
+              color: "rgba(200,169,106,0.35)",
+            }}>
+              enter your sanctuary
+            </span>
+          </div>
         </div>
-      </div>
-
+      )}
     </div>
   );
 }
@@ -477,7 +525,9 @@ function ArticleView({ blog, onBack }) {
               fontFamily: "sans-serif", fontSize: "0.55rem",
               letterSpacing: "0.2em", textTransform: "uppercase", color: "#9E8E7A",
             }}>
-              {new Date(blog.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              {blog.date
+                ? new Date(blog.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                : "—"}
             </span>
             <span style={{ color: "#C8A96A", opacity: 0.6 }}>·</span>
             <span style={{

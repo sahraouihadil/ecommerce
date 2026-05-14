@@ -19,11 +19,35 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import CartItems, Products
 from security.jwt_handler import verify_token
+from pydantic import BaseModel
+import json
 
 # Create a router with prefix /api/cart
 # redirect_slashes=False prevents FastAPI from redirecting /api/cart to /api/cart/
 router = APIRouter(prefix="/api/cart", tags=["cart"], redirect_slashes=False)
 
+class CustomOrderRequest(BaseModel):
+    type: str
+    material: str
+    width: float
+    height: float
+    depth: float
+    shelves: int
+    price: float = 0
+
+@router.post("/custom")
+def add_custom_to_cart(order: CustomOrderRequest, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
+    user_id = payload.get("id")
+    item = CartItems(
+        user_id      = user_id,
+        product_id   = None,
+        quantity     = 1,
+        custom_order = json.dumps(order.dict()),
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return {"message": "Custom order added to cart", "item_id": item.id}
 
 @router.get("")
 def get_cart(db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
@@ -41,10 +65,35 @@ def get_cart(db: Session = Depends(get_db), payload: dict = Depends(verify_token
     # Build the response with product details included
     result = []
     for item in items:
-        product = db.query(Products).filter(Products.id == item.product_id).first()
+        # ── Custom order ──
+        if item.custom_order:
+            custom = json.loads(item.custom_order)
+            result.append({
+                "id":           item.id,
+                "product_id":   None,
+                "quantity":     item.quantity,
+                "custom_order": custom,
+                "product": {
+                    "id":        None,
+                    "name":      f"Custom {custom.get('type', 'Furniture').title()}",
+                    "price":     custom.get('price', 0),
+                    "category":  "Custom Order",
+                    "badge":     "Custom",
+                    "image_url": None,
+                    "images":    [],
+                    "colors":    [],
+                    "model_src": None,
+                    "model_3d":  None,
+                    "ios_src":   None,
+                    "able_3d":   False,
+                    "able_ar":   False,
+                }
+            })
+            continue
 
+        # ── Regular product ──
+        product = db.query(Products).filter(Products.id == item.product_id).first()
         if product:
-            # Primary image = the ProductImage with the lowest order value (order=0)
             primary_image = (
                 sorted(product.images, key=lambda img: img.order)[0].image_url
                 if product.images else None
@@ -138,6 +187,18 @@ def update_cart_item(item_id: int, quantity: int, db: Session = Depends(get_db),
     db.commit()
     return {"message": "Cart updated", "quantity": item.quantity}
 
+class CustomOrderRequest(BaseModel):
+    type: str
+    material: str
+    width: float
+    height: float
+    depth: float
+    shelves: int
+
+@router.post("/custom")
+def add_custom_to_cart(order: CustomOrderRequest, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
+    user_id = payload.get("id")
+    return {"message": "Custom order received", "order": order.dict()}
 
 @router.delete("/{item_id}")
 def remove_from_cart(item_id: int, db: Session = Depends(get_db), payload: dict = Depends(verify_token)):

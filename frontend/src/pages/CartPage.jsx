@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 
@@ -40,27 +40,30 @@ function Ornament() {
   );
 }
 
-/* ─── Quantity stepper ───────────────────────────── */
-function QtyStepper({ value, onDecrement, onIncrement }) {
+/* ─── Quantity stepper (with disabled state) ───── */
+function QtyStepper({ value, onDecrement, onIncrement, disabled = false }) {
   return (
     <div style={{
       display: "flex",
       alignItems: "center",
       border: `1px solid rgba(200,169,106,0.3)`,
       height: "36px",
+      opacity: disabled ? 0.5 : 1,
     }}>
       <button
         onClick={onDecrement}
+        disabled={disabled}
         style={{
           width: "36px", height: "36px",
           background: "transparent", border: "none",
           color: MUTED, fontSize: "1.1rem",
-          cursor: "pointer", display: "flex",
+          cursor: disabled ? "not-allowed" : "pointer",
+          display: "flex",
           alignItems: "center", justifyContent: "center",
           transition: "color 0.2s",
         }}
-        onMouseEnter={e => e.currentTarget.style.color = CHARCOAL}
-        onMouseLeave={e => e.currentTarget.style.color = MUTED}
+        onMouseEnter={e => !disabled && (e.currentTarget.style.color = CHARCOAL)}
+        onMouseLeave={e => !disabled && (e.currentTarget.style.color = MUTED)}
       >−</button>
       <span style={{
         width: "32px", textAlign: "center",
@@ -70,16 +73,18 @@ function QtyStepper({ value, onDecrement, onIncrement }) {
       }}>{value}</span>
       <button
         onClick={onIncrement}
+        disabled={disabled}
         style={{
           width: "36px", height: "36px",
           background: "transparent", border: "none",
           color: MUTED, fontSize: "1.1rem",
-          cursor: "pointer", display: "flex",
+          cursor: disabled ? "not-allowed" : "pointer",
+          display: "flex",
           alignItems: "center", justifyContent: "center",
           transition: "color 0.2s",
         }}
-        onMouseEnter={e => e.currentTarget.style.color = CHARCOAL}
-        onMouseLeave={e => e.currentTarget.style.color = MUTED}
+        onMouseEnter={e => !disabled && (e.currentTarget.style.color = CHARCOAL)}
+        onMouseLeave={e => !disabled && (e.currentTarget.style.color = MUTED)}
       >+</button>
     </div>
   );
@@ -140,37 +145,69 @@ function GhostButton({ children, onClick, as: Tag = "button", to, disabled, full
 export function CartPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [pendingItems, setPendingItems] = useState(new Set()); // IDs being updated/removed
   const navigate = useNavigate();
 
   const img = (path) => (path ? `${BASE}/${path}` : null);
 
-  const fetchCart = async () => {
+  const fetchCart = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await api.get("/api/cart");
       setItems(res.data);
+      setError(null);
       window.dispatchEvent(new CustomEvent('aroom:counts', { detail: { cart: res.data.length } }));
     } catch (err) {
       if (err.response?.status === 401) navigate("/login");
+      else setError("Could not load your cart. Please refresh.");
+      console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => { fetchCart(); }, []);
 
-  const updateQty = async (itemId, qty) => {
-    if (qty < 1) return;
-    try {
-      await api.put(`/api/cart/${itemId}`, null, { params: { quantity: qty } });
-      fetchCart();
-    } catch (err) { console.error(err); }
-  };
-
   const removeItem = async (itemId) => {
+    setPendingItems(prev => new Set(prev).add(itemId));
     try {
       await api.delete(`/api/cart/${itemId}`);
-      fetchCart();
-    } catch (err) { console.error(err); }
+      await fetchCart(false);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to remove item. Please try again.");
+      await fetchCart(false);
+    } finally {
+      setPendingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
+  };
+
+  const updateQty = async (itemId, newQty) => {
+    if (newQty <= 0) {
+      await removeItem(itemId);
+      return;
+    }
+
+    setPendingItems(prev => new Set(prev).add(itemId));
+    try {
+      await api.put(`/api/cart/${itemId}`, null, { params: { quantity: newQty } });
+      await fetchCart(false);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update quantity. Please try again.");
+      await fetchCart(false);
+    } finally {
+      setPendingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
   };
 
   const subtotal = items.reduce((sum, i) => sum + (i.product?.price || 0) * i.quantity, 0);
@@ -180,15 +217,10 @@ export function CartPage() {
   const fonts = `
     @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
     @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes popIn {
-      from { transform: scale(0.5); opacity: 0; }
-      to   { transform: scale(1);   opacity: 1; }
-    }
     .cart-row-img { transition: transform 0.4s cubic-bezier(0.16,1,0.3,1); }
     .cart-row:hover .cart-row-img { transform: scale(1.04); }
     @media (max-width: 900px) {
       .cart-grid { grid-template-columns: 1fr !important; }
-      .summary-sticky { position: static !important; }
     }
     @media (max-width: 580px) {
       .cart-row-inner { flex-wrap: wrap; gap: 1rem !important; }
@@ -245,6 +277,20 @@ export function CartPage() {
           )}
         </div>
 
+        {error && (
+          <div style={{
+            background: "#fff1f0",
+            borderLeft: `4px solid #d9534f`,
+            padding: "1rem 1.5rem",
+            marginBottom: "2rem",
+            fontFamily: "sans-serif",
+            fontSize: "0.8rem",
+            color: "#b33",
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
+
         {items.length === 0 ? (
           <AnimatedItem delay={200}>
             <div style={{ textAlign: "center", padding: "6rem 2rem", borderTop: `1px solid rgba(200,169,106,0.15)` }}>
@@ -264,56 +310,78 @@ export function CartPage() {
 
             <div>
               <div style={{ borderTop: `1px solid rgba(200,169,106,0.2)` }}>
-                {items.map((item, i) => (
-                  <AnimatedItem key={item.id} delay={100 + i * 60}>
-                    <div className="cart-row" style={{ borderBottom: `1px solid rgba(200,169,106,0.12)`, padding: "2rem 0" }}>
-                      <div className="cart-row-inner" style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
-                        <div style={{ width: "88px", height: "88px", background: SURFACE, flexShrink: 0, overflow: "hidden" }}>
-                          {item.product?.image_url ? (
-                            <img className="cart-row-img" src={img(item.product.image_url)} alt={item.product.name}
-                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                          ) : (
-                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                <rect x="2" y="2" width="16" height="16" rx="1" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
-                                <line x1="2" y1="14" x2="8" y2="9" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
-                                <line x1="8" y1="9" x2="13" y2="13" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
-                                <line x1="13" y1="13" x2="18" y2="8" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
-                              </svg>
-                            </div>
-                          )}
+                {items.map((item, i) => {
+                  const isPending = pendingItems.has(item.id);
+                  return (
+                    <AnimatedItem key={item.id} delay={100 + i * 60}>
+                      <div className="cart-row" style={{ borderBottom: `1px solid rgba(200,169,106,0.12)`, padding: "2rem 0" }}>
+                        <div className="cart-row-inner" style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
+                          <div style={{ width: "88px", height: "88px", background: SURFACE, flexShrink: 0, overflow: "hidden" }}>
+                            {item.product?.image_url ? (
+                              <img className="cart-row-img" src={img(item.product.image_url)} alt={item.product.name}
+                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                            ) : (
+                              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                  <rect x="2" y="2" width="16" height="16" rx="1" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
+                                  <line x1="2" y1="14" x2="8" y2="9" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
+                                  <line x1="8" y1="9" x2="13" y2="13" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
+                                  <line x1="13" y1="13" x2="18" y2="8" stroke={GOLD} strokeWidth="0.75" opacity="0.3" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.0625rem", fontWeight: 500, color: CHARCOAL, margin: "0 0 0.3rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {item.product?.name || "Product"}
+                            </h3>
+                            {item.product?.category && (
+                              <p style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.25em", textTransform: "uppercase", color: MUTED, margin: 0 }}>
+                                {item.product.category}
+                              </p>
+                            )}
+                          </div>
+
+                          <QtyStepper
+                            value={item.quantity}
+                            onDecrement={() => updateQty(item.id, item.quantity - 1)}
+                            onIncrement={() => updateQty(item.id, item.quantity + 1)}
+                            disabled={isPending}
+                          />
+
+                          <p className="cart-row-price" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.0625rem", fontWeight: 500, color: CHARCOAL, width: "110px", textAlign: "right", margin: 0, whiteSpace: "nowrap" }}>
+                            {(item.product?.price * item.quantity).toLocaleString()} DA
+                          </p>
+
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            disabled={isPending}
+                            aria-label="Remove item"
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: isPending ? "wait" : "pointer",
+                              padding: "12px 16px",
+                              fontSize: "4.6rem",
+                              lineHeight: 1,
+                              fontWeight: 300,
+                              color: "rgba(158,142,122,0.6)",
+                              transition: "color 0.2s, opacity 0.2s",
+                              opacity: isPending ? 0.5 : 1,
+                              borderRadius: 0,
+                              minWidth: "56px",
+                            }}
+                            onMouseEnter={e => !isPending && (e.currentTarget.style.color = "#8B2020")}
+                            onMouseLeave={e => !isPending && (e.currentTarget.style.color = "rgba(158,142,122,0.6)")}
+                          >
+                            ×
+                          </button>
                         </div>
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.0625rem", fontWeight: 500, color: CHARCOAL, margin: "0 0 0.3rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {item.product?.name || "Product"}
-                          </h3>
-                          {item.product?.category && (
-                            <p style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.25em", textTransform: "uppercase", color: MUTED, margin: 0 }}>
-                              {item.product.category}
-                            </p>
-                          )}
-                        </div>
-
-                        <QtyStepper
-                          value={item.quantity}
-                          onDecrement={() => updateQty(item.id, item.quantity - 1)}
-                          onIncrement={() => updateQty(item.id, item.quantity + 1)}
-                        />
-
-                        <p className="cart-row-price" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.0625rem", fontWeight: 500, color: CHARCOAL, width: "110px", textAlign: "right", margin: 0, whiteSpace: "nowrap" }}>
-                          {(item.product?.price * item.quantity).toLocaleString()} DA
-                        </p>
-
-                        <button onClick={() => removeItem(item.id)} aria-label="Remove item"
-                          style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", color: "rgba(158,142,122,0.5)", fontSize: "1rem", lineHeight: 1, transition: "color 0.2s" }}
-                          onMouseEnter={e => e.currentTarget.style.color = "#8B2020"}
-                          onMouseLeave={e => e.currentTarget.style.color = "rgba(158,142,122,0.5)"}
-                        >×</button>
                       </div>
-                    </div>
-                  </AnimatedItem>
-                ))}
+                    </AnimatedItem>
+                  );
+                })}
               </div>
 
               <AnimatedItem delay={100 + items.length * 60 + 80}>
