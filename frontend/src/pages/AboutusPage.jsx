@@ -44,7 +44,7 @@ function useScrollReveal() {
 /* ── Carousel slides ── */
 const carouselSlides = [
   {
-    photo: "https://i.pinimg.com/1200x/6a/85/46/6a854671744dcc8883bacb7fa9c2a030.jpg",
+    photo: "https://i.pinimg.com/1200x/82/1b/30/821b307ae8c02ecd2d6631e061e66b04.jpg",
     quote: "See it in your space.\nKnow it's right.",
     cite: "The ARoom Promise",
   },
