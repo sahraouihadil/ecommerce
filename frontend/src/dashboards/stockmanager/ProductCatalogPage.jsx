@@ -256,17 +256,14 @@ export function ProductCatalogPage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-<<<<<<< HEAD
   // ── Delete-request modal ───────────────────────────────────────────────────
   const [showDeleteRequestModal, setShowDeleteRequestModal] = useState(false);
   const [deleteRequestProduct,   setDeleteRequestProduct]   = useState(null);
   const [deleteRequestLoading,   setDeleteRequestLoading]   = useState(false);
   const [deleteRequestError,     setDeleteRequestError]     = useState("");
-=======
   const [showWindow, setShowWindow] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
->>>>>>> 403f51d1f34d80c3e09fcb8bb491c29c5149b532
 
   const [filters, setFilters] = useState({
     search: "", category: "all", color: "all", status: "all", approval: "all",
@@ -358,8 +355,7 @@ export function ProductCatalogPage() {
     fetchValidations();
   }, [fetchProducts, fetchValidations]);
 
-<<<<<<< HEAD
-=======
+
   // ── helpers ────────────────────────────────────────────────────────────────
   const getStockStatus = (qty) => {
     if (qty === 0) return "Out of Stock";
@@ -372,14 +368,6 @@ export function ProductCatalogPage() {
     if (s === "Low Stock") return "bg-amber-50 text-amber-700 border border-amber-200";
     return "bg-red-50 text-red-600 border border-red-200";
   };
-
-  const getApprovalStatus = (p) => {
-    if (p.is_active) return "approved";
-    if (validationMap[p.id]?.status === "Rejected") return "rejected";
-    return "pending";
-  };
-
->>>>>>> 403f51d1f34d80c3e09fcb8bb491c29c5149b532
   const categories = useMemo(
     () => ["all", ...new Set(products.map((p) => p.category))], [products]);
 
@@ -392,22 +380,14 @@ export function ProductCatalogPage() {
   const filteredProducts = useMemo(() => products.filter((p) => {
     const stockStatus = getStockStatus(p.quantity);
     const approvalStatus = getApprovalStatus(p);
-<<<<<<< HEAD
     const colorMatch     = filters.color === "all" || (p.colors || []).includes(filters.color);
 
-=======
-    const colorMatch = filters.color === "all" || (p.colors || []).includes(filters.color);
->>>>>>> 403f51d1f34d80c3e09fcb8bb491c29c5149b532
     const approvalMatch =
       filters.approval === "all" ||
       (filters.approval === "approved" && approvalStatus === "approved") ||
       (filters.approval === "rejected" && approvalStatus === "rejected") ||
-<<<<<<< HEAD
       (filters.approval === "pending"  && approvalStatus === "pending");
 
-=======
-      (filters.approval === "pending" && approvalStatus === "pending");
->>>>>>> 403f51d1f34d80c3e09fcb8bb491c29c5149b532
     return (
       p.name.toLowerCase().includes(filters.search.toLowerCase()) &&
       (filters.category === "all" || p.category === filters.category) &&
@@ -417,12 +397,7 @@ export function ProductCatalogPage() {
       p.price >= filters.priceMin &&
       p.price <= filters.priceMax
     );
-<<<<<<< HEAD
   }), [products, filters, getApprovalStatus]);
-=======
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [products, filters, validationMap]);
->>>>>>> 403f51d1f34d80c3e09fcb8bb491c29c5149b532
 
   // ── summary strip stats ────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -807,31 +782,20 @@ export function ProductCatalogPage() {
               <div className="p-8 text-center text-gray-400 text-sm">No products found</div>
             ) : (
               filteredProducts.map((p) => {
-<<<<<<< HEAD
                 const stockStatus      = getStockStatus(p.quantity);
                 const approvalStatus   = getApprovalStatus(p);
                 const deleteReqStatus  = getDeleteRequestStatus(p);
                 const isRejected       = approvalStatus === "rejected";
                 const hasPendingDelete = deleteReqStatus === "pending";
-=======
-                const stockStatus = getStockStatus(p.quantity);
-                const approvalStatus = getApprovalStatus(p);
-                const isRejected = approvalStatus === "rejected";
->>>>>>> 403f51d1f34d80c3e09fcb8bb491c29c5149b532
 
                 return (
                   <div
                     key={p.id}
-<<<<<<< HEAD
                     className={`grid grid-cols-9 px-4 py-3 border-t border-gray-50 hover:bg-gray-50 transition items-center ${
                       hasPendingDelete ? "bg-orange-50/30" :
                       isRejected       ? "bg-red-50/20"   :
                       !p.is_active     ? "bg-amber-50/20" : ""
                     }`}
-=======
-                    className={`grid grid-cols-9 px-4 py-3 border-t border-gray-50 hover:bg-gray-50 transition items-center ${isRejected ? "bg-red-50/20" : !p.is_active ? "bg-amber-50/20" : ""
-                      }`}
->>>>>>> 403f51d1f34d80c3e09fcb8bb491c29c5149b532
                   >
                     {/* Product — col-span-2 */}
                     <div className="col-span-2 flex items-center gap-3">
