@@ -96,7 +96,7 @@ class CampaignCreate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percent", "fixed"}              # FIX: was "percentage"
+        allowed = {"percentage", "fixed"}              
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
