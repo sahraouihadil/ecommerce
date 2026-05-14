@@ -6,9 +6,9 @@ import {
   SendHorizonal, CheckCircle2, Clock, ShieldCheck, Hourglass, XCircle,
 } from "lucide-react";
 
-import Header  from "../ui/Header";
+import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
-import api     from "../../services/api";
+import api from "../../services/api";
 
 // ─── FIELD WRAPPER ────────────────────────────────────────────────────────────
 function Field({ label, icon: Icon, error, children }) {
@@ -28,64 +28,63 @@ function Field({ label, icon: Icon, error, children }) {
 }
 
 function getInputCls(errors, field) {
-  return `w-full h-10 px-3 rounded-lg bg-gray-50 text-sm border outline-none focus:ring-2 focus:border-transparent transition ${
-    errors[field]
+  return `w-full h-10 px-3 rounded-lg bg-gray-50 text-sm border outline-none focus:ring-2 focus:border-transparent transition ${errors[field]
       ? "border-red-300 focus:ring-red-400 bg-red-50/40"
       : "border-gray-200 focus:ring-indigo-500"
-  }`;
+    }`;
 }
 
 // ─── PREDEFINED COLORS ────────────────────────────────────────────────────────
 export const PRESET_COLORS = [
-  { name: "Black",        hex: "#111827" },
-  { name: "White",        hex: "#F9FAFB",  border: true },
-  { name: "Gray",         hex: "#6B7280" },
-  { name: "Charcoal",     hex: "#374151" },
-  { name: "Beige",        hex: "#D4B896" },
-  { name: "Ivory",        hex: "#FFFFF0",  border: true },
-  { name: "Brown",        hex: "#92400E" },
-  { name: "Red",          hex: "#EF4444" },
-  { name: "Orange",       hex: "#F97316" },
-  { name: "Yellow",       hex: "#EAB308" },
-  { name: "Green",        hex: "#22C55E" },
-  { name: "Teal",         hex: "#14B8A6" },
-  { name: "Blue",         hex: "#3B82F6" },
-  { name: "Navy",         hex: "#1E3A5F" },
-  { name: "Purple",       hex: "#A855F7" },
-  { name: "Pink",         hex: "#EC4899" },
-  { name: "Cream",        hex: "#FFF5E1",  border: true },
-  { name: "Sand",         hex: "#EADBC8" },
-  { name: "Taupe",        hex: "#8B7D7B" },
-  { name: "Mocha",        hex: "#7B4B3A" },
-  { name: "Chocolate",    hex: "#5C3317" },
-  { name: "Coffee",       hex: "#6F4E37" },
-  { name: "Camel",        hex: "#C19A6B" },
-  { name: "Olive",        hex: "#6B8E23" },
-  { name: "Mint",         hex: "#98FF98" },
+  { name: "Black", hex: "#111827" },
+  { name: "White", hex: "#F9FAFB", border: true },
+  { name: "Gray", hex: "#6B7280" },
+  { name: "Charcoal", hex: "#374151" },
+  { name: "Beige", hex: "#D4B896" },
+  { name: "Ivory", hex: "#FFFFF0", border: true },
+  { name: "Brown", hex: "#92400E" },
+  { name: "Red", hex: "#EF4444" },
+  { name: "Orange", hex: "#F97316" },
+  { name: "Yellow", hex: "#EAB308" },
+  { name: "Green", hex: "#22C55E" },
+  { name: "Teal", hex: "#14B8A6" },
+  { name: "Blue", hex: "#3B82F6" },
+  { name: "Navy", hex: "#1E3A5F" },
+  { name: "Purple", hex: "#A855F7" },
+  { name: "Pink", hex: "#EC4899" },
+  { name: "Cream", hex: "#FFF5E1", border: true },
+  { name: "Sand", hex: "#EADBC8" },
+  { name: "Taupe", hex: "#8B7D7B" },
+  { name: "Mocha", hex: "#7B4B3A" },
+  { name: "Chocolate", hex: "#5C3317" },
+  { name: "Coffee", hex: "#6F4E37" },
+  { name: "Camel", hex: "#C19A6B" },
+  { name: "Olive", hex: "#6B8E23" },
+  { name: "Mint", hex: "#98FF98" },
   { name: "Forest Green", hex: "#14532D" },
-  { name: "Sage",         hex: "#9CAF88" },
-  { name: "Emerald",      hex: "#10B981" },
-  { name: "Sky Blue",     hex: "#38BDF8" },
-  { name: "Royal Blue",   hex: "#1D4ED8" },
-  { name: "Steel Blue",   hex: "#4682B4" },
-  { name: "Baby Blue",    hex: "#BFDBFE" },
-  { name: "Cyan",         hex: "#06B6D4" },
-  { name: "Lavender",     hex: "#C4B5FD" },
-  { name: "Plum",         hex: "#7E22CE" },
-  { name: "Violet",       hex: "#8B5CF6" },
-  { name: "Indigo",       hex: "#4F46E5" },
-  { name: "Rose",         hex: "#F43F5E" },
-  { name: "Coral",        hex: "#FF7F50" },
-  { name: "Salmon",       hex: "#FA8072" },
-  { name: "Burgundy",     hex: "#7F1D1D" },
-  { name: "Amber",        hex: "#F59E0B" },
-  { name: "Mustard",      hex: "#D97706" },
-  { name: "Peach",        hex: "#FFDAB9" },
-  { name: "Gold",         hex: "#D4AF37" },
-  { name: "Bronze",       hex: "#CD7F32" },
-  { name: "Copper",       hex: "#B87333" },
-  { name: "Silver",       hex: "#C0C0C0" },
-  { name: "Transparent",  hex: "transparent", border: true },
+  { name: "Sage", hex: "#9CAF88" },
+  { name: "Emerald", hex: "#10B981" },
+  { name: "Sky Blue", hex: "#38BDF8" },
+  { name: "Royal Blue", hex: "#1D4ED8" },
+  { name: "Steel Blue", hex: "#4682B4" },
+  { name: "Baby Blue", hex: "#BFDBFE" },
+  { name: "Cyan", hex: "#06B6D4" },
+  { name: "Lavender", hex: "#C4B5FD" },
+  { name: "Plum", hex: "#7E22CE" },
+  { name: "Violet", hex: "#8B5CF6" },
+  { name: "Indigo", hex: "#4F46E5" },
+  { name: "Rose", hex: "#F43F5E" },
+  { name: "Coral", hex: "#FF7F50" },
+  { name: "Salmon", hex: "#FA8072" },
+  { name: "Burgundy", hex: "#7F1D1D" },
+  { name: "Amber", hex: "#F59E0B" },
+  { name: "Mustard", hex: "#D97706" },
+  { name: "Peach", hex: "#FFDAB9" },
+  { name: "Gold", hex: "#D4AF37" },
+  { name: "Bronze", hex: "#CD7F32" },
+  { name: "Copper", hex: "#B87333" },
+  { name: "Silver", hex: "#C0C0C0" },
+  { name: "Transparent", hex: "transparent", border: true },
 ];
 
 // ─── COLOR DOT ────────────────────────────────────────────────────────────────
@@ -119,9 +118,8 @@ function ColorPicker({ selected, onChange }) {
               type="button"
               title={name}
               onClick={() => toggle(name)}
-              className={`relative w-7 h-7 rounded-full transition-transform hover:scale-110 cursor-pointer focus:outline-none ${
-                border ? "border border-gray-300" : ""
-              } ${active ? "ring-2 ring-offset-2 ring-indigo-500 scale-110" : ""}`}
+              className={`relative w-7 h-7 rounded-full transition-transform hover:scale-110 cursor-pointer focus:outline-none ${border ? "border border-gray-300" : ""
+                } ${active ? "ring-2 ring-offset-2 ring-indigo-500 scale-110" : ""}`}
               style={{ background: hex }}
             >
               {active && (
@@ -196,7 +194,7 @@ function ApprovalBadge({ status }) {
 }
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const EMPTY_FILES    = [null, null, null];
+const EMPTY_FILES = [null, null, null];
 const EMPTY_PREVIEWS = [null, null, null];
 
 const BLANK_PRODUCT = {
@@ -209,25 +207,25 @@ const BLANK_PRODUCT = {
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export function ProductCatalogPage() {
 
-  const [products,  setProducts]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editMode,  setEditMode]  = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState(null);
 
-  const [imageFiles,    setImageFiles]    = useState([...EMPTY_FILES]);
+  const [imageFiles, setImageFiles] = useState([...EMPTY_FILES]);
   const [imagePreviews, setImagePreviews] = useState([...EMPTY_PREVIEWS]);
-  const [colorTags,     setColorTags]     = useState([]);
+  const [colorTags, setColorTags] = useState([]);
 
   const [newProduct, setNewProduct] = useState({ ...BLANK_PRODUCT });
 
-  const [message,     setMessage]     = useState("");
+  const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
-  const [errors,      setErrors]      = useState({});
+  const [errors, setErrors] = useState({});
 
-  const [showWindow,    setShowWindow]    = useState(false);
-  const [selectedId,    setSelectedId]    = useState(null);
+  const [showWindow, setShowWindow] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -239,9 +237,9 @@ export function ProductCatalogPage() {
 
   // ── Submit-for-Validation state ────────────────────────────────────────────
   const [showValidationModal, setShowValidationModal] = useState(false);
-  const [validationProduct,   setValidationProduct]   = useState(null);
-  const [validationLoading,   setValidationLoading]   = useState(false);
-  const [validationError,     setValidationError]     = useState("");
+  const [validationProduct, setValidationProduct] = useState(null);
+  const [validationLoading, setValidationLoading] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   // ── Validation map: productId → latest validation record ──────────────────
   const [validationMap, setValidationMap] = useState({});
@@ -289,12 +287,12 @@ export function ProductCatalogPage() {
   // ── helpers ────────────────────────────────────────────────────────────────
   const getStockStatus = (qty) => {
     if (qty === 0) return "Out of Stock";
-    if (qty < 10)  return "Low Stock";
+    if (qty < 10) return "Low Stock";
     return "In Stock";
   };
 
   const stockStatusStyle = (s) => {
-    if (s === "In Stock")  return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    if (s === "In Stock") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
     if (s === "Low Stock") return "bg-amber-50 text-amber-700 border border-amber-200";
     return "bg-red-50 text-red-600 border border-red-200";
   };
@@ -315,14 +313,14 @@ export function ProductCatalogPage() {
   }, [products]);
 
   const filteredProducts = useMemo(() => products.filter((p) => {
-    const stockStatus    = getStockStatus(p.quantity);
+    const stockStatus = getStockStatus(p.quantity);
     const approvalStatus = getApprovalStatus(p);
-    const colorMatch  = filters.color === "all" || (p.colors || []).includes(filters.color);
+    const colorMatch = filters.color === "all" || (p.colors || []).includes(filters.color);
     const approvalMatch =
-      filters.approval === "all"      ||
+      filters.approval === "all" ||
       (filters.approval === "approved" && approvalStatus === "approved") ||
       (filters.approval === "rejected" && approvalStatus === "rejected") ||
-      (filters.approval === "pending"  && approvalStatus === "pending");
+      (filters.approval === "pending" && approvalStatus === "pending");
     return (
       p.name.toLowerCase().includes(filters.search.toLowerCase()) &&
       (filters.category === "all" || p.category === filters.category) &&
@@ -332,14 +330,14 @@ export function ProductCatalogPage() {
       p.price >= filters.priceMin &&
       p.price <= filters.priceMax
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [products, filters, validationMap]);
 
   // ── summary strip stats ────────────────────────────────────────────────────
   const stats = useMemo(() => ({
-    total:    products.length,
-    approved: products.filter((p) =>  p.is_active).length,
-    pending:  products.filter((p) => !p.is_active && validationMap[p.id]?.status !== "Rejected").length,
+    total: products.length,
+    approved: products.filter((p) => p.is_active).length,
+    pending: products.filter((p) => !p.is_active && validationMap[p.id]?.status !== "Rejected").length,
     rejected: products.filter((p) => !p.is_active && validationMap[p.id]?.status === "Rejected").length,
   }), [products, validationMap]);
 
@@ -352,13 +350,13 @@ export function ProductCatalogPage() {
   // ── form validation ────────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
-    if (!newProduct.name?.trim())   e.name     = "Product name is required";
-    if (!newProduct.category)       e.category = "Please select a category";
-    if (!newProduct.sku?.trim())    e.sku      = "SKU is required";
+    if (!newProduct.name?.trim()) e.name = "Product name is required";
+    if (!newProduct.category) e.category = "Please select a category";
+    if (!newProduct.sku?.trim()) e.sku = "SKU is required";
     if (!newProduct.price || Number(newProduct.price) <= 0)
-                                    e.price    = "Price must be greater than 0";
+      e.price = "Price must be greater than 0";
     if (newProduct.quantity === "" || Number(newProduct.quantity) < 0)
-                                    e.quantity = "Stock cannot be negative";
+      e.quantity = "Stock cannot be negative";
     return e;
   };
 
@@ -368,12 +366,12 @@ export function ProductCatalogPage() {
   // ── image slots ────────────────────────────────────────────────────────────
   const handleImageChange = (idx, file) => {
     if (!file) return;
-    setImageFiles((p)    => { const n = [...p]; n[idx] = file;                      return n; });
+    setImageFiles((p) => { const n = [...p]; n[idx] = file; return n; });
     setImagePreviews((p) => { const n = [...p]; n[idx] = URL.createObjectURL(file); return n; });
   };
 
   const removeImage = (idx) => {
-    setImageFiles((p)    => { const n = [...p]; n[idx] = null; return n; });
+    setImageFiles((p) => { const n = [...p]; n[idx] = null; return n; });
     setImagePreviews((p) => { const n = [...p]; n[idx] = null; return n; });
   };
 
@@ -439,19 +437,19 @@ export function ProductCatalogPage() {
     setSaveLoading(true);
     try {
       const fd = new FormData();
-      fd.append("name",        newProduct.name);
+      fd.append("name", newProduct.name);
       fd.append("description", newProduct.description || "");
-      fd.append("category",    newProduct.category    || "");
-      fd.append("sku",         newProduct.sku);
-      fd.append("price",       newProduct.price);
-      fd.append("quantity",    newProduct.quantity);
-      fd.append("min_stock",   newProduct.min_stock);
-      fd.append("model_src",   newProduct.model_src || "");
-      fd.append("model_3d",    newProduct.model_3d  || "");
-      fd.append("ios_src",     newProduct.ios_src   || "");
-      fd.append("able_3d",     newProduct.able_3d);
-      fd.append("able_ar",     newProduct.able_ar);
-      fd.append("colors",      JSON.stringify(colorTags));
+      fd.append("category", newProduct.category || "");
+      fd.append("sku", newProduct.sku);
+      fd.append("price", newProduct.price);
+      fd.append("quantity", newProduct.quantity);
+      fd.append("min_stock", newProduct.min_stock);
+      fd.append("model_src", newProduct.model_src || "");
+      fd.append("model_3d", newProduct.model_3d || "");
+      fd.append("ios_src", newProduct.ios_src || "");
+      fd.append("able_3d", newProduct.able_3d);
+      fd.append("able_ar", newProduct.able_ar);
+      fd.append("colors", JSON.stringify(colorTags));
       imageFiles.forEach((file, i) => {
         if (file instanceof File) fd.append(`image_${i + 1}`, file);
       });
@@ -510,8 +508,8 @@ export function ProductCatalogPage() {
     try {
       await api.post("/api/validation/", {
         item_type: "Products",
-        item_id:   validationProduct.id,
-        title:     validationProduct.name,
+        item_id: validationProduct.id,
+        title: validationProduct.name,
       });
       showFlash(`"${validationProduct.name}" submitted for admin review`, "success");
       await fetchValidations();
@@ -526,12 +524,12 @@ export function ProductCatalogPage() {
 
   // ── nav ────────────────────────────────────────────────────────────────────
   const stockManagerLinks = [
-    { to: "/stock-manager-dash",             label: "Dashboard",          icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories", label: "Product's Catalog",  icon: <Boxes />            },
-    { to: "/stock-manager-dash/ar",          label: "AR/3D Management",   icon: <Bot size={18} />    },
-    { to: "/stock-manager-dash/deliveries",  label: "Delivery",           icon: <Truck />            },
-    { to: "/stock-manager-dash/problems",    label: "Problems",           icon: <TriangleAlert />     },
-    { to: "/stock-manager-dash/returns",     label: "Returns",            icon: <RotateCcw />        },
+    { to: "/stock-manager-dash", label: "Dashboard", icon: <LayoutDashboard />, end: true },
+    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes /> },
+    { to: "/stock-manager-dash/ar", label: "AR/3D Management", icon: <Bot size={18} /> },
+    { to: "/stock-manager-dash/deliveries", label: "Delivery", icon: <Truck /> },
+    { to: "/stock-manager-dash/problems", label: "Problems", icon: <TriangleAlert /> },
+    { to: "/stock-manager-dash/returns", label: "Returns", icon: <RotateCcw /> },
   ];
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -600,8 +598,7 @@ export function ProductCatalogPage() {
 
           {/* FLASH */}
           {message && (
-            <div className={`p-3 rounded-lg border-l-4 text-sm font-medium transition-all ${
-              messageType === "success"
+            <div className={`p-3 rounded-lg border-l-4 text-sm font-medium transition-all ${messageType === "success"
                 ? "bg-green-50 text-green-800 border-green-500"
                 : "bg-red-50 text-red-800 border-red-500"}`}>
               {message}
@@ -623,7 +620,7 @@ export function ProductCatalogPage() {
             <div className="flex flex-wrap gap-2 items-center">
               {[
                 { key: "category", options: categories },
-                { key: "color",    options: allColors  },
+                { key: "color", options: allColors },
               ].map(({ key, options }) => (
                 <select key={key}
                   className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none capitalize"
@@ -685,16 +682,15 @@ export function ProductCatalogPage() {
               <div className="p-8 text-center text-gray-400 text-sm">No products found</div>
             ) : (
               filteredProducts.map((p) => {
-                const stockStatus    = getStockStatus(p.quantity);
+                const stockStatus = getStockStatus(p.quantity);
                 const approvalStatus = getApprovalStatus(p);
-                const isRejected     = approvalStatus === "rejected";
+                const isRejected = approvalStatus === "rejected";
 
                 return (
                   <div
                     key={p.id}
-                    className={`grid grid-cols-9 px-4 py-3 border-t border-gray-50 hover:bg-gray-50 transition items-center ${
-                      isRejected ? "bg-red-50/20" : !p.is_active ? "bg-amber-50/20" : ""
-                    }`}
+                    className={`grid grid-cols-9 px-4 py-3 border-t border-gray-50 hover:bg-gray-50 transition items-center ${isRejected ? "bg-red-50/20" : !p.is_active ? "bg-amber-50/20" : ""
+                      }`}
                   >
                     {/* Product — col-span-2 */}
                     <div className="col-span-2 flex items-center gap-3">
@@ -800,8 +796,8 @@ export function ProductCatalogPage() {
               {/* ── EDIT MODE: product detail card + rejection note ── */}
               {editMode && editingProduct && (() => {
                 const approvalStatus = getApprovalStatus(editingProduct);
-                const validation     = validationMap[editingProduct.id];
-                const isRejected     = approvalStatus === "rejected";
+                const validation = validationMap[editingProduct.id];
+                const isRejected = approvalStatus === "rejected";
 
                 return (
                   <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -951,9 +947,9 @@ export function ProductCatalogPage() {
                     <option value="">Select…</option>
                     <option value="sofas">Sofas</option>
                     <option value="tables">Tables</option>
-                    <option value="lightings">Lightings</option>
+                    <option value="chandeliers">Chandeliers</option>
                     <option value="chairs">Chairs</option>
-                    <option value="mirrors">Mirrors</option>
+                    <option value="set">SET</option>
                   </select>
                 </Field>
 
@@ -1008,14 +1004,14 @@ export function ProductCatalogPage() {
                 {saveLoading ? (
                   <>
                     <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                     </svg>
                     {editMode ? "Updating…" : "Creating…"}
                   </>
                 ) : editMode
                   ? <><Pencil size={14} /> Save & Request Re-approval</>
-                  : <><Plus   size={14} /> Create & Submit for Approval</>
+                  : <><Plus size={14} /> Create & Submit for Approval</>
                 }
               </button>
             </div>
@@ -1054,8 +1050,8 @@ export function ProductCatalogPage() {
                   {deleteLoading ? (
                     <>
                       <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                       </svg>
                       Deleting…
                     </>
@@ -1138,8 +1134,8 @@ export function ProductCatalogPage() {
                   {validationLoading ? (
                     <>
                       <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                       </svg>
                       Submitting…
                     </>

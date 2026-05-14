@@ -382,7 +382,7 @@ export function ProductPage() {
   }));
 
   const showARButton = IS_MOBILE && !!(product.model_src || product.able_ar);
-  const show3DButton = !!(product.model_3d);
+  const show3DButton = !!(product.model_3d || product.able_3d);
 
   return (
     <div style={{ minHeight: "100vh", background: "#F5F0E8", color: "#1C1916", fontFamily: "'Cormorant Garamond',Georgia,serif", overflowX: "hidden" }}>
