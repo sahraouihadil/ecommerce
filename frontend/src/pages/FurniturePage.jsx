@@ -297,7 +297,6 @@ export function FurniturePage() {
       .catch(() => setCampaign(null));
   }, [campaignParam]);
 
-  // ✅ FIX: لا تكول /api/favorites إلا كي يكون token موجود
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -409,7 +408,7 @@ export function FurniturePage() {
 
         <Appear delay={0} animation="fadeIn" duration={1.4} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', userSelect: 'none' }}>
           <span aria-hidden="true" style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 'clamp(5rem, 22vw, 18rem)', fontWeight: 900, color: 'transparent', WebkitTextStroke: '1px rgba(180,148,90,0.055)', letterSpacing: '0.12em', whiteSpace: 'nowrap' }}>
-            ATELIER
+            FURNITURE
           </span>
         </Appear>
 
@@ -572,7 +571,7 @@ export function FurniturePage() {
         )}
       </div>
 
-      {/* FOOTER */}
+      {/* SUB FOOTER */}
       <div style={{ padding: '0 clamp(1.5rem,6vw,6rem) 5rem' }}>
         <GoldRule />
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2.5rem' }}>

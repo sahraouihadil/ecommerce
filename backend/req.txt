@@ -31,3 +31,4 @@ python-multipart
 groq
 httpx
 python-multipart
+email-validator
