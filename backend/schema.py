@@ -78,7 +78,7 @@ class CampaignCreate(BaseModel):
     start_date:    Optional[date]  = None
     end_date:      Optional[date]  = None
     discount:      Optional[float] = None
-    discount_type: Optional[str]   = None           # "percent" | "fixed"
+    discount_type: Optional[str]   = None          
     code:          Optional[str]   = None
     usage_max:     int             = 0
     usage_current: int             = 0
@@ -96,7 +96,7 @@ class CampaignCreate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percentage", "fixed"}              
+        allowed = {"percent", "fixed"}              # FIX: was "percentage"
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
@@ -120,8 +120,8 @@ class CampaignCreate(BaseModel):
     def validate_dates_and_discount(self):
         if self.start_date and self.end_date and self.end_date < self.start_date:
             raise ValueError("end_date must be on or after start_date")
-        if self.discount is not None and self.discount_type == "percent" and self.discount > 100:
-            raise ValueError("percent discount cannot exceed 100")
+        if self.discount is not None and self.discount_type == "percentage" and self.discount > 100:
+            raise ValueError("percentage discount cannot exceed 100")
         if self.discount is not None and self.discount_type is None:
             raise ValueError("discount_type is required when discount is set")
         if self.usage_max > 0 and self.usage_current > self.usage_max:
@@ -162,7 +162,7 @@ class CampaignUpdate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percent", "fixed"}              # FIX: was "percentage"
+        allowed = {"percentage", "fixed"}              
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v

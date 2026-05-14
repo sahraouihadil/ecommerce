@@ -186,8 +186,7 @@ class Campaigns(Base):
     image_url     = Column(String)
     start_date    = Column(DateTime)
     end_date      = Column(DateTime)
-    is_active     = Column(Boolean, default=False)      # FIX: was String
-    campaign_type = Column(String, nullable=True)       # FIX: "sale" | "new"
+    campaign_type = Column(String, nullable=True)       # "sale" | "new"
     created_at    = Column(DateTime, default=datetime.utcnow)
 
 

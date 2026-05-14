@@ -75,8 +75,38 @@ def submit_request(
     db:           Session = Depends(get_db),
     current_user: dict    = Depends(get_current_user),
 ):
+    """
+    Create a brand-new validation request.
+    Returns 400 if a Pending request already exists for this item — use
+    /upsert instead when re-submitting after an edit.
+    """
     try:
         req = crud.submit_for_validation(db, payload, submitted_by=current_user["id"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return req
+
+
+@router.post("/upsert", response_model=ValidationOut, status_code=status.HTTP_200_OK)
+def upsert_request(
+    payload:      ValidationSubmit,
+    db:           Session = Depends(get_db),
+    current_user: dict    = Depends(get_current_user),
+):
+    """
+    Create or reset a validation request for the given item.
+
+    Used by the stock-manager after editing a product:
+    - If no validation record exists yet → creates one (status = Pending).
+    - If a record already exists (Pending **or** Rejected) → resets it to
+      Pending, clears the rejection note, and updates the submitter/timestamp.
+
+    This prevents the 400 "already has a pending request" error that the plain
+    POST / endpoint would return when a manager edits a product that was
+    already submitted (or previously rejected) for approval.
+    """
+    try:
+        req = crud.upsert_for_validation(db, payload, submitted_by=current_user["id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return req
@@ -101,7 +131,8 @@ def approve_request(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # If approve() returned a plain dict (Campaigns_Delete case), send it directly
+    # If approve() returned a plain dict (Campaigns_Delete / Products_Delete
+    # case), send it directly because the DB row has already been removed.
     if isinstance(result, dict):
         return JSONResponse(content=_serialize_datetime(result))
 

@@ -11,6 +11,7 @@ import {
 import api from '../../services/api'
 import Sidebar from '../ui/Sidebar'
 import Header from '../ui/Header'
+import icon from "../../assets/icon.jpg";
 
 const BASE = "http://127.0.0.1:8000"
 
@@ -21,6 +22,7 @@ const img = path => {
 }
 
 const PURPLE = '#5B47E0'
+// status drives everything — "active" means live on storefront
 const STATUS_OPTIONS = ['draft', 'paused', 'active', 'completed']
 
 const statusStyle = {
@@ -38,10 +40,11 @@ const VALIDATION_BADGE = {
   deletion_pending:  { bg: '#FEE2E2', color: '#991B1B', icon: <Trash2 size={10} />, label: 'Deletion Pending Admin Approval' },
 }
 
-const IS_ACTIVE_BADGE = {
-  true:  { bg: '#ECFDF5', color: '#16A34A', icon: <ShieldCheck size={10} />, label: 'Live on Storefront' },
-  false: { bg: '#F3F4F6', color: '#6B7280', icon: <ShieldOff  size={10} />, label: 'Hidden from Storefront' },
-}
+// Storefront badge derived purely from status
+const storefrontBadge = (status) =>
+  status === 'active'
+    ? { bg: '#ECFDF5', color: '#16A34A', icon: <ShieldCheck size={10} />, label: 'Live on Storefront' }
+    : { bg: '#F3F4F6', color: '#6B7280', icon: <ShieldOff  size={10} />, label: 'Hidden from Storefront' }
 
 const EMPTY_FORM = {
   name: '', title: '',
@@ -118,7 +121,7 @@ function FacebookPreview({ title, previewImg }) {
     <div style={{ border: '1px solid #E4E6EB', borderRadius: 12, overflow: 'hidden', background: '#fff', fontFamily: 'Helvetica Neue, Arial, sans-serif', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/logo.png" alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+          <img src={icon} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
           <div>
             <p style={{ fontWeight: 700, fontSize: '0.875rem', color: '#050505', margin: 0 }}>{'ARoom'}</p>
             <p style={{ fontSize: '0.6875rem', color: '#65676B', margin: 0 }}>Sponsored · 🌐</p>
@@ -164,9 +167,9 @@ function InstagramPreview({ name, title, previewImg }) {
     <div style={{ border: '1px solid #DBDBDB', borderRadius: 12, overflow: 'hidden', background: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, padding: 2, background: 'linear-gradient(45deg, #F09433, #E6683C, #DC2743, #CC2366, #BC1888)' }}>
-            <img src="/logo.png" alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-          </div>
+         
+            <img src={icon} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+          
           <div>
             <p style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#262626', margin: 0 }}>{'ARoom'}</p>
             <p style={{ fontSize: '0.6875rem', color: '#8E8E8E', margin: 0 }}>Sponsored</p>
@@ -507,7 +510,7 @@ function CampaignModal({ initial, onClose, onSaved }) {
     if (!form.name.trim())               return setError('Campaign name is required.')
     if (!form.title.trim())              return setError('Headline is required.')
     if (!form.start_date)                return setError('Start date is required.')
-    if (!form.budget)                    return setError('budget is required.')
+    if (!form.budget)                    return setError('Budget is required.')
     if (!form.end_date)                  return setError('End date is required.')
     if (form.start_date > form.end_date) return setError('Start date must be before end date.')
     const channel = tacticsToChannel(form.tactics)
@@ -619,12 +622,15 @@ function CampaignModal({ initial, onClose, onSaved }) {
               <input style={inputStyle} type="number" min="0" value={form.budget} onChange={set('budget')} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
             </div>
           </div>
+          {/* Storefront status info banner — read-only, derived from status field */}
           {isEdit && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: initial?.is_active ? '#ECFDF5' : '#F3F4F6', border: `1px solid ${initial?.is_active ? '#BBF7D0' : '#E5E7EB'}` }}>
-              {initial?.is_active ? <ShieldCheck size={15} color="#16A34A" /> : <ShieldOff size={15} color="#9CA3AF" />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: initial?.status === 'active' ? '#ECFDF5' : '#F3F4F6', border: `1px solid ${initial?.status === 'active' ? '#BBF7D0' : '#E5E7EB'}` }}>
+              {initial?.status === 'active' ? <ShieldCheck size={15} color="#16A34A" /> : <ShieldOff size={15} color="#9CA3AF" />}
               <div>
-                <p style={{ fontSize: '0.75rem', fontWeight: 600, color: initial?.is_active ? '#16A34A' : '#6B7280', margin: 0 }}>{initial?.is_active ? 'Currently Live on Storefront' : 'Currently Hidden from Storefront'}</p>
-                <p style={{ fontSize: '0.6875rem', color: '#9CA3AF', margin: 0 }}>Will be hidden again until admin re-approves your changes</p>
+                <p style={{ fontSize: '0.75rem', fontWeight: 600, color: initial?.status === 'active' ? '#16A34A' : '#6B7280', margin: 0 }}>
+                  {initial?.status === 'active' ? 'Currently Live on Storefront' : 'Currently Hidden from Storefront'}
+                </p>
+                <p style={{ fontSize: '0.6875rem', color: '#9CA3AF', margin: 0 }}>Changes will require admin re-approval</p>
               </div>
             </div>
           )}
@@ -735,9 +741,9 @@ function ValidationBanner({ validationStatus, rejectionNote, isDeletionPending }
   )
 }
 
-// ─── Storefront Visibility Badge ──────────────────────────────────────────────
-function StorefrontBadge({ isActive }) {
-  const badge = IS_ACTIVE_BADGE[String(isActive)] || IS_ACTIVE_BADGE['false']
+// ─── Storefront Visibility Badge — derived from status ────────────────────────
+function StorefrontBadge({ status }) {
+  const badge = storefrontBadge(status)
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8, background: badge.bg, color: badge.color, fontSize: '0.6875rem', fontWeight: 600 }}>
       {badge.icon}
@@ -754,12 +760,12 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
   const usagePct      = item.usage_max > 0 ? Math.min(100, Math.round((item.usage_current / item.usage_max) * 100)) : null
   const discountLabel = fmtDiscount(item.discount, item.discount_type)
 
-  const valStatus        = validationInfo?.status ?? 'Approved'
-  const isPending        = valStatus === 'Pending'
-  const isRejected       = valStatus === 'Rejected'
+  const valStatus         = validationInfo?.status ?? 'Approved'
+  const isPending         = valStatus === 'Pending'
+  const isRejected        = valStatus === 'Rejected'
   const isDeletionPending = deletionInfo?.status === 'Pending'
 
-  // Disable both edit and delete while either a review or deletion is pending
+  // Locked while a review OR deletion is pending
   const isLocked = isPending || isDeletionPending
 
   return (
@@ -799,9 +805,9 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
           )}
         </div>
 
-        <StorefrontBadge isActive={item.is_active} />
+        {/* Storefront badge — purely driven by status */}
+        <StorefrontBadge status={item.status} />
 
-        {/* Show deletion pending banner first if applicable, otherwise show normal validation banner */}
         {(validationInfo || isDeletionPending) && (
           <ValidationBanner
             validationStatus={validationInfo?.status}
@@ -888,8 +894,8 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CampaignsPage() {
   const [items,          setItems]          = useState([])
-  const [validationMap,  setValidationMap]  = useState({})  // campaign_id → normal validation row
-  const [deletionMap,    setDeletionMap]    = useState({})  // campaign_id → deletion request row
+  const [validationMap,  setValidationMap]  = useState({})
+  const [deletionMap,    setDeletionMap]    = useState({})
   const [loading,        setLoading]        = useState(true)
   const [openBar,        setOpenBar]        = useState(window.innerWidth >= 600)
   const [showCreate,     setShowCreate]     = useState(false)
@@ -905,14 +911,13 @@ export default function CampaignsPage() {
           api.get('/api/validation/', { params: { item_type: 'Campaigns', limit: 500 } }),
         ])
 
-        // Also fetch deletion requests separately
         const deletionRes = await api.get('/api/validation/', {
           params: { item_type: 'Campaigns_Delete', limit: 500 }
         })
 
         setItems(campaignsRes.data)
 
-        // Build normal validation map (Campaigns type only)
+        // Build normal validation map — last Pending wins over older rows
         const vMap = {}
         const rows = validationRes.data || []
         const sorted = [...rows].sort((a, b) => {
@@ -925,7 +930,7 @@ export default function CampaignsPage() {
         }
         setValidationMap(vMap)
 
-        // Build deletion map — only care about Pending ones
+        // Deletion map — only Pending ones matter
         const dMap = {}
         for (const row of (deletionRes.data || [])) {
           if (row.status === 'Pending') {
@@ -960,8 +965,6 @@ export default function CampaignsPage() {
     setDeleting(true)
     try {
       await api.delete(`/api/campaigns/${deleteTarget.id}`)
-      // Don't remove from items list — campaign still exists, just awaiting admin deletion approval
-      // Mark it as deletion pending in the UI
       setDeletionMap(prev => ({
         ...prev,
         [deleteTarget.id]: { status: 'Pending', item_id: deleteTarget.id },

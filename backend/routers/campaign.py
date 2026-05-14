@@ -24,7 +24,6 @@ def campaign_dict(c: Campaigns) -> dict:
         "title":         c.title,
         "channel":       c.channel,
         "status":        c.status,
-        "is_active":     bool(c.is_active) if c.is_active is not None else False,
         "campaign_type": c.campaign_type,
         "budget":        float(c.budget        or 0),
         "spent":         float(c.spent         or 0),
@@ -55,9 +54,10 @@ def list_campaigns(db: Session = Depends(get_db)):
 
 @router.get("/active")
 def list_active_campaigns(db: Session = Depends(get_db)):
+    """Return campaigns whose status is 'active' and are within their date window."""
     campaigns = (
         db.query(Campaigns)
-        .filter(Campaigns.is_active == True)
+        .filter(Campaigns.status == "active")
         .filter(
             or_(
                 Campaigns.start_date == None,
@@ -96,8 +96,8 @@ def create_campaign(
         name          = data["name"],
         title         = data["title"],
         channel       = data["channel"],
-        status        = data.get("status", "active"),
-        is_active     = True,  # ✅ تفعيل مباشر
+        # New campaigns start as "draft" — admin approval sets them to "active"
+        status        = data.get("status", "draft"),
         campaign_type = data.get("campaign_type"),
         budget        = data["budget"],
         spent         = data.get("spent", 0),
@@ -130,7 +130,6 @@ def update_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     updates = data.model_dump(exclude_unset=True)
-    updates.pop("is_active", None)
 
     new_start = updates.get("start_date", c.start_date)
     new_end   = updates.get("end_date",   c.end_date)
@@ -146,23 +145,6 @@ def update_campaign(
     for k, v in updates.items():
         setattr(c, k, v)
 
-    # ✅ is_active تبقى كما هي — ما نحطوهاش False
-    db.commit()
-    db.refresh(c)
-    return campaign_dict(c)
-
-
-@router.patch("/{campaign_id}/activate")
-def toggle_campaign_active(
-    campaign_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Toggle is_active on/off."""
-    c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    c.is_active = not bool(c.is_active)
     db.commit()
     db.refresh(c)
     return campaign_dict(c)
@@ -179,7 +161,7 @@ def redeem_campaign_code(
     c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    if not c.is_active:
+    if c.status != "active":
         raise HTTPException(status_code=400, detail="Campaign is not active")
     if c.start_date and c.start_date > now:
         raise HTTPException(status_code=400, detail="Campaign has not started yet")
@@ -264,7 +246,6 @@ def delete_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     import validation_crud as vcrud
-    from schema import ValidationSubmit
     try:
         vcrud.submit_delete_request(
             db,

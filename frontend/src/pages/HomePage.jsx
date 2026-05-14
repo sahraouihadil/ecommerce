@@ -637,6 +637,7 @@ export function HomePage() {
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+
             {filtered.map((product, i) => (
               <div
                 key={product.id}
@@ -672,7 +673,7 @@ export function HomePage() {
                 <h3 className="font-cormorant text-xl font-semibold mt-8 mb-1 group-hover:text-rose transition-colors duration-300">
                   {product.name}
                 </h3>
-                <p className="font-cormorant italic text-muted text-base leading-relaxed max-w-[220px]">
+                <p className="font-cormorant italic text-muted text-base leading-relaxed max-w-[220px] line-clamp-2">
                   {product.description}
                 </p>
               </div>
