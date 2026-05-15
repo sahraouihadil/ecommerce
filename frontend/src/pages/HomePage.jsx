@@ -338,7 +338,7 @@ function CampaignsSection() {
 
   const discountLabel = (camp) => {
     if (!camp.discount) return null;
-    return camp.discount_type === 'percent'
+    return camp.discount_type === 'percentage'
       ? `${camp.discount}% OFF selected items`
       : `${camp.discount} DA off selected items`;
   };
