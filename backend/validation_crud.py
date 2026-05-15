@@ -121,6 +121,33 @@ def submit_delete_request(
     )
 
 
+def submit_blog_delete_request(
+    db:           Session,
+    blog_id:      int,
+    blog_title:   str,
+    submitted_by: Optional[int] = None,
+) -> ValidationRequest:
+    """
+    Convenience wrapper used by the blogs router to request deletion.
+
+    Submits a 'Blogs_Delete' validation request.  The blog itself is NOT
+    deleted here — it remains in the database until an admin approves the
+    request, at which point _activate_item hard-deletes it.
+
+    Raises ValueError if a Pending 'Blogs_Delete' request already exists
+    for this blog (prevents duplicate requests).
+    """
+    return submit_for_validation(
+        db,
+        ValidationSubmit(
+            item_type = "Blogs_Delete",
+            item_id   = blog_id,
+            title     = blog_title,
+        ),
+        submitted_by = submitted_by,
+    )
+
+
 # ── Read ─────────────────────────────────────────────────────────────────────
 
 def get_all(
@@ -420,6 +447,7 @@ def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
         return
 
     if item_type == "Blogs_Delete":
+        # Rejection means "keep the blog" — no state change needed.
         return
 
     if item_type == "Products":

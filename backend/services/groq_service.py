@@ -22,6 +22,9 @@ import os
 import json
 from dotenv import load_dotenv
 from groq import Groq
+from sqlalchemy.orm import Session
+from database import SessionLocal
+from models import Products
 
 # Load the API key from .env
 load_dotenv()
@@ -53,16 +56,32 @@ PROMPTS = {
 
 def load_products():
     """
-    Loads the product catalog from the JSON file.
-    This data is included in the AI's system prompt so it knows what we sell.
-    Returns an empty list if the file doesn't exist.
+    Load products directly from PostgreSQL database
+    instead of products.json
     """
+    db: Session = SessionLocal()
+
     try:
-        path = os.path.join(os.path.dirname(__file__), "..", "data", "products.json")
-        with open(path, "r") as f:
-            return json.load(f)
-    except Exception:
+        products = db.query(Products).all()
+
+        return [
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "price": p.price,
+                "stock": p.stock,
+                "category": p.category,
+            }
+            for p in products
+        ]
+
+    except Exception as e:
+        print("Error loading products:", e)
         return []
+
+    finally:
+        db.close()
 
 
 def get_bot_response(message, context, history, product_name=""):

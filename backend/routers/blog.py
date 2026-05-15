@@ -3,15 +3,27 @@ blog_router.py  –  FastAPI router for Blog Posts
 
 Validation flow
 ───────────────
-  CREATE  →  blog saved as status="draft"
-             ValidationRequest (Blogs) submitted → pending admin review
-             Admin approves  → _activate_item sets status="published" + sets created_at
-             Admin rejects   → _deactivate_item keeps status="draft"
+  CREATE (status="draft")
+             → blog saved as status="draft", NO validation request submitted.
+               The manager can edit and re-submit later.
 
-  UPDATE  →  blog fields updated in-place, status reset to "draft"
-             New ValidationRequest (Blogs) upserted → pending admin review
-             Admin approves  → _activate_item sets status="published"
-             Admin rejects   → _deactivate_item sets status="draft"
+  CREATE (status="published")
+             → blog saved as status="draft" (pending approval)
+               ValidationRequest (Blogs) submitted → pending admin review
+               Admin approves  → _activate_item sets status="published" + sets created_at
+               Admin rejects   → _deactivate_item keeps status="draft"
+
+  UPDATE (status="draft")
+             → blog fields updated in-place, status kept/set to "draft".
+               Any existing Pending validation request is cancelled (reset to
+               Rejected) so the admin queue is not polluted.
+               No new validation request is submitted.
+
+  UPDATE (status="published")
+             → blog fields updated in-place, status reset to "draft"
+               New ValidationRequest (Blogs) upserted → pending admin review
+               Admin approves  → _activate_item sets status="published"
+               Admin rejects   → _deactivate_item sets status="draft"
 
   DELETE  →  ValidationRequest (Blogs_Delete) submitted → pending admin review
              Blog is NOT deleted yet; it stays as-is until admin decides
@@ -23,7 +35,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from models import Blogs
+from models import Blogs, ValidationRequest
 from database import get_db
 from schema import BlogCreate, BlogUpdate, ValidationSubmit
 import validation_crud
@@ -94,16 +106,18 @@ def create_blog(
     # current_user: dict = Depends(get_current_user),   # ← uncomment with auth
 ):
     """
-    Creates a new blog post and submits it for admin validation.
+    Creates a new blog post.
 
-    The blog is always saved with status='draft'.  Once an admin approves
-    the ValidationRequest the helper _activate_item sets status='published'
-    and stamps created_at.
+    - status="draft"     → saved as draft, NO validation request submitted.
+    - status="published" → saved as draft (pending approval), validation
+                           request submitted to admin queue.
 
-    Response includes a 'validation_status' key so the frontend can inform
-    the author that the post is awaiting review.
+    Response includes a 'validation_status' key:
+      - "pending" when submitted for review
+      - "draft"   when saved as draft with no review request
     """
     data = body.model_dump()
+    wants_publish = data.get("status") == "published"
 
     b = Blogs(
         title      = data["title"],
@@ -121,21 +135,26 @@ def create_blog(
     db.commit()
     db.refresh(b)
 
-    try:
-        validation_crud.upsert_for_validation(
-            db      = db,
-            payload = ValidationSubmit(
-                item_type = "Blogs",
-                item_id   = b.id,
-                title     = b.title,
-            ),
-            # submitted_by = current_user["id"],
-        )
-    except ValueError:
-        pass   # already pending — harmless
+    validation_status = "draft"
+
+    if wants_publish:
+        # Only submit for admin review when the manager explicitly chose "published"
+        try:
+            validation_crud.upsert_for_validation(
+                db      = db,
+                payload = ValidationSubmit(
+                    item_type = "Blogs",
+                    item_id   = b.id,
+                    title     = b.title,
+                ),
+                # submitted_by = current_user["id"],
+            )
+            validation_status = "pending"
+        except ValueError:
+            pass   # already pending — harmless
 
     result = blog_dict(b)
-    result["validation_status"] = "pending"
+    result["validation_status"] = validation_status
     return result
 
 
@@ -147,19 +166,20 @@ def update_blog(
     # current_user: dict = Depends(get_current_user),
 ):
     """
-    Updates an existing blog post in-place, then resets it to 'draft' and
-    submits a new validation request so an admin must re-approve before the
-    changes go live on the Journal.
+    Updates an existing blog post in-place.
 
-    Response includes a 'validation_status' key ('pending') so the frontend
-    can immediately reflect the awaiting-review state.
+    - status="draft"     → saved as draft, any existing pending validation
+                           request is withdrawn (reset), no new request submitted.
+    - status="published" → reset to draft, new validation request upserted
+                           so an admin must re-approve before changes go live.
+
+    Response includes a 'validation_status' key ('pending' or 'draft').
     """
     b = db.query(Blogs).filter(Blogs.id == blog_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Blog post not found")
 
     # Check if there's already a pending delete request for this blog
-    from models import ValidationRequest
     pending_delete = (
         db.query(ValidationRequest)
         .filter(
@@ -176,30 +196,53 @@ def update_blog(
         )
 
     updates = data.model_dump(exclude_unset=True)
+    wants_publish = updates.get("status") == "published"
+
     for k, v in updates.items():
         setattr(b, k, v)
 
-    # Always reset to draft after an edit — re-validation required
+    # Always store as draft — published state is only granted by admin approval
     b.status = "draft"
     db.commit()
     db.refresh(b)
 
-    # Upsert the validation request (resets if one already exists)
-    try:
-        validation_crud.upsert_for_validation(
-            db      = db,
-            payload = ValidationSubmit(
-                item_type = "Blogs",
-                item_id   = b.id,
-                title     = b.title,
-            ),
-            # submitted_by = current_user["id"],
+    validation_status = "draft"
+
+    if wants_publish:
+        # Submit / reset a validation request for admin review
+        try:
+            validation_crud.upsert_for_validation(
+                db      = db,
+                payload = ValidationSubmit(
+                    item_type = "Blogs",
+                    item_id   = b.id,
+                    title     = b.title,
+                ),
+                # submitted_by = current_user["id"],
+            )
+            validation_status = "pending"
+        except ValueError:
+            pass
+    else:
+        # Manager saved as draft — withdraw any existing pending validation
+        # request so it doesn't sit in the admin queue unnecessarily.
+        existing_pending = (
+            db.query(ValidationRequest)
+            .filter(
+                ValidationRequest.item_type == "Blogs",
+                ValidationRequest.item_id   == blog_id,
+                ValidationRequest.status    == "Pending",
+            )
+            .first()
         )
-    except ValueError:
-        pass
+        if existing_pending:
+            existing_pending.status         = "Rejected"
+            existing_pending.rejection_note = "Withdrawn by author (saved as draft)."
+            existing_pending.reviewed_at    = datetime.utcnow()
+            db.commit()
 
     result = blog_dict(b)
-    result["validation_status"] = "pending"
+    result["validation_status"] = validation_status
     return result
 
 

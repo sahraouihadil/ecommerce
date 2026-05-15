@@ -8,15 +8,14 @@ import api from '../../services/api'
 import Sidebar from '../ui/Sidebar'
 import Header from '../ui/Header'
 
-const GOLD   = '#5B47E0'
+const GOLD = '#5B47E0'
 
-const STATUS_OPTIONS   = ['published', 'draft', 'scheduled']
+const STATUS_OPTIONS   = ['published', 'draft']
 const CATEGORY_OPTIONS = ['AR', 'Email', 'Promotions', 'Social', 'Branding']
 
 const statusStyle = {
   published: 'bg-green-100 text-green-600',
   draft:     'bg-yellow-100 text-yellow-700',
-  scheduled: 'bg-blue-100 text-blue-600',
   pending:   'bg-purple-100 text-purple-600',
 }
 
@@ -83,7 +82,7 @@ function PendingCreateBanner({ onClose }) {
       bg="linear-gradient(135deg,#f5f3ff,#ede9fe)"
       border="#c4b5fd"
       title="Blog submitted for admin review"
-      body="Your post has been saved as <strong>draft</strong> and is pending validation. It will go live on the Journal page once an admin approves it."
+      body="Your post has been saved and is pending validation. It will go live on the Journal page once an admin approves it."
       onClose={onClose}
     />
   )
@@ -98,6 +97,20 @@ function PendingEditBanner({ onClose }) {
       border="#93c5fd"
       title="Edit submitted for admin review"
       body="Your changes have been saved as <strong>draft</strong>. An admin must re-approve before the updated post goes live on the Journal."
+      onClose={onClose}
+    />
+  )
+}
+
+function PendingSaveBanner({ onClose }) {
+  return (
+    <Banner
+      icon={Clock}
+      color="#047857"
+      bg="linear-gradient(135deg,#ecfdf5,#d1fae5)"
+      border="#6ee7b7"
+      title="Draft saved"
+      body="Your post has been saved as <strong>draft</strong>. It will not go live until you resubmit it for admin review."
       onClose={onClose}
     />
   )
@@ -120,7 +133,9 @@ function PendingDeleteBanner({ onClose }) {
 // ── Blog modal (create / edit) ───────────────────────────────────────────────
 
 function BlogModal({ initial, onClose, onSaved }) {
-  const isEdit = !!initial?.id
+  const isEdit      = !!initial?.id
+  const isPublished = initial?.status === 'published'
+
   const [form, setForm]     = useState(initial ? {
     title:    initial.title    ?? '',
     excerpt:  initial.excerpt  ?? '',
@@ -135,6 +150,29 @@ function BlogModal({ initial, onClose, onSaved }) {
   const [error, setError]   = useState('')
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  // ── Derived state based on current status selection ────────────────────────
+  // draft     → "Save"           (persist only, no review request sent)
+  // published → "Submit for Review" / "Save for Review"
+  const wantsReview = form.status === 'published'
+
+  const submitLabel = wantsReview
+    ? (isEdit ? 'Save for Review' : 'Submit for Review')
+    : 'Save'
+
+  // Notice text changes to reflect the chosen status
+  const noticeText = wantsReview
+    ? isEdit
+      ? 'Saving will reset this post to draft and require admin re-approval.'
+      : 'New posts require admin approval before being published on the Journal.'
+    : isEdit
+      ? 'This post will be saved as draft — it won\'t go live until submitted for review.'
+      : 'Saving as draft — the post won\'t go live until you resubmit it for review.'
+
+  const noticeColor  = wantsReview ? (isEdit ? '#1e40af' : '#6d28d9') : '#166534'
+  const noticeBg     = wantsReview ? (isEdit ? '#eff6ff'  : '#f5f3ff') : '#f0fdf4'
+  const noticeBorder = wantsReview ? (isEdit ? '#bfdbfe'  : '#ddd6fe') : '#bbf7d0'
+  const NoticeIcon   = wantsReview ? Clock : FileText
 
   const handleSubmit = async () => {
     if (!form.title.trim())   return setError('Title is required.')
@@ -156,7 +194,7 @@ function BlogModal({ initial, onClose, onSaved }) {
       const res = isEdit
         ? await api.put(`/api/blogs/${initial.id}`, payload)
         : await api.post('/api/blogs/', payload)
-      onSaved(res.data, isEdit)
+      onSaved(res.data, isEdit, isPublished, wantsReview)
       onClose()
     } catch (err) {
       setError(err?.response?.data?.detail || 'Failed to save. Please try again.')
@@ -182,9 +220,11 @@ function BlogModal({ initial, onClose, onSaved }) {
               {isEdit ? 'Edit Blog Post' : 'New Blog Post'}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {isEdit
-                ? 'Your changes will be sent for admin review before going live.'
-                : 'Fill in the details — your post will be sent for admin review before going live.'}
+              {wantsReview
+                ? (!isEdit
+                    ? 'Your post will be sent for admin review before going live.'
+                    : 'Your changes will be sent for admin review before going live.')
+                : 'Your post will be saved as draft — no review request will be sent.'}
             </p>
           </div>
           <button
@@ -198,18 +238,16 @@ function BlogModal({ initial, onClose, onSaved }) {
         {/* Body */}
         <div className="overflow-y-auto px-6 py-5 flex flex-col gap-4">
 
-          {/* Notice */}
+          {/* Dynamic notice */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '11px 14px', borderRadius: 12,
-            background: isEdit ? '#eff6ff' : '#f5f3ff',
-            border: `1px solid ${isEdit ? '#bfdbfe' : '#ddd6fe'}`,
+            background: noticeBg,
+            border: `1px solid ${noticeBorder}`,
           }}>
-            <Clock size={14} style={{ color: isEdit ? '#1d4ed8' : '#7c3aed', flexShrink: 0 }} />
-            <p style={{ margin: 0, fontSize: 12, color: isEdit ? '#1e40af' : '#6d28d9', fontWeight: 600 }}>
-              {isEdit
-                ? 'Saving will reset this post to draft and require admin re-approval.'
-                : 'New posts require admin approval before being published on the Journal.'}
+            <NoticeIcon size={14} style={{ color: noticeColor, flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: 12, color: noticeColor, fontWeight: 600 }}>
+              {noticeText}
             </p>
           </div>
 
@@ -247,18 +285,16 @@ function BlogModal({ initial, onClose, onSaved }) {
                 {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            {/* Status dropdown only in edit mode */}
-            {isEdit && (
-              <Field label="Status">
-                <select className={inputCls} value={form.status} onChange={set('status')}>
-                  {STATUS_OPTIONS.map(s => (
-                    <option key={s} value={s}>
-                      {s.charAt(0).toUpperCase() + s.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            )}
+
+            <Field label="Status">
+              <select className={inputCls} value={form.status} onChange={set('status')}>
+                {STATUS_OPTIONS.map(s => (
+                  <option key={s} value={s}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </Field>
           </div>
 
           <Field label="Image URL">
@@ -318,7 +354,7 @@ function BlogModal({ initial, onClose, onSaved }) {
             style={{ background: GOLD }}
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
-            {saving ? 'Saving…' : isEdit ? 'Save & Submit for Review' : 'Submit for Review'}
+            {saving ? 'Saving…' : submitLabel}
           </button>
         </div>
       </div>
@@ -412,7 +448,6 @@ function BlogCard({ item, onEdit, onDelete }) {
   const pendingValidation = item.validation_status === 'pending' || item._pendingValidation
   const pendingDelete     = item._pendingDelete
 
-  // Determine ribbon style
   const ribbon = pendingDelete
     ? { bg: 'linear-gradient(90deg,#ef4444,#fca5a5)', label: 'Awaiting admin — deletion request' }
     : pendingValidation
@@ -430,7 +465,6 @@ function BlogCard({ item, onEdit, onDelete }) {
       className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-3 hover:shadow-md transition-shadow overflow-hidden"
       style={cardBorderStyle}
     >
-      {/* Cover image */}
       {item.image && (
         <img
           src={item.image}
@@ -440,7 +474,6 @@ function BlogCard({ item, onEdit, onDelete }) {
         />
       )}
 
-      {/* Status ribbon */}
       {ribbon && (
         <div style={{
           margin: item.image ? '-8px 0 0' : '0',
@@ -521,10 +554,9 @@ export default function BlogsPage() {
   const [loading, setLoading] = useState(true)
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600)
 
-  // Banner state: 'none' | 'create' | 'edit' | 'delete'
+  // Banner state: 'none' | 'create' | 'edit' | 'save' | 'delete'
   const [banner, setBanner] = useState('none')
 
-  // Modal state
   const [editTarget,   setEditTarget]   = useState(null)
   const [showCreate,   setShowCreate]   = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -537,30 +569,55 @@ export default function BlogsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Called when a modal saves successfully
-  const handleSaved = (saved, isEdit) => {
+  /**
+   * onSaved is called by BlogModal after a successful API response.
+   *
+   * @param {object}  saved         - the blog object returned by the server
+   * @param {boolean} isEdit        - true when editing an existing post
+   * @param {boolean} wasPublished  - true when the edited post was previously published
+   * @param {boolean} wantsReview   - true when the user chose status="published"
+   *
+   * Banner logic:
+   *   • New post  + published  → 'create'  (submitted for review)
+   *   • New post  + draft      → 'save'    (saved as draft, no review)
+   *   • Edit post + published  → 'edit'    (submitted for review)
+   *   • Edit post + draft      → 'save'    (saved as draft, no review)
+   *
+   * _pendingValidation is ONLY set to true when wantsReview is true,
+   * i.e. the manager explicitly chose "published" status.
+   * Draft saves never show a pending-review ribbon on the card.
+   */
+  const handleSaved = (saved, isEdit, wasPublished, wantsReview) => {
     if (isEdit) {
-      // Mark the updated post as pending validation in local state
       setItems(prev => prev.map(i =>
         i.id === saved.id
-          ? { ...saved, _pendingValidation: true, _pendingDelete: false }
+          ? {
+              ...saved,
+              // Only flag as pending if the user submitted for review
+              _pendingValidation: wantsReview,
+              _pendingDelete: false,
+            }
           : i
       ))
-      setBanner('edit')
+      setBanner(wantsReview ? 'edit' : 'save')
     } else {
-      // New post: mark as pending
-      setItems(prev => [{ ...saved, _pendingValidation: true }, ...prev])
-      setBanner('create')
+      setItems(prev => [
+        {
+          ...saved,
+          // Only flag as pending if the user submitted for review
+          _pendingValidation: wantsReview,
+        },
+        ...prev,
+      ])
+      setBanner(wantsReview ? 'create' : 'save')
     }
   }
 
-  // Delete = submit a deletion request to the backend
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
     try {
       await api.delete(`/api/blogs/${deleteTarget.id}`)
-      // Mark the card locally as deletion-pending (not removed yet)
       setItems(prev => prev.map(i =>
         i.id === deleteTarget.id
           ? { ...i, _pendingDelete: true, _pendingValidation: false }
@@ -569,7 +626,6 @@ export default function BlogsPage() {
       setDeleteTarget(null)
       setBanner('delete')
     } catch (err) {
-      // Surface the backend error (e.g. already pending)
       console.error(err)
       alert(err?.response?.data?.detail || 'Failed to submit deletion request.')
     } finally {
@@ -599,7 +655,7 @@ export default function BlogsPage() {
           {/* Top bar */}
           <div className="flex justify-between items-start">
             <p className="text-sm text-gray-400 mt-0.5">
-              Create and manage marketing blog content — all changes require admin approval.
+              Create and manage marketing blog content — published posts require admin approval.
             </p>
             <button
               onClick={() => setShowCreate(true)}
@@ -613,6 +669,7 @@ export default function BlogsPage() {
           {/* Banners */}
           {banner === 'create' && <PendingCreateBanner onClose={closeBanner} />}
           {banner === 'edit'   && <PendingEditBanner   onClose={closeBanner} />}
+          {banner === 'save'   && <PendingSaveBanner   onClose={closeBanner} />}
           {banner === 'delete' && <PendingDeleteBanner onClose={closeBanner} />}
 
           {/* Grid */}

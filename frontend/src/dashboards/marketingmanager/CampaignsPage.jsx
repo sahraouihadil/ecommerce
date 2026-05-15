@@ -25,12 +25,6 @@ const PURPLE = '#5B47E0'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
-/**
- * Derive the display status for a campaign.
- * If the campaign's own status is already 'draft' or 'paused', keep it.
- * If end_date has passed and status is 'active', show as 'completed'.
- * Otherwise use the stored status.
- */
 function deriveStatus(item) {
   if (!item) return 'draft'
   if (item.status === 'draft' || item.status === 'paused') return item.status
@@ -42,19 +36,9 @@ function deriveStatus(item) {
     end.setHours(0, 0, 0, 0)
     if (end < today) return 'completed'
   }
-  return item.status // 'active' or anything else
+  return item.status
 }
 
-/**
- * Build the status options available in the dropdown depending on the
- * campaign's CURRENT (stored) status.
- *
- * Rules:
- *  - 'completed' is NEVER shown in the dropdown.
- *  - 'paused' only appears when the current status is 'active'
- *    (so the user can pause a live campaign).
- *  - When editing a paused campaign the user can go back to draft or active.
- */
 function getStatusOptions(currentStatus) {
   if (currentStatus === 'active') {
     return ['draft', 'active', 'paused']
@@ -62,7 +46,6 @@ function getStatusOptions(currentStatus) {
   if (currentStatus === 'paused') {
     return ['draft', 'active', 'paused']
   }
-  // draft (or anything else, e.g. new form)
   return ['draft', 'active']
 }
 
@@ -243,8 +226,8 @@ function InstagramPreview({ name, title, previewImg }) {
   )
 }
 
-// ─── Image Upload Field ───────────────────────────────────────────────────────
-function ImageUploadField({ pendingFile, existingUrl, onFile, onClear }) {
+// ─── Image Upload Field (MANDATORY) ──────────────────────────────────────────
+function ImageUploadField({ pendingFile, existingUrl, onFile, onClear, hasError }) {
   const inputRef = useRef(null)
   const [drag, setDrag] = useState(false)
   const [blobUrl, setBlobUrl] = useState(null)
@@ -267,7 +250,10 @@ function ImageUploadField({ pendingFile, existingUrl, onFile, onClear }) {
 
   return (
     <div>
-      <label style={labelStyle}>Campaign Image <span style={{ color: '#D1D5DB', fontWeight: 400 }}>(optional)</span></label>
+      <label style={labelStyle}>
+        Campaign Image{' '}
+        <span style={{ color: '#EF4444', fontWeight: 700 }}>*</span>
+      </label>
       <div
         onDragOver={e => { e.preventDefault(); setDrag(true) }}
         onDragLeave={() => setDrag(false)}
@@ -275,8 +261,21 @@ function ImageUploadField({ pendingFile, existingUrl, onFile, onClear }) {
         onClick={() => !preview && inputRef.current?.click()}
         style={{
           position: 'relative', height: preview ? 'auto' : 110, minHeight: preview ? 0 : 110,
-          borderRadius: 12, border: drag ? `2px dashed ${PURPLE}` : preview ? 'none' : '2px dashed #E5E7EB',
-          background: drag ? '#F5F3FF' : preview ? 'transparent' : '#FAFAFA',
+          borderRadius: 12,
+          border: hasError
+            ? '2px dashed #EF4444'
+            : drag
+            ? `2px dashed ${PURPLE}`
+            : preview
+            ? 'none'
+            : '2px dashed #E5E7EB',
+          background: hasError
+            ? '#FEF2F2'
+            : drag
+            ? '#F5F3FF'
+            : preview
+            ? 'transparent'
+            : '#FAFAFA',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: 8, cursor: preview ? 'default' : 'pointer',
           overflow: 'hidden', transition: 'border-color 0.2s, background 0.2s',
@@ -298,11 +297,13 @@ function ImageUploadField({ pendingFile, existingUrl, onFile, onClear }) {
           </>
         ) : (
           <>
-            <ImagePlus size={22} color="#D1D5DB" />
-            <p style={{ fontSize: '0.8125rem', color: '#9CA3AF', margin: 0, textAlign: 'center' }}>
-              Drag & drop or <span style={{ color: PURPLE, fontWeight: 600 }}>browse</span>
+            <ImagePlus size={22} color={hasError ? '#EF4444' : '#D1D5DB'} />
+            <p style={{ fontSize: '0.8125rem', color: hasError ? '#EF4444' : '#9CA3AF', margin: 0, textAlign: 'center' }}>
+              Drag & drop or <span style={{ color: hasError ? '#EF4444' : PURPLE, fontWeight: 600 }}>browse</span>
             </p>
-            <p style={{ fontSize: '0.6875rem', color: '#D1D5DB', margin: 0 }}>JPEG, PNG, WebP · max 5 MB</p>
+            <p style={{ fontSize: '0.6875rem', color: hasError ? '#FCA5A5' : '#D1D5DB', margin: 0 }}>
+              {hasError ? 'A campaign image is required' : 'JPEG, PNG, WebP · max 5 MB'}
+            </p>
           </>
         )}
       </div>
@@ -519,7 +520,6 @@ function getSaveLabel({ saving, isEdit, status }) {
 function CampaignModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial?.id
 
-  // The stored status from the API (used to compute dropdown options)
   const storedStatus = initial?.status ?? 'draft'
 
   const [form, setForm] = useState(
@@ -538,11 +538,12 @@ function CampaignModal({ initial, onClose, onSaved }) {
       usage_current: initial.usage_current ?? 0,
     } : EMPTY_FORM
   )
-  const [saving,      setSaving]      = useState(false)
-  const [error,       setError]       = useState('')
-  const [pendingFile, setPendingFile] = useState(null)
-  const [clearImage,  setClearImage]  = useState(false)
-  const [blobPreview, setBlobPreview] = useState(null)
+  const [saving,        setSaving]        = useState(false)
+  const [error,         setError]         = useState('')
+  const [pendingFile,   setPendingFile]   = useState(null)
+  const [clearImage,    setClearImage]    = useState(false)
+  const [blobPreview,   setBlobPreview]   = useState(null)
+  const [imageError,    setImageError]    = useState(false)
 
   useEffect(() => {
     if (pendingFile) {
@@ -554,12 +555,23 @@ function CampaignModal({ initial, onClose, onSaved }) {
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  // Status options depend on the stored (original) status of the campaign
   const statusOptions = getStatusOptions(storedStatus)
 
   const needsApproval = form.status === 'active'
 
+  // Determine if there is currently a valid image (existing or newly uploaded)
+  const existingUrl     = clearImage ? null : (initial?.image_url ? img(initial.image_url) : null)
+  const livePreview     = blobPreview || existingUrl
+  const hasImage        = !!livePreview
+
   const handleSubmit = async () => {
+    // Image is now mandatory
+    if (!hasImage) {
+      setImageError(true)
+      return setError('A campaign image is required.')
+    }
+    setImageError(false)
+
     if (!form.name.trim())               return setError('Campaign name is required.')
     if (!form.title.trim())              return setError('Headline is required.')
     if (!form.start_date)                return setError('Start date is required.')
@@ -612,6 +624,9 @@ function CampaignModal({ initial, onClose, onSaved }) {
         saved = imgRes.data
       }
 
+      // clearImage can only remove the image if a new one wasn't uploaded;
+      // but since image is mandatory, clearImage alone without a pendingFile
+      // would have been blocked above — this branch is kept for safety only.
       if (clearImage && !pendingFile && isEdit && initial?.image_url) {
         const imgRes = await api.delete(`/api/campaigns/${saved.id}/image`)
         saved = imgRes.data
@@ -626,9 +641,7 @@ function CampaignModal({ initial, onClose, onSaved }) {
     }
   }
 
-  const backdrop    = e => { if (e.target === e.currentTarget) onClose() }
-  const existingUrl = clearImage ? null : (initial?.image_url ? img(initial.image_url) : null)
-  const livePreview = blobPreview || existingUrl
+  const backdrop = e => { if (e.target === e.currentTarget) onClose() }
 
   return (
     <div onClick={backdrop} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}>
@@ -649,11 +662,15 @@ function CampaignModal({ initial, onClose, onSaved }) {
         </div>
 
         <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          {/* IMAGE IS NOW MANDATORY */}
           <ImageUploadField
-            pendingFile={pendingFile} existingUrl={existingUrl}
-            onFile={f => { setPendingFile(f); setClearImage(false) }}
-            onClear={() => { setPendingFile(null); setClearImage(true) }}
+            pendingFile={pendingFile}
+            existingUrl={existingUrl}
+            onFile={f => { setPendingFile(f); setClearImage(false); setImageError(false) }}
+            onClear={() => { setPendingFile(null); setClearImage(true); setImageError(true) }}
+            hasError={imageError}
           />
+
           <div>
             <label style={labelStyle}>Campaign Name</label>
             <input style={inputStyle} value={form.name} onChange={set('name')} placeholder="e.g. Summer Sale 2025" onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
@@ -835,7 +852,6 @@ function StorefrontBadge({ status }) {
 
 // ─── Campaign Card ────────────────────────────────────────────────────────────
 function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) {
-  // Compute display status — auto-completed when end_date has passed
   const displayStatus = deriveStatus(item)
 
   const pct           = item.budget > 0 ? Math.min(100, Math.round((item.spent / item.budget) * 100)) : 0
@@ -849,7 +865,6 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
   const isRejected        = valStatus === 'Rejected'
   const isDeletionPending = deletionInfo?.status === 'Pending'
 
-  // Completed campaigns are read-only; pending/deletion-pending are locked too
   const isCompleted = displayStatus === 'completed'
   const isLocked    = isPending || isDeletionPending || isCompleted
 
@@ -902,7 +917,6 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
           />
         )}
 
-        {/* Completed notice */}
         {isCompleted && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, background: '#F3F4F6', color: '#6B7280', fontSize: '0.6875rem', fontWeight: 600 }}>
             <Check size={10} />

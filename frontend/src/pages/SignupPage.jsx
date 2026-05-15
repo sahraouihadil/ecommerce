@@ -177,7 +177,6 @@ function AuthShell({ children }) {
 }
 
 // ── Forgot Password Modal ──────────────────────────────────────────
-import { login, isAuthenticated } from "../services/auth";
 import api from "../services/api";
 
 function ForgotPasswordModal({ onClose }) {
@@ -496,130 +495,6 @@ export function SignupPage() {
           enter your sanctuary
         </span>
       </div>
-    </AuthShell>
-  );
-}
-
-// ── LoginPage ──────────────────────────────────────────────────────
-export function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showForgot, setShowForgot] = useState(false);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isAuthenticated()) navigate("/");
-  }, [navigate]);
-
-  const validateForm = () => {
-    if (!username || !password) { setError("Username and password are required."); return false; }
-    setError(""); return true;
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!validateForm()) return;
-    setLoading(true);
-    try {
-      const data = await login(username, password);
-      setLoading(false);
-      if (data?.access_token) {
-        localStorage.setItem("token", data.access_token);
-        localStorage.setItem("role", data.role);
-        const routes = { admin: "/admin-dash", accountant: "/accountant-dash", marketing_manager: "/marketing-manager-dash", stock_manager: "/stock-manager-dash", deliveryman: "/deliveryman-dash" };
-        navigate(routes[data.role] || "/");
-      } else { setError("Authentication failed."); }
-    } catch (err) {
-      setLoading(false);
-      setError(err?.response?.data?.detail || "An error occurred. Please try again later.");
-    }
-  };
-
-  return (
-    <AuthShell>
-      {/* Header */}
-      <div className="au-d1" style={{ textAlign: "center", marginBottom: "2.25rem" }}>
-        <p style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.38em", textTransform: "uppercase", color: "#9E8E7A", marginBottom: "0.7rem" }}>
-          Welcome back
-        </p>
-        <Link to="/" style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: "1.1rem", fontWeight: 700, letterSpacing: "0.06em", color: "#1C1916", textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
-          ARoom
-        </Link>
-        <h1 style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: "clamp(1.5rem, 5vw, 2.25rem)", fontWeight: 700, letterSpacing: "0.04em", color: "#1C1916", lineHeight: 1.1, marginBottom: "0.6rem" }}>
-          Sign In
-        </h1>
-        <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.05rem", fontStyle: "italic", fontWeight: 300, color: "#7A6B5A", lineHeight: 1.7 }}>
-          Your sanctuary awaits.
-        </p>
-      </div>
-
-      <GoldRule />
-
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-        <div className="au-d2">
-          <label style={labelStyle}>Username</label>
-          <FieldWrap>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9E8E7A" strokeWidth="1.5" style={{ flexShrink: 0 }}><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="your username" style={inputStyle} />
-          </FieldWrap>
-        </div>
-
-        <div className="au-d3">
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "0.4rem" }}>
-            <span style={labelStyle}>Password</span>
-            <button type="button" onClick={() => setShowForgot(true)} style={{ marginLeft: "auto", fontFamily: "sans-serif", fontSize: "0.52rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "#9A7D4A", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-              Forgot?
-            </button>
-          </div>
-          <FieldWrap>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9E8E7A" strokeWidth="1.5" style={{ flexShrink: 0 }}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
-            <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
-            <EyeToggle show={showPassword} onToggle={() => setShowPassword(p => !p)} />
-          </FieldWrap>
-        </div>
-
-        {error && <div className="au-d4"><ErrorBox message={error} /></div>}
-
-        <div className="au-d4">
-          <button type="submit" disabled={loading} className="auth-submit"
-            style={{ width: "100%", padding: "0.9rem", marginTop: "0.4rem", background: loading ? "rgba(28,25,22,0.6)" : "#1C1916", border: "1px solid #1C1916", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontFamily: "sans-serif", fontSize: "0.57rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#F5F0E8", cursor: loading ? "not-allowed" : "pointer", transition: "background 0.2s" }}>
-            {loading ? "Signing in..." : <><span>Sign In</span><ArrowIcon /></>}
-          </button>
-        </div>
-
-        <div className="au-d5" style={{ display: "flex", alignItems: "center", gap: "10px", margin: "0.2rem 0" }}>
-          <div style={{ flex: 1, height: "1px", background: "rgba(200,169,106,0.2)" }} />
-          <span style={{ fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(158,142,122,0.5)" }}>or</span>
-          <div style={{ flex: 1, height: "1px", background: "rgba(200,169,106,0.2)" }} />
-        </div>
-
-        <div className="au-d5">
-          <button type="button" onClick={() => navigate("/register")}
-            style={{ width: "100%", padding: "0.7rem", background: "transparent", border: "1px solid rgba(200,169,106,0.4)", borderRadius: "14px", fontFamily: "sans-serif", fontSize: "0.57rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#9A7D4A", cursor: "pointer", transition: "background 0.2s" }}
-            onMouseEnter={e => e.currentTarget.style.background = "rgba(200,169,106,0.08)"}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-            Create Account
-          </button>
-        </div>
-      </form>
-
-      <p className="au-d6" style={{ textAlign: "center", marginTop: "1.5rem", fontFamily: "sans-serif", fontSize: "0.52rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "#9E8E7A", lineHeight: 1.9 }}>
-        By signing in, you agree to our{" "}
-        <a href="#" style={{ color: "#9A7D4A", textDecoration: "underline" }}>Terms</a>
-        {" & "}
-        <a href="#" style={{ color: "#9A7D4A", textDecoration: "underline" }}>Privacy</a>
-      </p>
-
-      <div className="au-d7" style={{ display: "flex", justifyContent: "center", marginTop: "1.75rem" }}>
-        <span style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: "0.5rem", letterSpacing: "0.45em", textTransform: "uppercase", color: "rgba(200,169,106,0.3)" }}>
-          enter your sanctuary
-        </span>
-      </div>
-
-      {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
     </AuthShell>
   );
 }

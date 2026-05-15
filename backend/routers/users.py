@@ -71,11 +71,11 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
             "email": user.email
         }
 
-    # ❌ username already exists
+    # username already exists
     if db_user_by_username:
         raise HTTPException(status_code=400, detail="Username already exists")
 
-    # ❌ email already exists
+    # email already exists
     if db_user_by_email:
         raise HTTPException(status_code=400, detail="Email already exists")
 
@@ -88,14 +88,14 @@ def register_user(user: CreateUserRequest, db: Session = Depends(get_db)):
     # ── Create user ─────────────────────────────
     new_user = create_user(db=db, create_user_request=user)
 
-    # 🔥 Generate verification code
+    # Generate verification code
     verification_code = random.randint(100000, 999999)
     new_user.verification_code = str(verification_code)
     new_user.is_verified = False
 
     db.commit()
 
-    # 📧 Send email
+    # Send email
     send_reset_email(user.email, verification_code)
 
     return {
