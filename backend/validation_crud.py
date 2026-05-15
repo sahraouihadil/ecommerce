@@ -18,7 +18,7 @@ VALID_TYPES = {
 }
 
 
-# ── Create (stock manager)───────────────────────────────────────────────────────────────────
+# ── Create (stock / marketing manager) ──────────────────────────────────────────
 
 def submit_for_validation(
     db:           Session,
@@ -58,6 +58,11 @@ def upsert_for_validation(
     payload:      ValidationSubmit,
     submitted_by: Optional[int] = None,
 ) -> ValidationRequest:
+    """Create or reset a validation request.
+
+    Used when a manager edits a campaign/product that may already have a
+    Pending or Rejected record — prevents the 400 "already pending" error.
+    """
     if payload.item_type not in VALID_TYPES:
         raise ValueError(f"item_type must be one of: {', '.join(sorted(VALID_TYPES))}")
 
@@ -96,6 +101,25 @@ def upsert_for_validation(
     db.commit()
     db.refresh(request)
     return request
+
+
+def submit_delete_request(
+    db:            Session,
+    campaign_id:   int,
+    campaign_name: str,
+    submitted_by:  Optional[int] = None,
+) -> ValidationRequest:
+    """Convenience wrapper used by the campaigns router to request deletion."""
+    return submit_for_validation(
+        db,
+        ValidationSubmit(
+            item_type = "Campaigns_Delete",
+            item_id   = campaign_id,
+            title     = campaign_name,
+        ),
+        submitted_by = submitted_by,
+    )
+
 
 # ── Read ─────────────────────────────────────────────────────────────────────
 
@@ -136,7 +160,7 @@ def get_stats(db: Session) -> dict:
     }
 
 
-# ── Update (admin)───────────────────────────────────────────────────────────────────
+# ── Update (admin) ───────────────────────────────────────────────────────────
 
 def approve(
     db:          Session,
@@ -146,10 +170,15 @@ def approve(
     """
     Approve a validation request.
 
-    For *_Delete types: executes the deletion/clear logic and then removes
-    the relevant ValidationRequest rows from the table, returning a plain
-    snapshot dict (since ORM rows may be gone).
-    For all other types: returns the updated ValidationRequest ORM object.
+    Campaigns type:
+      - Sets campaign.is_active = True → campaign appears on the storefront.
+
+    Campaigns_Delete type:
+      - Deletes the campaign row and cleans up all related validation rows,
+        then returns a plain snapshot dict (ORM row is gone).
+
+    All other *_Delete types: executes the delete/clear logic and returns a
+    snapshot dict. All other types: returns the updated ValidationRequest ORM.
     """
     req = get_by_id(db, request_id)
     if not req:
@@ -163,7 +192,7 @@ def approve(
     db.commit()
     db.refresh(req)
 
-    # Build a snapshot for types whose rows will be deleted
+    # Build a snapshot for types whose rows will be deleted during activation
     if req.item_type in ("Campaigns_Delete", "Products_Delete", "Blogs_Delete",
                           "AR_Delete", "3D_Delete"):
         snapshot = {
@@ -207,7 +236,6 @@ def reject(
     db.refresh(req)
 
     _deactivate_item(db, req.item_type, req.item_id)
-
     return req
 
 
@@ -216,7 +244,7 @@ def reject(
 def _activate_item(db: Session, item_type: str, item_id: int) -> None:
     from models import Products, Campaigns, Blogs
 
-    # ── AR_Delete: clear AR fields only, then remove AR & AR_Delete val rows ──
+    # ── AR_Delete: clear AR fields, remove AR & AR_Delete validation rows ─────
     if item_type == "AR_Delete":
         item = db.query(Products).filter(Products.id == item_id).first()
         if item:
@@ -225,8 +253,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
             item.able_ar   = False
             item.valid_ar  = False
             db.commit()
-
-        # Remove all AR and AR_Delete validation rows for this product
         db.query(ValidationRequest).filter(
             ValidationRequest.item_id   == item_id,
             ValidationRequest.item_type.in_(["AR", "AR_Delete"]),
@@ -234,7 +260,7 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
         db.commit()
         return
 
-    # ── 3D_Delete: clear 3D fields only, then remove 3D & 3D_Delete val rows ──
+    # ── 3D_Delete: clear 3D fields, remove 3D & 3D_Delete validation rows ────
     if item_type == "3D_Delete":
         item = db.query(Products).filter(Products.id == item_id).first()
         if item:
@@ -242,8 +268,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
             item.able_3d  = False
             item.valid_3d = False
             db.commit()
-
-        # Remove all 3D and 3D_Delete validation rows for this product
         db.query(ValidationRequest).filter(
             ValidationRequest.item_id   == item_id,
             ValidationRequest.item_type.in_(["3D", "3D_Delete"]),
@@ -268,6 +292,8 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
         return
 
     if item_type == "Campaigns":
+        # Admin approved → make the campaign visible on the storefront.
+        # The marketing manager already set status="active"; we just flip is_active.
         item = db.query(Campaigns).filter(Campaigns.id == item_id).first()
         if item:
             item.is_active = True
@@ -284,7 +310,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
                     os.remove(old_path)
             db.delete(item)
             db.commit()
-
         db.query(ValidationRequest).filter(
             ValidationRequest.item_id.in_([item_id]),
             ValidationRequest.item_type.in_(["Campaigns", "Campaigns_Delete"]),
@@ -307,7 +332,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
                         os.remove(path)
                 db.delete(item)
                 db.commit()
-
         db.query(ValidationRequest).filter(
             ValidationRequest.item_id.in_([item_id]),
             ValidationRequest.item_type.in_(["Products", "Products_Delete"]),
@@ -329,7 +353,6 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
         if item:
             db.delete(item)
             db.commit()
-
         db.query(ValidationRequest).filter(
             ValidationRequest.item_id   == item_id,
             ValidationRequest.item_type.in_(["Blogs", "Blogs_Delete"]),
@@ -348,15 +371,12 @@ def _activate_item(db: Session, item_type: str, item_id: int) -> None:
 def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
     from models import Products, Campaigns, Blogs
 
-    # ── AR_Delete rejected: keep AR data as-is, nothing to revert ─────────────
+    # ── AR_Delete rejected: keep AR data intact, nothing to revert ───────────
     if item_type == "AR_Delete":
-        # Rejection means the admin decided NOT to delete the AR config.
-        # The product AR data stays intact; we just leave it.
         return
 
-    # ── 3D_Delete rejected: keep 3D data as-is, nothing to revert ─────────────
+    # ── 3D_Delete rejected: keep 3D data intact, nothing to revert ───────────
     if item_type == "3D_Delete":
-        # Same reasoning — rejection means keep the 3D config.
         return
 
     if item_type == "AR":
@@ -376,12 +396,16 @@ def _deactivate_item(db: Session, item_type: str, item_id: int) -> None:
         return
 
     if item_type == "Campaigns":
+        # Admin rejected → campaign stays hidden from the storefront.
+        # status remains "active" (manager's intent), but is_active=False
+        # until they re-edit and re-submit.
         item = db.query(Campaigns).filter(Campaigns.id == item_id).first()
         if item:
             item.is_active = False
             db.commit()
         return
 
+    # Rejection of a delete request means "don't delete" — no state change needed.
     if item_type == "Campaigns_Delete":
         return
 

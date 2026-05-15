@@ -298,6 +298,7 @@ function CampaignsSection() {
   api.get('/api/campaigns/active')
     .then(res => {
       const data = res.data;
+      console.log(res.data)
       setCampaigns(Array.isArray(data) ? data : data.items ?? []);
     })
     .catch(err => { setError(err.message); setCampaigns([]); })

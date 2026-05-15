@@ -187,6 +187,7 @@ class Campaigns(Base):
     start_date    = Column(DateTime)
     end_date      = Column(DateTime)
     campaign_type = Column(String, nullable=True)       # "sale" | "new"
+    is_active     = Column(Boolean)
     created_at    = Column(DateTime, default=datetime.utcnow)
 
 

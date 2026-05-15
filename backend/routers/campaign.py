@@ -5,7 +5,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from models import Campaigns
 from database import get_db
-from schema import CampaignCreate, CampaignUpdate
+from schema import CampaignCreate, CampaignUpdate, ValidationSubmit
 from user_crud import get_current_user
 
 UPLOAD_DIR = "uploads/campaigns"
@@ -37,8 +37,8 @@ def campaign_dict(c: Campaigns) -> dict:
         "start_date":    str(c.start_date)  if c.start_date  else None,
         "end_date":      str(c.end_date)    if c.end_date    else None,
         "image_url":     c.image_url,
+        "is_active":     bool(c.is_active) if c.is_active is not None else False,
         "created_at":    c.created_at.isoformat() if c.created_at else None,
-        "validation_status": "approved",
     }
 
 
@@ -54,9 +54,11 @@ def list_campaigns(db: Session = Depends(get_db)):
 
 @router.get("/active")
 def list_active_campaigns(db: Session = Depends(get_db)):
-    """Return campaigns whose status is 'active' and are within their date window."""
+    """Return campaigns that are admin-approved (is_active=True), status='active',
+    and within their date window. These are the ones shown on the storefront."""
     campaigns = (
         db.query(Campaigns)
+        .filter(Campaigns.is_active == True)
         .filter(Campaigns.status == "active")
         .filter(
             or_(
@@ -96,7 +98,6 @@ def create_campaign(
         name          = data["name"],
         title         = data["title"],
         channel       = data["channel"],
-        # New campaigns start as "draft" — admin approval sets them to "active"
         status        = data.get("status", "draft"),
         campaign_type = data.get("campaign_type"),
         budget        = data["budget"],
@@ -111,10 +112,31 @@ def create_campaign(
         start_date    = data["start_date"],
         end_date      = data["end_date"],
         image_url     = None,
+        # Always starts hidden — admin approval (via validation) makes it visible
+        is_active     = False,
     )
     db.add(c)
     db.commit()
     db.refresh(c)
+
+    # Only submit a validation request when the manager explicitly sets status="active".
+    # Draft / paused / completed campaigns do not need admin review.
+    if c.status == "active":
+        import validation_crud as vcrud
+        try:
+            vcrud.submit_for_validation(
+                db,
+                ValidationSubmit(
+                    item_type = "Campaigns",
+                    item_id   = c.id,
+                    title     = c.name,
+                ),
+                submitted_by = current_user["id"],
+            )
+        except ValueError:
+            # Shouldn't happen on a brand-new campaign, but guard anyway.
+            pass
+
     return campaign_dict(c)
 
 
@@ -145,7 +167,34 @@ def update_campaign(
     for k, v in updates.items():
         setattr(c, k, v)
 
-    db.commit()
+    new_status = updates.get("status", c.status)
+
+    if new_status == "active":
+        # Manager wants this live → needs admin re-approval.
+        # Pull it off the storefront until the admin signs off.
+        c.is_active = False
+        db.commit()
+        db.refresh(c)
+
+        import validation_crud as vcrud
+        try:
+            vcrud.upsert_for_validation(
+                db,
+                ValidationSubmit(
+                    item_type = "Campaigns",
+                    item_id   = c.id,
+                    title     = c.name,
+                ),
+                submitted_by = current_user["id"],
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
+        # Status is draft / paused / completed — not visible on storefront.
+        c.is_active = False
+        db.commit()
+        db.refresh(c)
+
     db.refresh(c)
     return campaign_dict(c)
 
@@ -163,6 +212,8 @@ def redeem_campaign_code(
         raise HTTPException(status_code=404, detail="Campaign not found")
     if c.status != "active":
         raise HTTPException(status_code=400, detail="Campaign is not active")
+    if not c.is_active:
+        raise HTTPException(status_code=400, detail="Campaign has not been approved yet")
     if c.start_date and c.start_date > now:
         raise HTTPException(status_code=400, detail="Campaign has not started yet")
     if c.end_date and c.end_date < now:

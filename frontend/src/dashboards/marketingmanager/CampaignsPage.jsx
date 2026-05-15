@@ -22,14 +22,55 @@ const img = path => {
 }
 
 const PURPLE = '#5B47E0'
-// status drives everything — "active" means live on storefront
-const STATUS_OPTIONS = ['draft', 'paused', 'active', 'completed']
+
+// ─── Status helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Derive the display status for a campaign.
+ * If the campaign's own status is already 'draft' or 'paused', keep it.
+ * If end_date has passed and status is 'active', show as 'completed'.
+ * Otherwise use the stored status.
+ */
+function deriveStatus(item) {
+  if (!item) return 'draft'
+  if (item.status === 'draft' || item.status === 'paused') return item.status
+  if (item.status === 'completed') return 'completed'
+  if (item.end_date) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const end = new Date(item.end_date)
+    end.setHours(0, 0, 0, 0)
+    if (end < today) return 'completed'
+  }
+  return item.status // 'active' or anything else
+}
+
+/**
+ * Build the status options available in the dropdown depending on the
+ * campaign's CURRENT (stored) status.
+ *
+ * Rules:
+ *  - 'completed' is NEVER shown in the dropdown.
+ *  - 'paused' only appears when the current status is 'active'
+ *    (so the user can pause a live campaign).
+ *  - When editing a paused campaign the user can go back to draft or active.
+ */
+function getStatusOptions(currentStatus) {
+  if (currentStatus === 'active') {
+    return ['draft', 'active', 'paused']
+  }
+  if (currentStatus === 'paused') {
+    return ['draft', 'active', 'paused']
+  }
+  // draft (or anything else, e.g. new form)
+  return ['draft', 'active']
+}
 
 const statusStyle = {
   active:    { bg: '#ECFDF5', color: '#16A34A' },
   draft:     { bg: '#FEF9C3', color: '#B45309' },
-  paused:    { bg: '#FFF7ED', color: '#C2410C' },
-  completed: { bg: '#EFF6FF', color: '#2563EB' },
+  paused:    { bg: '#E0F2FE', color: '#0369A1' },
+  completed: { bg: '#F3F4F6', color: '#6B7280' },
 }
 
 const VALIDATION_BADGE = {
@@ -40,7 +81,6 @@ const VALIDATION_BADGE = {
   deletion_pending:  { bg: '#FEE2E2', color: '#991B1B', icon: <Trash2 size={10} />, label: 'Deletion Pending Admin Approval' },
 }
 
-// Storefront badge derived purely from status
 const storefrontBadge = (status) =>
   status === 'active'
     ? { bg: '#ECFDF5', color: '#16A34A', icon: <ShieldCheck size={10} />, label: 'Live on Storefront' }
@@ -167,9 +207,7 @@ function InstagramPreview({ name, title, previewImg }) {
     <div style={{ border: '1px solid #DBDBDB', borderRadius: 12, overflow: 'hidden', background: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-         
-            <img src={icon} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-          
+          <img src={icon} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
           <div>
             <p style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#262626', margin: 0 }}>{'ARoom'}</p>
             <p style={{ fontSize: '0.6875rem', color: '#8E8E8E', margin: 0 }}>Sponsored</p>
@@ -470,16 +508,26 @@ function DiscountSection({ form, set, setForm, isEdit }) {
   )
 }
 
+// ─── Resolve the save button label based on status ────────────────────────────
+function getSaveLabel({ saving, isEdit, status }) {
+  if (saving) return 'Saving…'
+  if (status === 'active') return isEdit ? 'Save & Re-submit for Approval' : 'Submit for Approval'
+  return 'Save'
+}
+
 // ─── Campaign Modal ───────────────────────────────────────────────────────────
 function CampaignModal({ initial, onClose, onSaved }) {
   const isEdit = !!initial?.id
+
+  // The stored status from the API (used to compute dropdown options)
+  const storedStatus = initial?.status ?? 'draft'
 
   const [form, setForm] = useState(
     initial ? {
       name:          initial.name          ?? '',
       title:         initial.title         ?? '',
       tactics:       channelToTactics(initial.channel),
-      status:        initial.status        ?? 'draft',
+      status:        storedStatus,
       budget:        initial.budget        ?? 0,
       start_date:    initial.start_date    ? initial.start_date.slice(0, 10) : '',
       end_date:      initial.end_date      ? initial.end_date.slice(0, 10)   : '',
@@ -505,6 +553,11 @@ function CampaignModal({ initial, onClose, onSaved }) {
   }, [pendingFile])
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  // Status options depend on the stored (original) status of the campaign
+  const statusOptions = getStatusOptions(storedStatus)
+
+  const needsApproval = form.status === 'active'
 
   const handleSubmit = async () => {
     if (!form.name.trim())               return setError('Campaign name is required.')
@@ -585,7 +638,11 @@ function CampaignModal({ initial, onClose, onSaved }) {
             <span style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#111827' }}>{isEdit ? 'Edit Campaign' : 'New Campaign'}</span>
             <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
               <Clock size={11} />
-              {isEdit ? 'Saving changes will re-submit this campaign for admin approval' : 'Requires admin approval to go live on the storefront'}
+              {needsApproval
+                ? isEdit
+                  ? 'Saving changes will re-submit this campaign for admin approval'
+                  : 'Requires admin approval to go live on the storefront'
+                : 'Campaign will be saved — set status to Active to submit for approval'}
             </p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, borderRadius: 8 }}><X size={18} /></button>
@@ -609,20 +666,30 @@ function CampaignModal({ initial, onClose, onSaved }) {
           <DiscountSection form={form} set={set} setForm={setForm} isEdit={isEdit} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={labelStyle}>Status <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0 }}>(operational)</span></label>
+              <label style={labelStyle}>
+                Status
+                <span style={{ color: '#D1D5DB', fontWeight: 400, marginLeft: 4, textTransform: 'none', letterSpacing: 0 }}>(operational)</span>
+              </label>
               <div style={{ position: 'relative' }}>
                 <select style={{ ...inputStyle, paddingRight: 36 }} value={form.status} onChange={set('status')}>
-                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  {statusOptions.map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
                 </select>
                 <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#9CA3AF' }}><ChevronDown size={15} /></span>
               </div>
+              {storedStatus === 'active' && (
+                <p style={{ fontSize: '0.6875rem', color: '#9CA3AF', margin: '5px 0 0' }}>
+                  Select <strong>Paused</strong> to temporarily stop this campaign.
+                </p>
+              )}
             </div>
             <div>
               <label style={labelStyle}>Budget (DA)</label>
               <input style={inputStyle} type="number" min="0" value={form.budget} onChange={set('budget')} onFocus={e => e.target.style.borderColor = PURPLE} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
             </div>
           </div>
-          {/* Storefront status info banner — read-only, derived from status field */}
+
           {isEdit && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: initial?.status === 'active' ? '#ECFDF5' : '#F3F4F6', border: `1px solid ${initial?.status === 'active' ? '#BBF7D0' : '#E5E7EB'}` }}>
               {initial?.status === 'active' ? <ShieldCheck size={15} color="#16A34A" /> : <ShieldOff size={15} color="#9CA3AF" />}
@@ -630,10 +697,13 @@ function CampaignModal({ initial, onClose, onSaved }) {
                 <p style={{ fontSize: '0.75rem', fontWeight: 600, color: initial?.status === 'active' ? '#16A34A' : '#6B7280', margin: 0 }}>
                   {initial?.status === 'active' ? 'Currently Live on Storefront' : 'Currently Hidden from Storefront'}
                 </p>
-                <p style={{ fontSize: '0.6875rem', color: '#9CA3AF', margin: 0 }}>Changes will require admin re-approval</p>
+                <p style={{ fontSize: '0.6875rem', color: '#9CA3AF', margin: 0 }}>
+                  {initial?.status === 'active' ? 'Changes will require admin re-approval' : 'Set status to Active and save to request approval'}
+                </p>
               </div>
             </div>
           )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Start Date</label>
@@ -653,9 +723,20 @@ function CampaignModal({ initial, onClose, onSaved }) {
 
         <div style={{ padding: '14px 24px 20px', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0, borderTop: '1px solid #F3F4F6' }}>
           <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 10, border: 'none', background: PURPLE, color: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '9px 22px', borderRadius: 10, border: 'none',
+              background: PURPLE, color: '#fff',
+              fontSize: '0.875rem', fontWeight: 600,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.7 : 1,
+            }}
+          >
             {saving ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={14} />}
-            {saving ? 'Saving…' : isEdit ? 'Save & Re-submit for Approval' : 'Submit for Approval'}
+            {getSaveLabel({ saving, isEdit, status: form.status })}
           </button>
         </div>
       </div>
@@ -741,7 +822,7 @@ function ValidationBanner({ validationStatus, rejectionNote, isDeletionPending }
   )
 }
 
-// ─── Storefront Visibility Badge — derived from status ────────────────────────
+// ─── Storefront Visibility Badge ──────────────────────────────────────────────
 function StorefrontBadge({ status }) {
   const badge = storefrontBadge(status)
   return (
@@ -754,8 +835,11 @@ function StorefrontBadge({ status }) {
 
 // ─── Campaign Card ────────────────────────────────────────────────────────────
 function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) {
+  // Compute display status — auto-completed when end_date has passed
+  const displayStatus = deriveStatus(item)
+
   const pct           = item.budget > 0 ? Math.min(100, Math.round((item.spent / item.budget) * 100)) : 0
-  const st            = statusStyle[item.status] || { bg: '#F3F4F6', color: '#6B7280' }
+  const st            = statusStyle[displayStatus] || { bg: '#F3F4F6', color: '#6B7280' }
   const imageUrl      = img(item.image_url)
   const usagePct      = item.usage_max > 0 ? Math.min(100, Math.round((item.usage_current / item.usage_max) * 100)) : null
   const discountLabel = fmtDiscount(item.discount, item.discount_type)
@@ -765,19 +849,22 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
   const isRejected        = valStatus === 'Rejected'
   const isDeletionPending = deletionInfo?.status === 'Pending'
 
-  // Locked while a review OR deletion is pending
-  const isLocked = isPending || isDeletionPending
+  // Completed campaigns are read-only; pending/deletion-pending are locked too
+  const isCompleted = displayStatus === 'completed'
+  const isLocked    = isPending || isDeletionPending || isCompleted
+
+  const showValidationHighlight = item.status === 'active'
 
   return (
     <div
-      style={{ background: '#fff', borderRadius: 16, border: `1px solid ${isDeletionPending ? '#FECACA' : isPending ? '#FDE68A' : isRejected ? '#FECACA' : '#F0F0F5'}`, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.2s', overflow: 'hidden' }}
+      style={{ background: '#fff', borderRadius: 16, border: `1px solid ${showValidationHighlight && isDeletionPending ? '#FECACA' : showValidationHighlight && isPending ? '#FDE68A' : showValidationHighlight && isRejected ? '#FECACA' : '#F0F0F5'}`, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.2s', overflow: 'hidden' }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.04)'}
     >
       {imageUrl && (
         <div style={{ position: 'relative', width: '100%', height: 160, flexShrink: 0 }}>
           <img src={imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.currentTarget.parentElement.style.display = 'none' }} />
-          <span style={{ position: 'absolute', top: 10, right: 10, padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color, boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>{item.status}</span>
+          <span style={{ position: 'absolute', top: 10, right: 10, padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color, boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>{displayStatus}</span>
           {discountLabel && (
             <span style={{ position: 'absolute', top: 10, left: 10, padding: '4px 10px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: '#FEF9C3', color: '#B45309', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }}>
               <Tag size={10} /> {discountLabel}
@@ -795,7 +882,7 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
           </div>
           {!imageUrl && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, marginLeft: 10 }}>
-              <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color }}>{item.status}</span>
+              <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: st.bg, color: st.color }}>{displayStatus}</span>
               {discountLabel && (
                 <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: '#FEF9C3', color: '#B45309', display: 'flex', alignItems: 'center', gap: 3 }}>
                   <Tag size={9} /> {discountLabel}
@@ -805,15 +892,22 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
           )}
         </div>
 
-        {/* Storefront badge — purely driven by status */}
         <StorefrontBadge status={item.status} />
 
-        {(validationInfo || isDeletionPending) && (
+        {item.status === 'active' && (validationInfo || isDeletionPending) && (
           <ValidationBanner
             validationStatus={validationInfo?.status}
             rejectionNote={validationInfo?.rejection_note}
             isDeletionPending={isDeletionPending}
           />
+        )}
+
+        {/* Completed notice */}
+        {isCompleted && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, background: '#F3F4F6', color: '#6B7280', fontSize: '0.6875rem', fontWeight: 600 }}>
+            <Check size={10} />
+            Campaign ended — read-only
+          </div>
         )}
 
         {item.code && (
@@ -868,7 +962,12 @@ function CampaignCard({ item, validationInfo, deletionInfo, onEdit, onDelete }) 
           <div style={{ display: 'flex', gap: 4 }}>
             <button
               onClick={() => !isLocked && onEdit(item)}
-              title={isPending ? 'Cannot edit while awaiting admin review' : isDeletionPending ? 'Cannot edit while deletion is pending' : 'Edit campaign'}
+              title={
+                isCompleted        ? 'Campaign has ended — read-only' :
+                isPending          ? 'Cannot edit while awaiting admin review' :
+                isDeletionPending  ? 'Cannot edit while deletion is pending' :
+                                     'Edit campaign'
+              }
               style={{ padding: 6, border: 'none', background: 'transparent', cursor: isLocked ? 'not-allowed' : 'pointer', color: isLocked ? '#D1D5DB' : '#F59E0B', borderRadius: 8, display: 'flex', alignItems: 'center', opacity: isLocked ? 0.5 : 1 }}
               onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = '#FFFBEB' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
@@ -917,7 +1016,6 @@ export default function CampaignsPage() {
 
         setItems(campaignsRes.data)
 
-        // Build normal validation map — last Pending wins over older rows
         const vMap = {}
         const rows = validationRes.data || []
         const sorted = [...rows].sort((a, b) => {
@@ -930,7 +1028,6 @@ export default function CampaignsPage() {
         }
         setValidationMap(vMap)
 
-        // Deletion map — only Pending ones matter
         const dMap = {}
         for (const row of (deletionRes.data || [])) {
           if (row.status === 'Pending') {
@@ -954,10 +1051,12 @@ export default function CampaignsPage() {
       const without = prev.filter(i => i.id !== saved.id)
       return [saved, ...without]
     })
-    setValidationMap(prev => ({
-      ...prev,
-      [saved.id]: { status: 'Pending', rejection_note: null, item_id: saved.id },
-    }))
+    if (saved.status === 'active') {
+      setValidationMap(prev => ({
+        ...prev,
+        [saved.id]: { status: 'Pending', rejection_note: null, item_id: saved.id },
+      }))
+    }
   }
 
   const handleConfirmDelete = async () => {
@@ -988,7 +1087,7 @@ export default function CampaignsPage() {
             <div>
               <p style={{ fontSize: '0.875rem', color: '#9CA3AF', margin: 0 }}>Track and manage marketing campaigns</p>
               <p style={{ fontSize: '0.75rem', color: '#D1D5DB', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Clock size={11} /> New campaigns and edits require admin approval to appear on the storefront
+                <Clock size={11} /> Campaigns set to Active require admin approval to appear on the storefront
               </p>
             </div>
             <button onClick={() => setShowCreate(true)}
