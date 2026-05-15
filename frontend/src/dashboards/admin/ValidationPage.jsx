@@ -8,6 +8,7 @@
  * - Stat card counts always global (never zeroed by type filter)
  * - Campaigns → rich detail panel: image, name, title, budget, discount, channels, dates, usage
  * - Campaigns filter → returns both "Campaigns" and "Campaigns_Delete" item types
+ * - Products filter  → returns both "Products"  and "Products_Delete"  item types
  */
 
 import Header from "../ui/Header";
@@ -139,15 +140,9 @@ function CampaignDetail({ d, selected }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-      {/* ── Campaign image ── */}
       {imageUrl && (
         <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: '1px solid #f1f5f9' }}>
-          <img
-            src={imageUrl}
-            alt={d?.name || selected.title}
-            style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
-          />
+          <img src={imageUrl} alt={d?.name || selected.title} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }} />
           {discountLabel && (
             <span style={{
               position: 'absolute', top: 10, left: 10,
@@ -163,7 +158,6 @@ function CampaignDetail({ d, selected }) {
         </div>
       )}
 
-      {/* ── Name / Title / Channel ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {d?.name && (
           <div>
@@ -185,7 +179,6 @@ function CampaignDetail({ d, selected }) {
         )}
       </div>
 
-      {/* ── Stats grid ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {statCells.map(({ icon, label, value }) => (
           <div key={label} className="val-detail-cell">
@@ -195,7 +188,6 @@ function CampaignDetail({ d, selected }) {
         ))}
       </div>
 
-      {/* ── Budget progress bar ── */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget Used</span>
@@ -210,7 +202,6 @@ function CampaignDetail({ d, selected }) {
         </div>
       </div>
 
-      {/* ── Discount & coupon ── */}
       {hasDiscount && (
         <div style={{
           border: '1px dashed #c4b5fd', borderRadius: 12,
@@ -230,7 +221,6 @@ function CampaignDetail({ d, selected }) {
               </p>
             </div>
           </div>
-
           {d?.code && (
             <div>
               <p style={{ margin: '0 0 5px', fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Coupon Code</p>
@@ -245,8 +235,6 @@ function CampaignDetail({ d, selected }) {
               </span>
             </div>
           )}
-
-          {/* Redemption usage */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
               <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -258,17 +246,13 @@ function CampaignDetail({ d, selected }) {
             </div>
             {usagePct !== null && (
               <div style={{ height: 5, borderRadius: 99, background: '#ede9fe', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', width: `${usagePct}%`,
-                  background: stockColor, borderRadius: 99, transition: 'width 0.5s ease',
-                }}/>
+                <div style={{ height: '100%', width: `${usagePct}%`, background: stockColor, borderRadius: 99, transition: 'width 0.5s ease' }}/>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ── Status / Storefront badge ── */}
       {d?.status && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8,
@@ -291,7 +275,6 @@ function CampaignDetail({ d, selected }) {
         </div>
       )}
 
-      {/* ── Dates ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {d?.start_date && (
           <div className="val-detail-cell">
@@ -311,7 +294,6 @@ function CampaignDetail({ d, selected }) {
         )}
       </div>
 
-      {/* ── Submission dates ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div className="val-detail-cell">
           <p className="val-section-label"><Calendar size={10}/> Submitted</p>
@@ -334,6 +316,115 @@ function CampaignDetail({ d, selected }) {
   );
 }
 
+// ── Product Delete detail panel ───────────────────────────────────────────────
+function ProductDeleteDetail({ d, selected }) {
+  if (!d) return null;
+
+  const images   = d?.images || (d?.image_url ? [d.image_url] : []);
+  const imgUrl   = images[0] ? `http://127.0.0.1:8000/${images[0]}` : null;
+  const stockQty = d?.quantity ?? null;
+  const stockLabel = stockQty === null ? null
+    : stockQty === 0 ? "Out of Stock"
+    : stockQty < 10  ? "Low Stock"
+    : "In Stock";
+  const stockColor = stockLabel === "In Stock" ? "#16a34a" : stockLabel === "Low Stock" ? "#d97706" : "#dc2626";
+  const stockBg    = stockLabel === "In Stock" ? "#f0fdf4"  : stockLabel === "Low Stock" ? "#fffbeb"  : "#fff1f2";
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Product image */}
+      {imgUrl && (
+        <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #f1f5f9' }}>
+          <img src={imgUrl} alt={d.name} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }} />
+        </div>
+      )}
+
+      {/* Warning banner */}
+      <div style={{
+        background: '#fff1f2', border: '1px solid #fecaca', borderRadius: 12,
+        padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6,
+      }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}>
+          🗑️ Deletion Request
+        </p>
+        <p style={{ margin: 0, fontSize: 12, color: '#b91c1c', lineHeight: 1.5 }}>
+          Approving this will <strong>permanently delete</strong> this product and all its images from the system.
+          This action cannot be undone.
+        </p>
+      </div>
+
+      {/* Product details grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {d?.category && (
+          <div className="val-detail-cell">
+            <p className="val-section-label"><Tag size={10}/> Category</p>
+            <p className="val-cell-value" style={{ textTransform: 'capitalize' }}>{d.category}</p>
+          </div>
+        )}
+        {d?.sku && (
+          <div className="val-detail-cell">
+            <p className="val-section-label"><Hash size={10}/> SKU</p>
+            <p className="val-cell-value" style={{ fontFamily: 'monospace' }}>{d.sku}</p>
+          </div>
+        )}
+        <div className="val-detail-cell">
+          <p className="val-section-label"><DollarSign size={10}/> Price</p>
+          <p className="val-cell-value">${d.price}</p>
+        </div>
+        {stockLabel && (
+          <div className="val-detail-cell">
+            <p className="val-section-label"><Layers size={10}/> Stock</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <p className="val-cell-value">{d.quantity} units</p>
+              <span style={{ background: stockBg, color: stockColor, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99 }}>{stockLabel}</span>
+            </div>
+          </div>
+        )}
+        <div className="val-detail-cell">
+          <p className="val-section-label"><Calendar size={10}/> Submitted</p>
+          <p className="val-cell-value" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+            {selected.submitted_at
+              ? new Date(selected.submitted_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+              : '—'}
+          </p>
+        </div>
+        {selected.reviewed_at && (
+          <div className="val-detail-cell">
+            <p className="val-section-label"><Calendar size={10}/> Reviewed</p>
+            <p className="val-cell-value" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+              {new Date(selected.reviewed_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Colors */}
+      {d?.colors?.length > 0 && (
+        <div>
+          <p className="val-section-label"><Palette size={10}/> Colors</p>
+          <div className="val-color-strip">
+            {d.colors.map(name => (
+              <span key={name} className="val-color-chip">
+                <ColorDot name={name} /> {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Description */}
+      {d?.description && (
+        <div>
+          <p className="val-section-label"><AlignLeft size={10}/> Description</p>
+          <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6, background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 12, padding: '12px 14px' }}>
+            {d.description}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 export default function ValidationPage() {
   const [openBar, setOpenBar]               = useState(window.innerWidth >= 768);
@@ -343,11 +434,9 @@ export default function ValidationPage() {
   const [activeStatusFilter, setActiveStatusFilter] = useState("All");
   const [rejectNote, setRejectNote]         = useState("");
 
-  // ── Model viewer modal state ──────────────────────────────────────────────
   const [modelViewer, setModelViewer]       = useState(null);
   const [viewerVisible, setViewerVisible]   = useState(false);
 
-  // ── Server state ──────────────────────────────────────────────────────────
   const [allItems, setAllItems]           = useState([]);
   const [items, setItems]                 = useState([]);
   const [stats, setStats]                 = useState({ pending:0, approved:0, rejected:0, total:0 });
@@ -371,27 +460,16 @@ export default function ValidationPage() {
     Campaigns:         { bg:"#fef3c7", color:"#92400e" },
     Blogs:             { bg:"#fce7f3", color:"#9d174d" },
     Campaigns_Delete:  { bg:"#fff1f2", color:"#991b1b" },
+    Products_Delete:   { bg:"#fff1f2", color:"#991b1b" },
   };
 
-  const TYPE_ICON = { Products:"📦", AR:"🥽", "3D":"🧊", Campaigns:"📣", Blogs:"" };
+  const TYPE_ICON = { Products:"📦", AR:"🥽", "3D":"🧊", Campaigns:"📣", Blogs:"", Products_Delete:"🗑️" };
   const filters   = ["All", "Products", "AR", "3D", "Campaigns", "Blogs"];
 
   const STAT_CARDS = [
-    {
-      key:"Pending",   label:"Pending Review",
-      countKey:"pending",  icon:"⏳", iconBg:"#fffbeb", clr:"#d97706",
-      activeBorder:"#fde68a", activeShadow:"0 0 0 3px rgba(245,158,11,0.18)",
-    },
-    {
-      key:"Approved",  label:"Approved",
-      countKey:"approved", icon:"✅", iconBg:"#ecfdf5", clr:"#16a34a",
-      activeBorder:"#6ee7b7", activeShadow:"0 0 0 3px rgba(16,185,129,0.18)",
-    },
-    {
-      key:"Rejected",  label:"Rejected",
-      countKey:"rejected", icon:"❌", iconBg:"#fff1f2", clr:"#dc2626",
-      activeBorder:"#fca5a5", activeShadow:"0 0 0 3px rgba(239,68,68,0.18)",
-    },
+    { key:"Pending",  label:"Pending Review", countKey:"pending",  icon:"⏳", iconBg:"#fffbeb", clr:"#d97706", activeBorder:"#fde68a", activeShadow:"0 0 0 3px rgba(245,158,11,0.18)" },
+    { key:"Approved", label:"Approved",       countKey:"approved", icon:"✅", iconBg:"#ecfdf5", clr:"#16a34a", activeBorder:"#6ee7b7", activeShadow:"0 0 0 3px rgba(16,185,129,0.18)" },
+    { key:"Rejected", label:"Rejected",       countKey:"rejected", icon:"❌", iconBg:"#fff1f2", clr:"#dc2626", activeBorder:"#fca5a5", activeShadow:"0 0 0 3px rgba(239,68,68,0.18)" },
   ];
 
   const adminLinks = [
@@ -421,20 +499,25 @@ export default function ValidationPage() {
     finally { setLoadingAll(false); }
   }, []);
 
-  // ── FIX: when activeFilter === "Campaigns", fetch both
-  //         "Campaigns" and "Campaigns_Delete" and merge them.
   const fetchList = useCallback(async () => {
     setLoadingList(true);
     setError(null);
     try {
       if (activeFilter === "Campaigns") {
-        // Fetch both campaign types in parallel
         const baseParams = activeStatusFilter !== "All" ? { status: activeStatusFilter } : {};
         const [resNormal, resDelete] = await Promise.all([
           api.get("/api/validation/", { params: { ...baseParams, item_type: "Campaigns" } }),
           api.get("/api/validation/", { params: { ...baseParams, item_type: "Campaigns_Delete" } }),
         ]);
-        // Merge and sort by id descending (most recent first)
+        const merged = [...resNormal.data, ...resDelete.data].sort((a, b) => b.id - a.id);
+        setItems(merged);
+      } else if (activeFilter === "Products") {
+        // ── FIX: also fetch Products_Delete when filtering by Products ──
+        const baseParams = activeStatusFilter !== "All" ? { status: activeStatusFilter } : {};
+        const [resNormal, resDelete] = await Promise.all([
+          api.get("/api/validation/", { params: { ...baseParams, item_type: "Products" } }),
+          api.get("/api/validation/", { params: { ...baseParams, item_type: "Products_Delete" } }),
+        ]);
         const merged = [...resNormal.data, ...resDelete.data].sort((a, b) => b.id - a.id);
         setItems(merged);
       } else {
@@ -453,7 +536,6 @@ export default function ValidationPage() {
   useEffect(() => { fetchStats(); fetchAllItems(); }, [fetchStats, fetchAllItems]);
   useEffect(() => { fetchList(); }, [fetchList]);
 
-  // ── Escape closes top-most modal ─────────────────────────────────────────
   useEffect(() => {
     const h = (e) => {
       if (e.key !== "Escape") return;
@@ -464,7 +546,6 @@ export default function ValidationPage() {
     return () => window.removeEventListener("keydown", h);
   }, [viewerVisible, detailVisible]);
 
-  // ── Open / close helpers ──────────────────────────────────────────────────
   const openDetail = (item) => {
     setSelected(item);
     setRejectNote("");
@@ -482,11 +563,12 @@ export default function ValidationPage() {
       setLoadingDetail(true);
       try {
         const endpointMap = {
-          Products:          `/api/products/${selected.item_id}`,
-          AR:                `/api/products/${selected.item_id}`,
-          "3D":              `/api/products/${selected.item_id}`,
-          Campaigns:         `/api/campaigns/${selected.item_id}`,
-          Campaigns_Delete:  `/api/campaigns/${selected.item_id}`,
+          Products:         `/api/products/${selected.item_id}`,
+          Products_Delete:  `/api/products/${selected.item_id}`,
+          AR:               `/api/products/${selected.item_id}`,
+          "3D":             `/api/products/${selected.item_id}`,
+          Campaigns:        `/api/campaigns/${selected.item_id}`,
+          Campaigns_Delete: `/api/campaigns/${selected.item_id}`,
         };
         const endpoint = endpointMap[selected.item_type];
         if (!endpoint) { setItemDetail(null); return; }
@@ -500,14 +582,12 @@ export default function ValidationPage() {
     run();
   }, [selected?.id]);
 
-  // ── Global stats ──────────────────────────────────────────────────────────
   const globalStats = {
     pending:  stats.pending,
     approved: stats.approved,
     rejected: stats.rejected,
   };
 
-  // ── Optimistic update ─────────────────────────────────────────────────────
   const applyStatusUpdate = (id, newStatus, extra = {}) => {
     const patch = { status: newStatus, ...extra };
     setItems(prev    => prev.map(i => i.id === id ? { ...i, ...patch } : i));
@@ -558,7 +638,6 @@ export default function ValidationPage() {
     setActiveStatusFilter(prev => prev === statusKey ? "All" : statusKey);
   };
 
-  // ── Open model viewer ─────────────────────────────────────────────────────
   const openModelViewer = (mode, d, sel) => {
     closeDetail();
     setTimeout(() => {
@@ -577,8 +656,12 @@ export default function ValidationPage() {
 
   const isFinal = selected?.status === "Approved" || selected?.status === "Rejected";
 
-  // ── FIX: typeCount for "Campaigns" includes both Campaigns and Campaigns_Delete
+  // ── typeCount: "Products" includes Products + Products_Delete
+  //              "Campaigns" includes Campaigns + Campaigns_Delete
   const typeCount = (type) => {
+    if (type === "Products") {
+      return allItems.filter(i => i.item_type === "Products" || i.item_type === "Products_Delete").length;
+    }
     if (type === "Campaigns") {
       return allItems.filter(i => i.item_type === "Campaigns" || i.item_type === "Campaigns_Delete").length;
     }
@@ -626,9 +709,6 @@ export default function ValidationPage() {
         .val-spin        { animation:spin .8s linear infinite; }
         @keyframes spin  { to { transform:rotate(360deg); } }
 
-        /* ════════════════════════════════════════
-           DETAIL MODAL — fade backdrop + slide panel
-        ════════════════════════════════════════ */
         .val-overlay {
           position:fixed; inset:0;
           background:rgba(15,23,42,0);
@@ -661,6 +741,7 @@ export default function ValidationPage() {
         .val-hero-placeholder { width:100%; height:180px; background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:22px 22px 0 0; display:flex; align-items:center; justify-content:center; font-size:56px; }
         .val-hero-placeholder.campaign { background:linear-gradient(135deg,#78350f,#92400e); }
         .val-hero-placeholder.campaign-delete { background:linear-gradient(135deg,#7f1d1d,#991b1b); }
+        .val-hero-placeholder.product-delete  { background:linear-gradient(135deg,#7f1d1d,#b91c1c); }
         .val-modal-body   { padding:26px 28px 0; display:flex; flex-direction:column; gap:18px; }
         .val-modal-footer { padding:20px 28px 26px; display:flex; gap:12px; border-top:1px solid #f1f5f9; margin-top:20px; }
         .val-modal-close  {
@@ -687,7 +768,6 @@ export default function ValidationPage() {
         .val-btn-reject:hover:not(:disabled) { background:#fff1f2; border-color:#fca5a5; }
         .val-btn-approve:disabled,.val-btn-reject:disabled { opacity:0.6; cursor:not-allowed; }
 
-        /* ── 3D / AR launch buttons ── */
         .val-model-launch-row { display:flex; gap:10px; flex-wrap:wrap; }
         .val-model-launch-btn {
           display:inline-flex; align-items:center; gap:8px;
@@ -697,25 +777,12 @@ export default function ValidationPage() {
           transition:background .22s, color .22s, border-color .22s, box-shadow .22s, transform .22s;
         }
         .val-model-launch-btn.btn-3d  { background:#f5f3ff; color:#7c3aed; border-color:#ddd6fe; }
-        .val-model-launch-btn.btn-3d:hover {
-          background:#4c1d95; color:#fff; border-color:#4c1d95;
-          box-shadow:0 6px 20px rgba(124,58,237,0.35); transform:translateY(-2px);
-        }
+        .val-model-launch-btn.btn-3d:hover { background:#4c1d95; color:#fff; border-color:#4c1d95; box-shadow:0 6px 20px rgba(124,58,237,0.35); transform:translateY(-2px); }
         .val-model-launch-btn.btn-ar  { background:#ecfdf5; color:#059669; border-color:#6ee7b7; }
-        .val-model-launch-btn.btn-ar:hover {
-          background:#065f46; color:#fff; border-color:#065f46;
-          box-shadow:0 6px 20px rgba(5,150,105,0.35); transform:translateY(-2px);
-        }
+        .val-model-launch-btn.btn-ar:hover { background:#065f46; color:#fff; border-color:#065f46; box-shadow:0 6px 20px rgba(5,150,105,0.35); transform:translateY(-2px); }
 
-        /* ── campaign divider ── */
-        .val-campaign-divider {
-          height:1px; background:linear-gradient(to right,transparent,#e2e8f0,transparent);
-          margin:4px 0;
-        }
+        .val-campaign-divider { height:1px; background:linear-gradient(to right,transparent,#e2e8f0,transparent); margin:4px 0; }
 
-        /* ════════════════════════════════════════
-           VIEWER MODAL
-        ════════════════════════════════════════ */
         .val-viewer-overlay {
           position:fixed; inset:0;
           background:rgba(5,7,20,0);
@@ -724,61 +791,29 @@ export default function ValidationPage() {
           display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start;
           transition: background 300ms ease, backdrop-filter 300ms ease;
         }
-        .val-viewer-overlay[data-shown="true"] {
-          background:rgba(5,7,20,0.96);
-          backdrop-filter:blur(14px);
-        }
-
+        .val-viewer-overlay[data-shown="true"] { background:rgba(5,7,20,0.96); backdrop-filter:blur(14px); }
         .val-viewer-topbar {
-          flex-shrink:0;
-          display:flex; align-items:center; justify-content:space-between;
+          flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
           padding:14px 20px;
           background:linear-gradient(to bottom,rgba(5,7,20,0.85) 0%,transparent 100%);
           position:relative; z-index:10;
           opacity:0; transform:translateY(16px);
-          transition: opacity 300ms cubic-bezier(.22,1,.36,1),
-                      transform 300ms cubic-bezier(.22,1,.36,1);
+          transition: opacity 300ms cubic-bezier(.22,1,.36,1), transform 300ms cubic-bezier(.22,1,.36,1);
         }
-        .val-viewer-overlay[data-shown="true"] .val-viewer-topbar {
-          opacity:1; transform:translateY(0);
-        }
+        .val-viewer-overlay[data-shown="true"] .val-viewer-topbar { opacity:1; transform:translateY(0); }
         .val-viewer-body {
           flex:1; display:flex; align-items:center; justify-content:center;
           padding:0 20px 20px; min-height:0;
           opacity:0; transform:translateY(22px);
-          transition: opacity 320ms cubic-bezier(.22,1,.36,1) 50ms,
-                      transform 320ms cubic-bezier(.22,1,.36,1) 50ms;
+          transition: opacity 320ms cubic-bezier(.22,1,.36,1) 50ms, transform 320ms cubic-bezier(.22,1,.36,1) 50ms;
         }
-        .val-viewer-overlay[data-shown="true"] .val-viewer-body {
-          opacity:1; transform:translateY(0);
-        }
-
-        .val-viewer-back-btn {
-          display:inline-flex; align-items:center; gap:7px;
-          padding:8px 18px; border-radius:99px;
-          font-size:13px; font-weight:700; font-family:inherit;
-          background:rgba(255,255,255,0.1); color:#fff;
-          border:1.5px solid rgba(255,255,255,0.2);
-          cursor:pointer; backdrop-filter:blur(6px);
-          transition:background .18s, border-color .18s;
-        }
+        .val-viewer-overlay[data-shown="true"] .val-viewer-body { opacity:1; transform:translateY(0); }
+        .val-viewer-back-btn { display:inline-flex; align-items:center; gap:7px; padding:8px 18px; border-radius:99px; font-size:13px; font-weight:700; font-family:inherit; background:rgba(255,255,255,0.1); color:#fff; border:1.5px solid rgba(255,255,255,0.2); cursor:pointer; backdrop-filter:blur(6px); transition:background .18s, border-color .18s; }
         .val-viewer-back-btn:hover { background:rgba(255,255,255,0.2); border-color:rgba(255,255,255,0.45); }
-        .val-viewer-title {
-          font-size:14px; font-weight:700; color:rgba(255,255,255,0.7);
-          letter-spacing:.02em; white-space:nowrap; overflow:hidden;
-          text-overflow:ellipsis; max-width:260px;
-        }
-        .val-viewer-close-btn {
-          width:38px; height:38px; border-radius:50%; border:none;
-          background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.75);
-          display:flex; align-items:center; justify-content:center;
-          cursor:pointer; transition:background .18s, color .18s;
-        }
+        .val-viewer-title { font-size:14px; font-weight:700; color:rgba(255,255,255,0.7); letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
+        .val-viewer-close-btn { width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.75); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .18s, color .18s; }
         .val-viewer-close-btn:hover { background:rgba(255,255,255,0.22); color:#fff; }
-        .val-viewer-inner {
-          width:100%; max-width:800px; height:100%;
-          display:flex; align-items:center; justify-content:center;
-        }
+        .val-viewer-inner { width:100%; max-width:800px; height:100%; display:flex; align-items:center; justify-content:center; }
 
         @media(max-width:640px){
           .val-inner{padding:14px 10px 32px;gap:14px}
@@ -818,9 +853,7 @@ export default function ValidationPage() {
                   >
                     <div className="val-stat-icon" style={{ background:s.iconBg }}>{s.icon}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ margin:"0 0 2px", fontSize:11, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".07em", fontWeight:700 }}>
-                        {s.label}
-                      </p>
+                      <p style={{ margin:"0 0 2px", fontSize:11, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".07em", fontWeight:700 }}>{s.label}</p>
                       <p style={{ margin:0, fontSize:26, fontWeight:800, color:s.clr, letterSpacing:"-0.02em", lineHeight:1 }}>
                         {loadingAll ? "—" : globalStats[s.countKey]}
                       </p>
@@ -837,17 +870,12 @@ export default function ValidationPage() {
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               <div className="val-filter-bar">
                 {filters.map(f => (
-                  <button
-                    key={f}
-                    className={`val-filter-btn${activeFilter === f ? " active" : ""}`}
-                    onClick={() => setActiveFilter(f)}
-                  >
+                  <button key={f} className={`val-filter-btn${activeFilter === f ? " active" : ""}`} onClick={() => setActiveFilter(f)}>
                     {f}
                     {f !== "All" && <span style={{ marginLeft:6, opacity:0.6 }}>({typeCount(f)})</span>}
                   </button>
                 ))}
               </div>
-
               {activeStatusFilter !== "All" && (() => {
                 const sc = STAT_CARDS.find(s => s.key === activeStatusFilter);
                 return (
@@ -855,13 +883,7 @@ export default function ValidationPage() {
                     <span style={{ fontSize:12, color:"#94a3b8", fontWeight:600 }}>Filtered by status:</span>
                     <button
                       onClick={() => setActiveStatusFilter("All")}
-                      style={{
-                        display:"inline-flex", alignItems:"center", gap:6,
-                        padding:"4px 12px", borderRadius:99, fontSize:12, fontWeight:700,
-                        background:sc?.iconBg, color:sc?.clr,
-                        border:`1.5px solid ${sc?.activeBorder}`,
-                        cursor:"pointer", fontFamily:"inherit",
-                      }}
+                      style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:99, fontSize:12, fontWeight:700, background:sc?.iconBg, color:sc?.clr, border:`1.5px solid ${sc?.activeBorder}`, cursor:"pointer", fontFamily:"inherit" }}
                     >{activeStatusFilter} <X size={11} /></button>
                   </div>
                 );
@@ -874,11 +896,7 @@ export default function ValidationPage() {
                 <span style={{ fontWeight:700, fontSize:14, color:"#0f172a" }}>Validation Queue</span>
                 <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                   {activeStatusFilter !== "All" && (
-                    <span style={{
-                      background:STAT_CARDS.find(s => s.key === activeStatusFilter)?.iconBg,
-                      color:STAT_CARDS.find(s => s.key === activeStatusFilter)?.clr,
-                      fontSize:11, fontWeight:700, borderRadius:99, padding:"3px 10px",
-                    }}>{activeStatusFilter}</span>
+                    <span style={{ background:STAT_CARDS.find(s => s.key === activeStatusFilter)?.iconBg, color:STAT_CARDS.find(s => s.key === activeStatusFilter)?.clr, fontSize:11, fontWeight:700, borderRadius:99, padding:"3px 10px" }}>{activeStatusFilter}</span>
                   )}
                   <span style={{ background:"#f1f5f9", color:"#64748b", fontSize:12, fontWeight:600, borderRadius:99, padding:"3px 10px" }}>
                     {items.length} {activeFilter === "All" ? "Total" : activeFilter}
@@ -891,9 +909,7 @@ export default function ValidationPage() {
               ) : error ? (
                 <div className="val-error">
                   {error}<br />
-                  <button onClick={fetchList} style={{ marginTop:10, padding:"6px 16px", borderRadius:8, border:"1px solid #fecaca", background:"#fff1f2", color:"#dc2626", cursor:"pointer", fontWeight:600 }}>
-                    Retry
-                  </button>
+                  <button onClick={fetchList} style={{ marginTop:10, padding:"6px 16px", borderRadius:8, border:"1px solid #fecaca", background:"#fff1f2", color:"#dc2626", cursor:"pointer", fontWeight:600 }}>Retry</button>
                 </div>
               ) : items.length === 0 ? (
                 <div className="val-empty">
@@ -919,9 +935,7 @@ export default function ValidationPage() {
                             {item.status}
                           </span>
                         </div>
-                        <p style={{ margin:0, fontSize:12, color:"#94a3b8" }}>
-                          By {item.user || "—"} · #{item.id}
-                        </p>
+                        <p style={{ margin:0, fontSize:12, color:"#94a3b8" }}>By {item.user || "—"} · #{item.id}</p>
                       </div>
                       <span style={{ color:"#cbd5e1", fontSize:18, flexShrink:0 }}>›</span>
                     </div>
@@ -948,13 +962,12 @@ export default function ValidationPage() {
           const ts = TYPE_STYLE[selected.item_type] || { bg:"#f8fafc", color:"#64748b" };
           const d  = itemDetail;
 
-          // ── Treat both Campaigns and Campaigns_Delete as campaign-type ──
-          const isCampaign = selected.item_type === "Campaigns" || selected.item_type === "Campaigns_Delete";
-          const isARType   = selected.item_type === "AR";
-          const is3DType   = selected.item_type === "3D";
-          const isProduct  = selected.item_type === "Products";
+          const isCampaign       = selected.item_type === "Campaigns" || selected.item_type === "Campaigns_Delete";
+          const isProductDelete  = selected.item_type === "Products_Delete";
+          const isARType         = selected.item_type === "AR";
+          const is3DType         = selected.item_type === "3D";
+          const isProduct        = selected.item_type === "Products";
 
-          // ── Product-specific image logic ──────────────────────────────────
           const images     = d?.images || (d?.image_url ? [d.image_url] : []);
           const primaryImg = images[0] ? `http://127.0.0.1:8000/${images[0]}` : null;
           const extraImgs  = images.slice(1, 4);
@@ -968,34 +981,22 @@ export default function ValidationPage() {
           const stockBg    = stockLabel === "In Stock" ? "#f0fdf4"  : stockLabel === "Low Stock" ? "#fffbeb"  : "#fff1f2";
 
           const hasModelFile = !!(d?.model_3d || d?.model_src);
-
-          const show3DBtn = hasModelFile && (
-            is3DType  ? true
-            : isARType ? false
-            : !!(d?.able_3d || d?.valid_3d)
-          );
-          const showARBtn = hasModelFile && (
-            isARType  ? true
-            : is3DType ? false
-            : !!(d?.able_ar || d?.valid_ar)
-          );
+          const show3DBtn = hasModelFile && (is3DType ? true : isARType ? false : !!(d?.able_3d || d?.valid_3d));
+          const showARBtn = hasModelFile && (isARType ? true : is3DType ? false : !!(d?.able_ar || d?.valid_ar));
           const showFallback3D = isProduct && hasModelFile && !show3DBtn && !showARBtn;
           const forceViewer = isARType || is3DType;
           const showViewer  = forceViewer || (isProduct && hasModelFile);
 
-          // Hero class for delete campaigns
           const campaignHeroClass = selected.item_type === "Campaigns_Delete"
             ? "val-hero-placeholder campaign-delete"
             : "val-hero-placeholder campaign";
 
           return (
             <div className="val-modal">
-              <button className="val-modal-close" onClick={closeDetail}>
-                <X size={16} />
-              </button>
+              <button className="val-modal-close" onClick={closeDetail}><X size={16} /></button>
 
-              {/* ── Hero — campaigns skip this (their image is inside CampaignDetail) ── */}
-              {!isCampaign && (
+              {/* Hero */}
+              {!isCampaign && !isProductDelete && (
                 loadingDetail ? (
                   <div className="val-hero-placeholder">
                     <Loader2 size={32} className="val-spin" style={{ color:"rgba(255,255,255,0.6)" }} />
@@ -1009,23 +1010,28 @@ export default function ValidationPage() {
                 )
               )}
 
-              {/* Campaigns & Campaigns_Delete: toned placeholder header */}
+              {/* Products_Delete hero */}
+              {isProductDelete && (
+                <div className="val-hero-placeholder product-delete" style={{ height: 100, fontSize: 44 }}>
+                  <span>🗑️</span>
+                </div>
+              )}
+
+              {/* Campaigns hero */}
               {isCampaign && (
                 <div className={campaignHeroClass} style={{ height: 100, fontSize: 44 }}>
                   <span>{selected.item_type === "Campaigns_Delete" ? "🗑️" : "📣"}</span>
                 </div>
               )}
 
-              {/* ── Body ── */}
+              {/* Body */}
               <div className="val-modal-body">
 
-                {/* ── Common header ── */}
+                {/* Common header */}
                 <div style={{ display:"flex", gap:12, alignItems:"flex-start", paddingRight:8 }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6, flexWrap:"wrap" }}>
-                      <span className="val-type-tag" style={{ background:ts.bg, color:ts.color, marginBottom:0 }}>
-                        {selected.item_type}
-                      </span>
+                      <span className="val-type-tag" style={{ background:ts.bg, color:ts.color, marginBottom:0 }}>{selected.item_type}</span>
                       <span style={{ background:ss.bg, color:ss.color, padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:700, display:"inline-flex", alignItems:"center", gap:4 }}>
                         <span style={{ width:5, height:5, borderRadius:"50%", background:ss.dot, display:"inline-block" }} />
                         {selected.status}
@@ -1040,9 +1046,26 @@ export default function ValidationPage() {
                   </div>
                 </div>
 
-                {/* ══════════════════════════════════════════
-                    CAMPAIGN-SPECIFIC DETAIL SECTION
-                ══════════════════════════════════════════ */}
+                {/* ── Products_Delete detail ── */}
+                {isProductDelete && (
+                  <>
+                    <div className="val-campaign-divider" />
+                    {loadingDetail ? (
+                      <div style={{ display:"flex", alignItems:"center", gap:8, color:"#94a3b8", fontSize:13 }}>
+                        <Loader2 size={15} className="val-spin" /> Loading product details…
+                      </div>
+                    ) : d ? (
+                      <ProductDeleteDetail d={d} selected={selected} />
+                    ) : (
+                      <div style={{ padding:"14px 16px", background:"#fff1f2", border:"1px solid #fecaca", borderRadius:12 }}>
+                        <p style={{ margin:0, fontSize:13, color:"#dc2626", fontWeight:600 }}>⚠️ Could not load product details.</p>
+                      </div>
+                    )}
+                    <div className="val-campaign-divider" />
+                  </>
+                )}
+
+                {/* ── Campaign detail ── */}
                 {isCampaign && (
                   <>
                     <div className="val-campaign-divider" />
@@ -1054,43 +1077,24 @@ export default function ValidationPage() {
                       <CampaignDetail d={d} selected={selected} />
                     ) : (
                       <div style={{ padding:"14px 16px", background:"#fff1f2", border:"1px solid #fecaca", borderRadius:12 }}>
-                        <p style={{ margin:0, fontSize:13, color:"#dc2626", fontWeight:600 }}>
-                          ⚠️ Could not load campaign details.
-                        </p>
+                        <p style={{ margin:0, fontSize:13, color:"#dc2626", fontWeight:600 }}>⚠️ Could not load campaign details.</p>
                       </div>
                     )}
                     <div className="val-campaign-divider" />
                   </>
                 )}
 
-                {/* ══════════════════════════════════════════
-                    PRODUCT / AR / 3D SECTIONS (unchanged)
-                ══════════════════════════════════════════ */}
-                {!isCampaign && (
+                {/* ── Regular product / AR / 3D sections ── */}
+                {!isCampaign && !isProductDelete && (
                   <>
-                    {/* ── 3D / AR launch buttons ── */}
                     {!loadingDetail && showViewer && (
                       <div>
-                        <p className="val-section-label" style={{ marginBottom:10 }}>
-                          {forceViewer ? "Model Preview" : "3D / AR Preview"}
-                        </p>
+                        <p className="val-section-label" style={{ marginBottom:10 }}>{forceViewer ? "Model Preview" : "3D / AR Preview"}</p>
                         {hasModelFile ? (
                           <div className="val-model-launch-row">
-                            {show3DBtn && (
-                              <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
-                                <span style={{ fontSize:20 }}>🧊</span> View 3D Model
-                              </button>
-                            )}
-                            {showARBtn && (
-                              <button className="val-model-launch-btn btn-ar" onClick={() => openModelViewer("ar", d, selected)}>
-                                <span style={{ fontSize:20 }}>🥽</span> View in AR
-                              </button>
-                            )}
-                            {showFallback3D && (
-                              <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}>
-                                <span style={{ fontSize:20 }}>🧊</span> View 3D Model
-                              </button>
-                            )}
+                            {show3DBtn    && <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}><span style={{ fontSize:20 }}>🧊</span> View 3D Model</button>}
+                            {showARBtn    && <button className="val-model-launch-btn btn-ar" onClick={() => openModelViewer("ar", d, selected)}><span style={{ fontSize:20 }}>🥽</span> View in AR</button>}
+                            {showFallback3D && <button className="val-model-launch-btn btn-3d" onClick={() => openModelViewer("3d", d, selected)}><span style={{ fontSize:20 }}>🧊</span> View 3D Model</button>}
                           </div>
                         ) : (
                           <div style={{ padding:"14px 16px", background:"#fff1f2", border:"1px solid #fecaca", borderRadius:12 }}>
@@ -1101,7 +1105,6 @@ export default function ValidationPage() {
                       </div>
                     )}
 
-                    {/* ── Extra images ── */}
                     {!loadingDetail && !forceViewer && extraImgs.length > 0 && (
                       <div>
                         <p className="val-section-label">More Images</p>
@@ -1113,7 +1116,6 @@ export default function ValidationPage() {
                       </div>
                     )}
 
-                    {/* ── Description ── */}
                     {!forceViewer && d?.description && (
                       <div>
                         <p className="val-section-label"><AlignLeft size={10} /> Description</p>
@@ -1123,7 +1125,6 @@ export default function ValidationPage() {
                       </div>
                     )}
 
-                    {/* ── Detail grid ── */}
                     {!loadingDetail && (
                       <div className="val-detail-grid">
                         {!forceViewer && d?.category && (
@@ -1144,9 +1145,7 @@ export default function ValidationPage() {
                         <div className="val-detail-cell">
                           <p className="val-section-label"><Calendar size={10} /> Submitted</p>
                           <p className="val-cell-value" style={{ fontFamily:"monospace", fontSize:12 }}>
-                            {selected.submitted_at
-                              ? new Date(selected.submitted_at).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" })
-                              : "—"}
+                            {selected.submitted_at ? new Date(selected.submitted_at).toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" }) : "—"}
                           </p>
                         </div>
                         {selected.reviewed_at && (
@@ -1160,15 +1159,12 @@ export default function ValidationPage() {
                       </div>
                     )}
 
-                    {/* ── Colors ── */}
                     {!loadingDetail && !forceViewer && d?.colors?.length > 0 && (
                       <div>
                         <p className="val-section-label"><Palette size={10} /> Colors</p>
                         <div className="val-color-strip">
                           {d.colors.map(name => (
-                            <span key={name} className="val-color-chip">
-                              <ColorDot name={name} /> {name}
-                            </span>
+                            <span key={name} className="val-color-chip"><ColorDot name={name} /> {name}</span>
                           ))}
                         </div>
                       </div>
@@ -1182,7 +1178,7 @@ export default function ValidationPage() {
                   </>
                 )}
 
-                {/* ── Rejection note — always shown ── */}
+                {/* Rejection note */}
                 <div>
                   <p className="val-section-label">
                     Rejection Note{" "}
@@ -1205,23 +1201,15 @@ export default function ValidationPage() {
                 )}
               </div>
 
-              {/* ── Footer ── */}
+              {/* Footer */}
               <div className="val-modal-footer">
-                <button
-                  className="val-btn-approve"
-                  onClick={handleApprove}
-                  disabled={isFinal || loadingAction}
-                  style={selected.status === "Approved" ? { background:"#f0fdf4", color:"#16a34a" } : {}}
-                >
+                <button className="val-btn-approve" onClick={handleApprove} disabled={isFinal || loadingAction}
+                  style={selected.status === "Approved" ? { background:"#f0fdf4", color:"#16a34a" } : {}}>
                   {loadingAction ? <Loader2 size={16} className="val-spin" /> : null}
                   {selected.status === "Approved" ? "✓ Approved" : "✓ Approve"}
                 </button>
-                <button
-                  className="val-btn-reject"
-                  onClick={handleReject}
-                  disabled={isFinal || loadingAction}
-                  style={selected.status === "Rejected" ? { background:"#fff1f2", color:"#dc2626", borderColor:"#fecaca" } : {}}
-                >
+                <button className="val-btn-reject" onClick={handleReject} disabled={isFinal || loadingAction}
+                  style={selected.status === "Rejected" ? { background:"#fff1f2", color:"#dc2626", borderColor:"#fecaca" } : {}}>
                   {loadingAction ? <Loader2 size={16} className="val-spin" /> : null}
                   {selected.status === "Rejected" ? "✕ Rejected" : "✕ Reject"}
                 </button>
@@ -1231,9 +1219,7 @@ export default function ValidationPage() {
         })()}
       </AnimatedModal>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          MODEL VIEWER MODAL
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── Model Viewer Modal ── */}
       <AnimatedModal
         visible={viewerVisible}
         duration={300}
@@ -1242,17 +1228,10 @@ export default function ValidationPage() {
         onExited={() => setModelViewer(null)}
       >
         <div className="val-viewer-topbar">
-          <button className="val-viewer-back-btn" onClick={closeViewer}>
-            <ArrowLeft size={14} /> Back to details
-          </button>
-          <span className="val-viewer-title">
-            {modelViewer?.mode === "ar" ? "🥽" : "🧊"} {modelViewer?.productName}
-          </span>
-          <button className="val-viewer-close-btn" onClick={closeViewer}>
-            <X size={16} />
-          </button>
+          <button className="val-viewer-back-btn" onClick={closeViewer}><ArrowLeft size={14} /> Back to details</button>
+          <span className="val-viewer-title">{modelViewer?.mode === "ar" ? "🥽" : "🧊"} {modelViewer?.productName}</span>
+          <button className="val-viewer-close-btn" onClick={closeViewer}><X size={16} /></button>
         </div>
-
         <div className="val-viewer-body">
           <div className="val-viewer-inner">
             {modelViewer?.modelSrc ? (

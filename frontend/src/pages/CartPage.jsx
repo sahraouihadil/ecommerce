@@ -211,8 +211,8 @@ export function CartPage() {
   };
 
   const subtotal = items.reduce((sum, i) => sum + (i.product?.price || 0) * i.quantity, 0);
-  const taxes = subtotal * 0.08;
-  const total = subtotal + taxes;
+
+  const total = subtotal;
 
   const fonts = `
     @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
@@ -411,7 +411,6 @@ export function CartPage() {
                   {[
                     { label: "Subtotal", value: `${subtotal.toLocaleString("fr-DZ", { minimumFractionDigits: 2 })} DA` },
                     { label: "Shipping", value: "Free", valueStyle: { fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "#5A7A5A" } },
-                    { label: "Taxes (8%)", value: `${taxes.toLocaleString("fr-DZ", { minimumFractionDigits: 2 })} DA` },
                   ].map(({ label, value, valueStyle }) => (
                     <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                       <span style={{ fontFamily: "sans-serif", fontSize: "0.575rem", letterSpacing: "0.2em", textTransform: "uppercase", color: MUTED }}>{label}</span>

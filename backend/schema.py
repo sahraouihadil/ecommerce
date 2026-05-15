@@ -68,9 +68,9 @@ class CampaignCreate(BaseModel):
     name:          str
     title:         str
     channel:       Optional[str]   = None
-    status:        str             = "active"     
-    is_active:     bool            = True         
-    campaign_type: Optional[str]   = None           
+    status:        str             = "active"  
+    is_active:     bool            = True          
+    campaign_type: Optional[str]   = None           # FIX: added ("sale" | "new")
     budget:        float           = 0
     spent:         float           = 0
     impressions:   int             = 0
@@ -78,7 +78,7 @@ class CampaignCreate(BaseModel):
     start_date:    Optional[date]  = None
     end_date:      Optional[date]  = None
     discount:      Optional[float] = None
-    discount_type: Optional[str]   = None      
+    discount_type: Optional[str]   = None          
     code:          Optional[str]   = None
     usage_max:     int             = 0
     usage_current: int             = 0
@@ -96,7 +96,7 @@ class CampaignCreate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percentage", "fixed"}           
+        allowed = {"percentage", "fixed"}              
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
@@ -134,7 +134,7 @@ class CampaignUpdate(BaseModel):
     title:         Optional[str]   = None
     channel:       Optional[str]   = None
     status:        Optional[str]   = None
-    campaign_type: Optional[str]   = None    
+    campaign_type: Optional[str]   = None         
     budget:        Optional[float] = None
     spent:         Optional[float] = None
     impressions:   Optional[int]   = None
@@ -162,7 +162,7 @@ class CampaignUpdate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percentage", "fixed"}            
+        allowed = {"percentage", "fixed"}              
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
