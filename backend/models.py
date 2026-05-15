@@ -215,6 +215,7 @@ class Blogs(Base):
     author     = Column(String)
     views      = Column(Integer, default=0)
     status     = Column(String, default="draft")
+    is_active     = Column(Boolean)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

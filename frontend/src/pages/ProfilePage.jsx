@@ -54,7 +54,7 @@ function formatPrice(val) {
   return `${Number(val).toFixed(2)} DA`;
 }
 
-const DEFAULT_NOTIF = { orders: true, promotions: false, newsletter: true };
+const DEFAULT_NOTIF = { orders: true, campaigns: false, newsletter: true };
 const DEFAULT_PRIV = { publicProfile: false, shareActivity: true };
 
 function loadPref(key, fallback) {

@@ -81,6 +81,7 @@ export default function ConfigurationPage() {
         .cfg-manage-btn:hover { border-color: #6366f1; color: #6366f1; background: #f5f3ff; }
         @media (max-width: 900px) { .cfg-grid { grid-template-columns: 1fr; } .cfg-inner { padding: 16px 12px 32px; } }
       `}</style>
+      
       <div className="cfg-page">
         <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={adminLinks} title="AdminCore" subtitle="Enterprise Suite" role="Super Admin" profilePath="/admin-dash/profile" />
         <main className="cfg-main">

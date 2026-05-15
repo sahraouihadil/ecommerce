@@ -13,7 +13,7 @@ import { AboutusPage } from './pages/AboutusPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { OrderPage } from './pages/OrderPage'
-import { InvoicePage } from './pages/InvoicePage'          // ← NEW
+import { InvoicePage } from './pages/InvoicePage'     
 import { TrackingPage } from './pages/TrackingPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { CartPage } from './pages/CartPage'
