@@ -69,7 +69,7 @@ class CampaignCreate(BaseModel):
     title:         str
     channel:       Optional[str]   = None
     status:        str             = "active"  
-    is_active:     bool            = True           # FIX: added, default True
+    is_active:     bool            = True          
     campaign_type: Optional[str]   = None           # FIX: added ("sale" | "new")
     budget:        float           = 0
     spent:         float           = 0
@@ -96,7 +96,7 @@ class CampaignCreate(BaseModel):
     def discount_type_valid(cls, v):
         if v is None:
             return v
-        allowed = {"percentage", "fixed"}             
+        allowed = {"percentage", "fixed"}              
         if v not in allowed:
             raise ValueError(f"discount_type must be one of {sorted(allowed)}")
         return v
