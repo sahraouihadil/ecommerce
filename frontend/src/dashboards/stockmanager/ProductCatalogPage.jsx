@@ -261,9 +261,6 @@ export function ProductCatalogPage() {
   const [deleteRequestProduct,   setDeleteRequestProduct]   = useState(null);
   const [deleteRequestLoading,   setDeleteRequestLoading]   = useState(false);
   const [deleteRequestError,     setDeleteRequestError]     = useState("");
-  const [showWindow, setShowWindow] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [filters, setFilters] = useState({
     search: "", category: "all", color: "all", status: "all", approval: "all",
@@ -355,19 +352,6 @@ export function ProductCatalogPage() {
     fetchValidations();
   }, [fetchProducts, fetchValidations]);
 
-
-  // ── helpers ────────────────────────────────────────────────────────────────
-  const getStockStatus = (qty) => {
-    if (qty === 0) return "Out of Stock";
-    if (qty < 10) return "Low Stock";
-    return "In Stock";
-  };
-
-  const stockStatusStyle = (s) => {
-    if (s === "In Stock") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
-    if (s === "Low Stock") return "bg-amber-50 text-amber-700 border border-amber-200";
-    return "bg-red-50 text-red-600 border border-red-200";
-  };
   const categories = useMemo(
     () => ["all", ...new Set(products.map((p) => p.category))], [products]);
 
@@ -389,7 +373,7 @@ export function ProductCatalogPage() {
       (filters.approval === "pending"  && approvalStatus === "pending");
 
     return (
-      p.name.toLowerCase().includes(filters.search.toLowerCase()) &&
+      (p.name || "").toLowerCase().includes(filters.search.toLowerCase()) &&
       (filters.category === "all" || p.category === filters.category) &&
       colorMatch &&
       approvalMatch &&

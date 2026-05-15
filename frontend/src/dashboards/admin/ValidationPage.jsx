@@ -460,7 +460,7 @@ export default function ValidationPage() {
     Campaigns:         { bg:"#fef3c7", color:"#92400e" },
     Blogs:             { bg:"#fce7f3", color:"#9d174d" },
     Campaigns_Delete:  { bg:"#fff1f2", color:"#991b1b" },
-    Products_Delete:   { bg:"#fff1f2", color:"#991b1b" },  // ← NEW
+    Products_Delete:   { bg:"#fff1f2", color:"#991b1b" },
   };
 
   const TYPE_ICON = { Products:"📦", AR:"🥽", "3D":"🧊", Campaigns:"📣", Blogs:"", Products_Delete:"🗑️" };
@@ -564,7 +564,7 @@ export default function ValidationPage() {
       try {
         const endpointMap = {
           Products:         `/api/products/${selected.item_id}`,
-          Products_Delete:  `/api/products/${selected.item_id}`,   // ← NEW
+          Products_Delete:  `/api/products/${selected.item_id}`,
           AR:               `/api/products/${selected.item_id}`,
           "3D":             `/api/products/${selected.item_id}`,
           Campaigns:        `/api/campaigns/${selected.item_id}`,
@@ -963,7 +963,7 @@ export default function ValidationPage() {
           const d  = itemDetail;
 
           const isCampaign       = selected.item_type === "Campaigns" || selected.item_type === "Campaigns_Delete";
-          const isProductDelete  = selected.item_type === "Products_Delete";   // ← NEW
+          const isProductDelete  = selected.item_type === "Products_Delete";
           const isARType         = selected.item_type === "AR";
           const is3DType         = selected.item_type === "3D";
           const isProduct        = selected.item_type === "Products";

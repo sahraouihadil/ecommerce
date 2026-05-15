@@ -68,7 +68,7 @@ class CampaignCreate(BaseModel):
     name:          str
     title:         str
     channel:       Optional[str]   = None
-    status:        str             = "active"       # FIX: was "draft"
+    status:        str             = "active"  
     is_active:     bool            = True           # FIX: added, default True
     campaign_type: Optional[str]   = None           # FIX: added ("sale" | "new")
     budget:        float           = 0
@@ -134,7 +134,7 @@ class CampaignUpdate(BaseModel):
     title:         Optional[str]   = None
     channel:       Optional[str]   = None
     status:        Optional[str]   = None
-    campaign_type: Optional[str]   = None           # FIX: added
+    campaign_type: Optional[str]   = None         
     budget:        Optional[float] = None
     spent:         Optional[float] = None
     impressions:   Optional[int]   = None
