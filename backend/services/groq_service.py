@@ -1,127 +1,67 @@
 """
 groq_service.py - Groq AI (LLaMA) Integration
-================================================
-This file connects to the Groq API to power our Roomie chatbot.
-
-Groq is an AI inference provider that hosts LLaMA models.
-We use the "llama-3.1-8b-instant" model for fast, concise responses.
-
-HOW IT WORKS:
-  1. Load our product catalog from products.json
-  2. Build a system prompt that tells the AI who it is (Roomie) and what it sells
-  3. Send the user's message + conversation history to Groq
-  4. Return the AI's response
-
-The system prompt changes based on the shopping context:
-  - before_ar: Encourage the user to explore products and try AR
-  - during_ar: Answer questions about the product they're viewing
-  - after_ar: Suggest next steps (buy, compare, etc.)
 """
 
 import os
 import json
-from dotenv import load_dotenv
 from groq import Groq
-from sqlalchemy.orm import Session
-from database import SessionLocal
-from models import Products
+from dotenv import load_dotenv
 
-# Load the API key from .env
 load_dotenv()
-
-# Create the Groq client (like logging into the AI service)
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# ── System Prompts ──
-# These tell the AI how to behave in each shopping context.
-# The AI will follow these instructions for every message.
-PROMPTS = {
+BASE_PERSONA = (
+    "You are Roomie, a friendly AI shopping assistant for ARoom, an AR furniture store. "
+    "Be concise — reply in 1 to 2 short sentences only. Never write long paragraphs. "
+    "Detect the language the customer writes in and always reply in that same language. "
+    "If they write in Arabic (including Algerian Darija), reply in Arabic. "
+    "If French, reply in French. Default to English otherwise. "
+    "IMPORTANT: Only recommend products that exist in the catalog provided to you. "
+    "If a customer asks about a product not in the catalog, politely say we don't carry it "
+    "and suggest the closest available alternative from the catalog."
+)
+
+PHASE_INSTRUCTIONS = {
     "before_ar": (
-        "You are Roomie, a shopping assistant for ARoom, an AR furniture store. "
-        "Be concise. Reply in 1-2 short sentences only. Never write long paragraphs. "
-        "Help the customer find furniture. Suggest products and encourage 3D viewing and the AR viewer."
+        "The customer is browsing. Your goal: understand what they need and recommend specific products "
+        "from the catalog below. Mention AR/3D viewing when relevant. "
+        "If a product is on sale or is a new arrival, highlight it naturally."
     ),
     "during_ar": (
-        "You are Roomie, a shopping assistant for ARoom. "
-        "Be concise. Reply in 1-2 short sentences only. Never write long paragraphs. "
-        "The customer is viewing a product in AR. Answer questions briefly."
+        "The customer is currently viewing a product in AR. "
+        "Answer questions about it concisely. If they seem interested, encourage adding to cart. "
+        "Only mention other products if they explicitly ask for alternatives."
     ),
     "after_ar": (
-        "You are Roomie, a shopping assistant for ARoom. "
-        "Be concise. Reply in 1-2 short sentences only. Never write long paragraphs. "
-        "The customer finished AR viewing. Briefly suggest next steps or complementary items."
+        "The customer just finished AR viewing. "
+        "Briefly affirm their choice and suggest 1 complementary item from the catalog if available. "
+        "Gently nudge toward purchase without being pushy."
     ),
 }
 
 
-def load_products():
-    """
-    Load products directly from PostgreSQL database
-    instead of products.json
-    """
-    db: Session = SessionLocal()
+def get_bot_response(message: str, context: str, history: list, product_name: str, products: list) -> str:
+    phase = PHASE_INSTRUCTIONS.get(context, PHASE_INSTRUCTIONS["before_ar"])
+    system_prompt = BASE_PERSONA + "\n\n" + phase
 
-    try:
-        products = db.query(Products).all()
-
-        return [
-            {
-                "id": p.id,
-                "name": p.name,
-                "description": p.description,
-                "price": p.price,
-                "stock": p.stock,
-                "category": p.category,
-            }
-            for p in products
-        ]
-
-    except Exception as e:
-        print("Error loading products:", e)
-        return []
-
-    finally:
-        db.close()
-
-
-def get_bot_response(message, context, history, product_name=""):
-    """
-    Sends a message to the Groq AI and returns the response.
-
-    Parameters:
-      - message: The user's latest message
-      - context: Shopping context ("before_ar", "during_ar", "after_ar")
-      - history: Previous messages in the conversation
-      - product_name: Name of the product being viewed (if any)
-
-    Returns: The AI's response text
-    """
-    # Load product catalog for context
-    products = load_products()
-
-    # Pick the right system prompt based on context
-    system_prompt = PROMPTS.get(context, PROMPTS["before_ar"])
-
-    # If the user is looking at a specific product, tell the AI about it
     if product_name:
-        system_prompt += f" The customer is looking at: {product_name}."
+        system_prompt += f"\n\nThe customer is looking at: {product_name}."
 
-    # Add product catalog to the prompt so the AI knows what we sell
-    full_prompt = system_prompt + "\n\nAvailable products:\n" + json.dumps(products)
+    if products:
+        system_prompt += "\n\nAvailable products:\n" + json.dumps(products, ensure_ascii=False)
 
-    # Build the message history for the AI
-    # Format: [system prompt, ...previous messages, user's new message]
-    messages = [{"role": "system", "content": full_prompt}]
+    messages = [{"role": "system", "content": system_prompt}]
+
     for h in history:
         role = "assistant" if h["role"] == "bot" else "user"
         messages.append({"role": role, "content": h["content"]})
+
     messages.append({"role": "user", "content": message})
 
-    # Send to Groq and get the response
     response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",   # Fast, lightweight LLaMA model
+        model="llama-3.1-8b-instant",
         messages=messages,
-        max_tokens=80,                   # Keep responses short
+        max_tokens=100,
     )
 
     return response.choices[0].message.content
