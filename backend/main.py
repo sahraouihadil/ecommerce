@@ -28,7 +28,7 @@ from routers import (
     chat, cart, orders, favorites,
     campaign, newsletter, blog,
     complaints, product, profile, stafProfile, deliveries,
-    deliveryman, reviews, users, problem, validation
+    deliveryman, reviews, users, problem, validation,configration
 )
 from routers.users import router as user_router
 import shutil
@@ -89,6 +89,7 @@ app.include_router(reviews.router)
 app.include_router(problem.router)
 app.include_router(validation.router)
 app.include_router(notifications_router)
+app.include_router(configration.router)
 
 user_dependency = Annotated[dict, Depends(get_current_user)]
 

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, EmailStr, field_validator, validator, mod
 from enums import UserRole
 from fastapi import Form, File
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List,Literal
 
 
 def today():
@@ -499,3 +499,10 @@ class CreateUserPending(BaseModel):
     email:     str
     password:  str
     phone_num: Optional[str] = None
+
+# ─── AR Config ─────────────────────────────────────────────────────
+
+class ARConfigRequest(BaseModel):
+    scope:     Literal["global", "product"]
+    able_ar:   bool
+    productId: Optional[int] = None   # required when scope == "product"

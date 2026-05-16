@@ -381,8 +381,8 @@ export function ProductPage() {
     name: colorName, color: COLOR_HEX[colorName] || "#d1d5db",
   }));
 
-  const showARButton = IS_MOBILE && !!( product.valid_ar);
-  const show3DButton = !!(product.valid_3d);
+  const showARButton = IS_MOBILE && !!( product.valid_ar) && !!product.able_ar;
+  const show3DButton = !!(product.valid_3d) ;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F5F0E8", color: "#1C1916", fontFamily: "'Cormorant Garamond',Georgia,serif", overflowX: "hidden" }}>
