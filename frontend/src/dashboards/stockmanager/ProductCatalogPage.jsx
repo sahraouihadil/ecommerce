@@ -213,7 +213,7 @@ function DeleteRequestBadge({ status }) {
 }
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const EMPTY_FILES = [null, null, null];
+const EMPTY_FILES    = [null, null, null];
 const EMPTY_PREVIEWS = [null, null, null];
 
 const BLANK_PRODUCT = {
@@ -223,7 +223,7 @@ const BLANK_PRODUCT = {
   able_3d: false, able_ar: false,
 };
 
-// ─── HELPERS (pure, defined outside component so they're stable) ──────────────
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 const getStockStatus = (qty) => {
   if (qty === 0) return "Out of Stock";
   if (qty < 10)  return "Low Stock";
@@ -239,56 +239,58 @@ const stockStatusStyle = (s) => {
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export function ProductCatalogPage() {
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [products,           setProducts]           = useState([]);
+  const [loading,            setLoading]            = useState(true);
+  const [showModal,          setShowModal]          = useState(false);
+  const [editMode,           setEditMode]           = useState(false);
+  const [selectedProductId,  setSelectedProductId]  = useState(null);
 
-  const [imageFiles, setImageFiles] = useState([...EMPTY_FILES]);
+  const [imageFiles,    setImageFiles]    = useState([...EMPTY_FILES]);
   const [imagePreviews, setImagePreviews] = useState([...EMPTY_PREVIEWS]);
-  const [colorTags, setColorTags] = useState([]);
+  const [colorTags,     setColorTags]     = useState([]);
 
   const [newProduct, setNewProduct] = useState({ ...BLANK_PRODUCT });
 
-  const [message, setMessage] = useState("");
+  const [message,     setMessage]     = useState("");
   const [messageType, setMessageType] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors,      setErrors]      = useState({});
 
-  // ── Delete-request modal ───────────────────────────────────────────────────
+  // ── Delete-request modal ──────────────────────────────────────────────────
   const [showDeleteRequestModal, setShowDeleteRequestModal] = useState(false);
   const [deleteRequestProduct,   setDeleteRequestProduct]   = useState(null);
   const [deleteRequestLoading,   setDeleteRequestLoading]   = useState(false);
   const [deleteRequestError,     setDeleteRequestError]     = useState("");
 
+  // ─── FIX 1: priceMax defaults to Infinity so no product is ever
+  //     hidden by the price ceiling before the user sets one explicitly.
   const [filters, setFilters] = useState({
     search: "", category: "all", color: "all", status: "all", approval: "all",
-    priceMin: 0, priceMax: 100000,
+    priceMin: 0, priceMax: Infinity,
   });
+
+  // Controlled input values for the price fields (separate from filter state
+  // so empty strings don't coerce to 0 / NaN while the user is typing).
+  const [priceMinInput, setPriceMinInput] = useState("");
+  const [priceMaxInput, setPriceMaxInput] = useState("");
 
   const [openBar, setOpenBar] = useState(window.innerWidth >= 600);
 
-  // ── Submit-for-Validation state ────────────────────────────────────────────
+  // ── Submit-for-Validation state ───────────────────────────────────────────
   const [showValidationModal, setShowValidationModal] = useState(false);
-  const [validationProduct, setValidationProduct] = useState(null);
-  const [validationLoading, setValidationLoading] = useState(false);
-  const [validationError, setValidationError] = useState("");
+  const [validationProduct,   setValidationProduct]   = useState(null);
+  const [validationLoading,   setValidationLoading]   = useState(false);
+  const [validationError,     setValidationError]     = useState("");
+  const [validationIsEdit,    setValidationIsEdit]    = useState(false);
 
-  // ── Tracks whether the validation modal was opened after an edit ───────────
-  // When true, the submit call uses /upsert so it overwrites any existing
-  // pending request instead of throwing a 400 "already pending" error.
-  const [validationIsEdit, setValidationIsEdit] = useState(false);
-
-  // ── Validation maps ────────────────────────────────────────────────────────
+  // ── Validation maps ───────────────────────────────────────────────────────
   const [validationMap,       setValidationMap]       = useState({});
   const [deleteValidationMap, setDeleteValidationMap] = useState({});
 
-  // ── Currently edited product snapshot ─────────────────────────────────────
+  // ── Currently edited product snapshot ────────────────────────────────────
   const [editingProduct, setEditingProduct] = useState(null);
 
-  // ── FIX: stable callbacks so useMemo deps are correct ─────────────────────
-
+  // ── Stable callbacks ──────────────────────────────────────────────────────
   const getApprovalStatus = useCallback((p) => {
     if (p.is_active) return "approved";
     if (validationMap[p.id]?.status === "Rejected") return "rejected";
@@ -303,7 +305,7 @@ export function ProductCatalogPage() {
     return null;
   }, [deleteValidationMap]);
 
-  // ── fetch products ────────────────────────────────────────────────────────
+  // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
@@ -316,11 +318,10 @@ export function ProductCatalogPage() {
     }
   }, []);
 
-  // ── fetch validation records ───────────────────────────────────────────────
   const fetchValidations = useCallback(async () => {
     try {
       const [resProducts, resDelete] = await Promise.all([
-        api.get("/api/validation/", { params: { item_type: "Products", limit: 200 } }),
+        api.get("/api/validation/", { params: { item_type: "Products",        limit: 200 } }),
         api.get("/api/validation/", { params: { item_type: "Products_Delete", limit: 200 } }),
       ]);
 
@@ -361,8 +362,10 @@ export function ProductCatalogPage() {
     return ["all", ...set];
   }, [products]);
 
+  // ─── FIX 2: price filter uses Infinity as the ceiling sentinel so that
+  //     products with any price are included when the user hasn't typed a max.
   const filteredProducts = useMemo(() => products.filter((p) => {
-    const stockStatus = getStockStatus(p.quantity);
+    const stockStatus    = getStockStatus(p.quantity);
     const approvalStatus = getApprovalStatus(p);
     const colorMatch     = filters.color === "all" || (p.colors || []).includes(filters.color);
 
@@ -372,37 +375,39 @@ export function ProductCatalogPage() {
       (filters.approval === "rejected" && approvalStatus === "rejected") ||
       (filters.approval === "pending"  && approvalStatus === "pending");
 
+    const price = Number(p.price) || 0;
+
     return (
       (p.name || "").toLowerCase().includes(filters.search.toLowerCase()) &&
       (filters.category === "all" || p.category === filters.category) &&
       colorMatch &&
       approvalMatch &&
       (filters.status === "all" || stockStatus === filters.status) &&
-      p.price >= filters.priceMin &&
-      p.price <= filters.priceMax
+      price >= filters.priceMin &&
+      price <= filters.priceMax   // Infinity means "no upper bound"
     );
   }), [products, filters, getApprovalStatus]);
 
-  // ── summary strip stats ────────────────────────────────────────────────────
+  // ── Summary stats ─────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
-    total: products.length,
+    total:    products.length,
     approved: products.filter((p) => p.is_active).length,
-    pending: products.filter((p) => !p.is_active && validationMap[p.id]?.status !== "Rejected").length,
+    pending:  products.filter((p) => !p.is_active && validationMap[p.id]?.status !== "Rejected").length,
     rejected: products.filter((p) => !p.is_active && validationMap[p.id]?.status === "Rejected").length,
   }), [products, validationMap]);
 
-  // ── flash ──────────────────────────────────────────────────────────────────
+  // ── Flash ─────────────────────────────────────────────────────────────────
   const showFlash = (msg, type) => {
     setMessage(msg); setMessageType(type);
     setTimeout(() => { setMessage(""); setMessageType(""); }, 4000);
   };
 
-  // ── form validation ────────────────────────────────────────────────────────
+  // ── Form validation ───────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
     if (!newProduct.name?.trim()) e.name = "Product name is required";
-    if (!newProduct.category) e.category = "Please select a category";
-    if (!newProduct.sku?.trim()) e.sku = "SKU is required";
+    if (!newProduct.category)     e.category = "Please select a category";
+    if (!newProduct.sku?.trim())  e.sku = "SKU is required";
     if (!newProduct.price || Number(newProduct.price) <= 0)
       e.price = "Price must be greater than 0";
     if (newProduct.quantity === "" || Number(newProduct.quantity) < 0)
@@ -413,19 +418,19 @@ export function ProductCatalogPage() {
   const clearError = (field) =>
     setErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
 
-  // ── image slots ────────────────────────────────────────────────────────────
+  // ── Image slots ───────────────────────────────────────────────────────────
   const handleImageChange = (idx, file) => {
     if (!file) return;
-    setImageFiles((p) => { const n = [...p]; n[idx] = file; return n; });
+    setImageFiles((p)    => { const n = [...p]; n[idx] = file; return n; });
     setImagePreviews((p) => { const n = [...p]; n[idx] = URL.createObjectURL(file); return n; });
   };
 
   const removeImage = (idx) => {
-    setImageFiles((p) => { const n = [...p]; n[idx] = null; return n; });
+    setImageFiles((p)    => { const n = [...p]; n[idx] = null; return n; });
     setImagePreviews((p) => { const n = [...p]; n[idx] = null; return n; });
   };
 
-  // ── reset modal ────────────────────────────────────────────────────────────
+  // ── Reset modal ───────────────────────────────────────────────────────────
   const resetModal = () => {
     setShowModal(false); setEditMode(false); setSelectedProductId(null);
     setImageFiles([...EMPTY_FILES]); setImagePreviews([...EMPTY_PREVIEWS]);
@@ -434,7 +439,7 @@ export function ProductCatalogPage() {
     setEditingProduct(null);
   };
 
-  // ── edit ───────────────────────────────────────────────────────────────────
+  // ── Edit ──────────────────────────────────────────────────────────────────
   const handleEdit = (p) => {
     setNewProduct({
       name: p.name, description: p.description || "", category: p.category || "",
@@ -443,7 +448,6 @@ export function ProductCatalogPage() {
       model_src: p.model_src || "", model_3d: p.model_3d || "",
       ios_src: p.ios_src || "", able_3d: p.able_3d, able_ar: p.able_ar,
     });
-
     const previews = [null, null, null];
     (p.images || []).slice(0, 3).forEach((url, i) => {
       previews[i] = `http://127.0.0.1:8000/${url}`;
@@ -458,7 +462,7 @@ export function ProductCatalogPage() {
     setShowModal(true);
   };
 
-  // ── delete → opens delete-request modal ───────────────────────────────────
+  // ── Delete → opens delete-request modal ──────────────────────────────────
   const handleDelete = (p) => {
     setDeleteRequestProduct(p);
     setDeleteRequestError("");
@@ -492,7 +496,7 @@ export function ProductCatalogPage() {
     }
   };
 
-  // ── save ───────────────────────────────────────────────────────────────────
+  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
@@ -500,19 +504,19 @@ export function ProductCatalogPage() {
     setSaveLoading(true);
     try {
       const fd = new FormData();
-      fd.append("name", newProduct.name);
+      fd.append("name",        newProduct.name);
       fd.append("description", newProduct.description || "");
-      fd.append("category", newProduct.category || "");
-      fd.append("sku", newProduct.sku);
-      fd.append("price", newProduct.price);
-      fd.append("quantity", newProduct.quantity);
-      fd.append("min_stock", newProduct.min_stock);
-      fd.append("model_src", newProduct.model_src || "");
-      fd.append("model_3d", newProduct.model_3d || "");
-      fd.append("ios_src", newProduct.ios_src || "");
-      fd.append("able_3d", newProduct.able_3d);
-      fd.append("able_ar", newProduct.able_ar);
-      fd.append("colors", JSON.stringify(colorTags));
+      fd.append("category",    newProduct.category || "");
+      fd.append("sku",         newProduct.sku);
+      fd.append("price",       newProduct.price);
+      fd.append("quantity",    newProduct.quantity);
+      fd.append("min_stock",   newProduct.min_stock);
+      fd.append("model_src",   newProduct.model_src || "");
+      fd.append("model_3d",    newProduct.model_3d  || "");
+      fd.append("ios_src",     newProduct.ios_src   || "");
+      fd.append("able_3d",     newProduct.able_3d);
+      fd.append("able_ar",     newProduct.able_ar);
+      fd.append("colors",      JSON.stringify(colorTags));
       imageFiles.forEach((file, i) => {
         if (file instanceof File) fd.append(`image_${i + 1}`, file);
       });
@@ -520,11 +524,7 @@ export function ProductCatalogPage() {
       let savedProduct = null;
 
       if (editMode) {
-        // ── FIX: is_active is a required Form field on the PUT endpoint.
-        // Always send false so the product is reset to pending re-approval
-        // after any edit — it will only go live again once the admin approves.
         fd.append("is_active", "false");
-
         const res = await api.put(`/api/products/${selectedProductId}`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
@@ -544,9 +544,6 @@ export function ProductCatalogPage() {
 
       if (savedProduct) {
         setValidationProduct(savedProduct);
-        // ── FIX: flag so the submit uses /upsert when called after an edit.
-        // Upsert resets any existing pending/rejected validation record instead
-        // of throwing a 400 "already pending" error.
         setValidationIsEdit(editMode);
         setValidationError("");
         setShowValidationModal(true);
@@ -559,7 +556,7 @@ export function ProductCatalogPage() {
     }
   };
 
-  // ── Submit for Validation ──────────────────────────────────────────────────
+  // ── Submit for Validation ─────────────────────────────────────────────────
   const openValidationModal = (product) => {
     setValidationProduct(product);
     setValidationIsEdit(false);
@@ -578,23 +575,13 @@ export function ProductCatalogPage() {
     if (!validationProduct) return;
     setValidationLoading(true);
     setValidationError("");
-
     try {
-      // ── FIX: After an edit, use /upsert so that an already-pending (or
-      // previously rejected) validation record is reset to Pending rather
-      // than the API returning 400 "already has a pending request".
-      // For brand-new products there is no existing record, so upsert also
-      // works fine — it simply creates one.
-      const endpoint = validationIsEdit
-        ? "/api/validation/upsert"
-        : "/api/validation/";
-
+      const endpoint = validationIsEdit ? "/api/validation/upsert" : "/api/validation/";
       await api.post(endpoint, {
         item_type: "Products",
-        item_id: validationProduct.id,
-        title: validationProduct.name,
+        item_id:   validationProduct.id,
+        title:     validationProduct.name,
       });
-
       showFlash(`"${validationProduct.name}" submitted for admin review`, "success");
       await fetchValidations();
       closeValidationModal();
@@ -606,23 +593,24 @@ export function ProductCatalogPage() {
     }
   };
 
-  // ── nav ────────────────────────────────────────────────────────────────────
+  // ── Nav ───────────────────────────────────────────────────────────────────
   const stockManagerLinks = [
-    { to: "/stock-manager-dash", label: "Dashboard", icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes /> },
-    { to: "/stock-manager-dash/ar", label: "AR/3D Management", icon: <Bot size={18} /> },
-    { to: "/stock-manager-dash/deliveries", label: "Delivery", icon: <Truck /> },
-    { to: "/stock-manager-dash/problems", label: "Problems", icon: <TriangleAlert /> },
-    { to: "/stock-manager-dash/returns", label: "Returns", icon: <RotateCcw /> },
+    { to: "/stock-manager-dash",              label: "Dashboard",         icon: <LayoutDashboard />, end: true },
+    { to: "/stock-manager-dash/inventories",  label: "Product's Catalog", icon: <Boxes />            },
+    { to: "/stock-manager-dash/ar",           label: "AR/3D Management",  icon: <Bot size={18} />    },
+    { to: "/stock-manager-dash/deliveries",   label: "Delivery",          icon: <Truck />            },
+    { to: "/stock-manager-dash/problems",     label: "Problems",          icon: <TriangleAlert />    },
+    { to: "/stock-manager-dash/returns",      label: "Returns",           icon: <RotateCcw />        },
   ];
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={stockManagerLinks}
-        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" profilePath="/stock-manager-dash/profile" />
+        title="StockManagerCore" subtitle="Enterprise Suite" role="Manager"
+        profilePath="/stock-manager-dash/profile" />
 
-      <main className="flex-1">
+      <main className="flex-1 min-w-0">
         <Header concept="Product's Catalog" />
 
         <div className="p-6 space-y-5">
@@ -641,7 +629,7 @@ export function ProductCatalogPage() {
           </div>
 
           {/* APPROVAL SUMMARY STRIP */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-3 shadow-sm">
               <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
                 <Package size={16} className="text-indigo-500" />
@@ -690,8 +678,9 @@ export function ProductCatalogPage() {
           )}
 
           {/* FILTERS */}
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-            <div className="flex items-center gap-2 h-10 border border-gray-200 bg-gray-50 px-3 rounded-xl w-full md:w-72 focus-within:ring-2 focus-within:ring-indigo-500">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-3">
+            {/* Search */}
+            <div className="flex items-center gap-2 h-10 border border-gray-200 bg-gray-50 px-3 rounded-xl w-full focus-within:ring-2 focus-within:ring-indigo-500">
               <Search size={15} className="text-gray-400 shrink-0" />
               <input
                 className="outline-none w-full text-sm bg-transparent"
@@ -702,18 +691,23 @@ export function ProductCatalogPage() {
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
-              {[
-                { key: "category", options: categories },
-                { key: "color", options: allColors },
-              ].map(({ key, options }) => (
-                <select key={key}
-                  className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none capitalize"
-                  value={filters[key]}
-                  onChange={(e) => setFilters({ ...filters, [key]: e.target.value })}>
-                  {options.map((o, i) => <option key={i} value={o}>{o}</option>)}
-                </select>
-              ))}
+              {/* Category */}
+              <select
+                className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none capitalize"
+                value={filters.category}
+                onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
+                {categories.map((o, i) => <option key={i} value={o}>{o}</option>)}
+              </select>
 
+              {/* Color */}
+              <select
+                className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none capitalize"
+                value={filters.color}
+                onChange={(e) => setFilters({ ...filters, color: e.target.value })}>
+                {allColors.map((o, i) => <option key={i} value={o}>{o}</option>)}
+              </select>
+
+              {/* Approval */}
               <select
                 className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 value={filters.approval}
@@ -724,6 +718,7 @@ export function ProductCatalogPage() {
                 <option value="rejected">Rejected</option>
               </select>
 
+              {/* Stock status */}
               <select
                 className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 value={filters.status}
@@ -734,140 +729,177 @@ export function ProductCatalogPage() {
                 <option value="Out of Stock">Out of Stock</option>
               </select>
 
-              <div className="flex items-center gap-2 h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm">
-                <span className="text-gray-400 text-xs">$</span>
-                <input type="number" placeholder="0" className="w-16 bg-transparent outline-none text-sm"
-                  value={filters.priceMin}
-                  onChange={(e) => setFilters({ ...filters, priceMin: +e.target.value })} />
+              {/* ─── FIX 3: price inputs are controlled separately so an empty
+                  field means "no bound" rather than 0 or NaN.                */}
+              <div className="flex items-center gap-1.5 h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm">
+                <DollarSign size={12} className="text-gray-400 shrink-0" />
+                <input
+                  type="number"
+                  placeholder="Min"
+                  className="w-16 bg-transparent outline-none text-sm"
+                  value={priceMinInput}
+                  onChange={(e) => {
+                    setPriceMinInput(e.target.value);
+                    setFilters((f) => ({ ...f, priceMin: e.target.value === "" ? 0 : Number(e.target.value) }));
+                  }}
+                />
                 <span className="text-gray-300">—</span>
-                <input type="number" placeholder="100000" className="w-20 bg-transparent outline-none text-sm"
-                  value={filters.priceMax}
-                  onChange={(e) => setFilters({ ...filters, priceMax: +e.target.value })} />
+                <input
+                  type="number"
+                  placeholder="Max"
+                  className="w-20 bg-transparent outline-none text-sm"
+                  value={priceMaxInput}
+                  onChange={(e) => {
+                    setPriceMaxInput(e.target.value);
+                    setFilters((f) => ({ ...f, priceMax: e.target.value === "" ? Infinity : Number(e.target.value) }));
+                  }}
+                />
               </div>
+
+              {/* Active filter indicator */}
+              {filteredProducts.length !== products.length && (
+                <span className="text-xs text-indigo-600 font-medium bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full">
+                  {filteredProducts.length} of {products.length} shown
+                </span>
+              )}
             </div>
           </div>
 
-          {/* TABLE */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="grid grid-cols-9 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-400 tracking-widest uppercase border-b border-gray-100">
-              <span className="col-span-2">Product</span>
-              <span>Category</span>
-              <span>SKU</span>
-              <span>Stock</span>
-              <span>Price</span>
-              <span>Stock Status</span>
-              <span>Approval</span>
-              <span>Actions</span>
+          {/* TABLE — horizontal scroll wrapper so it never clips on smaller screens */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+            {/* ─── FIX 4: header uses 8 evenly-sized columns (no col-span tricks)
+                so every data row aligns correctly.                            */}
+            <div className="min-w-[860px]">
+              <div className="grid grid-cols-[2fr_1fr_1fr_0.7fr_0.7fr_1fr_1fr_0.8fr] bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-400 tracking-widest uppercase border-b border-gray-100">
+                <span>Product</span>
+                <span>Category</span>
+                <span>SKU</span>
+                <span>Stock</span>
+                <span>Price</span>
+                <span>Stock Status</span>
+                <span>Approval</span>
+                <span>Actions</span>
+              </div>
+
+              {loading ? (
+                <div className="p-8 text-center text-gray-400 text-sm">Loading products…</div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <Package size={20} className="text-gray-300" />
+                  </div>
+                  <p className="text-sm text-gray-400 font-medium">No products found</p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    {products.length > 0
+                      ? "Try adjusting your filters — some products may be outside the price range."
+                      : "No products yet. Click Add Product to create one."}
+                  </p>
+                </div>
+              ) : (
+                filteredProducts.map((p) => {
+                  const stockStatus     = getStockStatus(p.quantity);
+                  const approvalStatus  = getApprovalStatus(p);
+                  const deleteReqStatus = getDeleteRequestStatus(p);
+                  const isRejected      = approvalStatus === "rejected";
+                  const hasPendingDelete= deleteReqStatus === "pending";
+
+                  return (
+                    <div
+                      key={p.id}
+                      className={`grid grid-cols-[2fr_1fr_1fr_0.7fr_0.7fr_1fr_1fr_0.8fr] px-4 py-3 border-t border-gray-50 hover:bg-gray-50 transition items-center ${
+                        hasPendingDelete ? "bg-orange-50/30" :
+                        isRejected       ? "bg-red-50/20"   :
+                        !p.is_active     ? "bg-amber-50/20" : ""
+                      }`}
+                    >
+                      {/* Product */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative shrink-0">
+                          <img
+                            src={`http://127.0.0.1:8000/${p.image_url}`}
+                            alt={p.name}
+                            className="w-10 h-10 rounded-lg object-cover bg-gray-100"
+                          />
+                          {hasPendingDelete && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-orange-400 border-2 border-white" title="Delete request pending" />
+                          )}
+                          {!hasPendingDelete && isRejected && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-400 border-2 border-white" title="Rejected by admin" />
+                          )}
+                          {!hasPendingDelete && !p.is_active && !isRejected && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 border-2 border-white" title="Pending approval" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-gray-800 truncate">{p.name}</p>
+                          {(p.colors || []).length > 0 && (
+                            <div className="flex gap-1 mt-0.5">
+                              {(p.colors || []).map((name) => {
+                                const preset = PRESET_COLORS.find((c) => c.name === name);
+                                return <ColorDot key={name} hex={preset?.hex} />;
+                              })}
+                            </div>
+                          )}
+                          {deleteReqStatus && (
+                            <div className="mt-1">
+                              <DeleteRequestBadge status={deleteReqStatus} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className="text-sm text-gray-500 capitalize">{p.category}</span>
+                      <span className="text-xs text-gray-400 font-mono">{p.sku || "—"}</span>
+                      <span className="text-sm font-medium">{p.quantity}</span>
+                      <span className="text-sm font-semibold text-gray-800">${p.price}</span>
+
+                      <span className={`text-xs px-2.5 py-1 rounded-full w-fit font-medium ${stockStatusStyle(stockStatus)}`}>
+                        {stockStatus}
+                      </span>
+
+                      <div>
+                        <ApprovalBadge status={approvalStatus} />
+                      </div>
+
+                      <div className="flex gap-3 text-gray-300">
+                        <button onClick={() => handleEdit(p)} title="Edit"
+                          className="hover:text-indigo-500 transition cursor-pointer">
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          onClick={() => !hasPendingDelete && handleDelete(p)}
+                          title={hasPendingDelete ? "Delete request already pending" : "Request deletion"}
+                          className={`transition ${hasPendingDelete ? "text-orange-300 cursor-not-allowed" : "hover:text-red-500 cursor-pointer"}`}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
-            {loading ? (
-              <div className="p-8 text-center text-gray-400 text-sm">Loading products…</div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">No products found</div>
-            ) : (
-              filteredProducts.map((p) => {
-                const stockStatus      = getStockStatus(p.quantity);
-                const approvalStatus   = getApprovalStatus(p);
-                const deleteReqStatus  = getDeleteRequestStatus(p);
-                const isRejected       = approvalStatus === "rejected";
-                const hasPendingDelete = deleteReqStatus === "pending";
-
-                return (
-                  <div
-                    key={p.id}
-                    className={`grid grid-cols-9 px-4 py-3 border-t border-gray-50 hover:bg-gray-50 transition items-center ${
-                      hasPendingDelete ? "bg-orange-50/30" :
-                      isRejected       ? "bg-red-50/20"   :
-                      !p.is_active     ? "bg-amber-50/20" : ""
-                    }`}
-                  >
-                    {/* Product — col-span-2 */}
-                    <div className="col-span-2 flex items-center gap-3">
-                      <div className="relative shrink-0">
-                        <img
-                          src={`http://127.0.0.1:8000/${p.image_url}`}
-                          alt={p.name}
-                          className="w-10 h-10 rounded-lg object-cover bg-gray-100"
-                        />
-                        {hasPendingDelete && (
-                          <span
-                            className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-orange-400 border-2 border-white"
-                            title="Delete request pending admin review"
-                          />
-                        )}
-                        {!hasPendingDelete && isRejected && (
-                          <span
-                            className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-400 border-2 border-white"
-                            title="Rejected by admin"
-                          />
-                        )}
-                        {!hasPendingDelete && !p.is_active && !isRejected && (
-                          <span
-                            className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 border-2 border-white"
-                            title="Pending approval"
-                          />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm text-gray-800 truncate">{p.name}</p>
-                        {(p.colors || []).length > 0 && (
-                          <div className="flex gap-1 mt-0.5">
-                            {(p.colors || []).map((name) => {
-                              const preset = PRESET_COLORS.find((c) => c.name === name);
-                              return <ColorDot key={name} hex={preset?.hex} />;
-                            })}
-                          </div>
-                        )}
-                        {deleteReqStatus && (
-                          <div className="mt-1">
-                            <DeleteRequestBadge status={deleteReqStatus} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <span className="text-sm text-gray-500 capitalize">{p.category}</span>
-                    <span className="text-xs text-gray-400 font-mono">{p.sku || "—"}</span>
-                    <span className="text-sm font-medium">{p.quantity}</span>
-                    <span className="text-sm font-semibold text-gray-800">${p.price}</span>
-
-                    <span className={`text-xs px-2.5 py-1 rounded-full w-fit font-medium ${stockStatusStyle(stockStatus)}`}>
-                      {stockStatus}
-                    </span>
-
-                    <div>
-                      <ApprovalBadge status={approvalStatus} />
-                    </div>
-
-                    <div className="flex gap-3 text-gray-300">
-                      <button onClick={() => handleEdit(p)} title="Edit"
-                        className="hover:text-indigo-500 transition cursor-pointer">
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => !hasPendingDelete && handleDelete(p)}
-                        title={hasPendingDelete ? "Delete request already pending" : "Request deletion"}
-                        className={`transition ${hasPendingDelete ? "text-orange-300 cursor-not-allowed" : "hover:text-red-500 cursor-pointer"}`}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
+            {/* Footer count */}
+            {!loading && products.length > 0 && (
+              <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/60 rounded-b-xl">
+                <p className="text-xs text-gray-400">
+                  Showing <span className="font-semibold text-gray-600">{filteredProducts.length}</span> of{" "}
+                  <span className="font-semibold text-gray-600">{products.length}</span> products
+                </p>
+              </div>
             )}
           </div>
 
         </div>
       </main>
 
-      {/* ─── ADD / EDIT MODAL ─────────────────────────────────────────────────── */}
+      {/* ─── ADD / EDIT MODAL ────────────────────────────────────────────────── */}
       {showModal && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={resetModal} />
 
           <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
-
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
@@ -894,8 +926,8 @@ export function ProductCatalogPage() {
 
               {editMode && editingProduct && (() => {
                 const approvalStatus = getApprovalStatus(editingProduct);
-                const validation = validationMap[editingProduct.id];
-                const isRejected = approvalStatus === "rejected";
+                const validation     = validationMap[editingProduct.id];
+                const isRejected     = approvalStatus === "rejected";
 
                 return (
                   <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -925,9 +957,7 @@ export function ProductCatalogPage() {
                           <p className="text-xs font-semibold text-red-700 mb-0.5">
                             Rejected — please fix before resubmitting
                           </p>
-                          <p className="text-xs text-red-600 leading-relaxed">
-                            {validation.rejection_note}
-                          </p>
+                          <p className="text-xs text-red-600 leading-relaxed">{validation.rejection_note}</p>
                         </div>
                       </div>
                     )}
@@ -1101,17 +1131,16 @@ export function ProductCatalogPage() {
                 }
               </button>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* ─── DELETE REQUEST MODAL ─────────────────────────────────────────────── */}
+      {/* ─── DELETE REQUEST MODAL ────────────────────────────────────────────── */}
       {showDeleteRequestModal && deleteRequestProduct && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeDeleteRequestModal} />
 
-          <div className="relative bg-white rounded-2xl shadow-2xl w-[420px] overflow-hidden">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden">
             <div className="h-1 w-full bg-red-500" />
 
             <div className="p-6">
@@ -1191,12 +1220,12 @@ export function ProductCatalogPage() {
         </div>
       )}
 
-      {/* ─── SUBMIT FOR VALIDATION MODAL ──────────────────────────────────────── */}
+      {/* ─── SUBMIT FOR VALIDATION MODAL ─────────────────────────────────────── */}
       {showValidationModal && validationProduct && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeValidationModal} />
 
-          <div className="relative bg-white rounded-2xl shadow-2xl w-[420px] overflow-hidden">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden">
             <div className="h-1 w-full bg-violet-500" />
 
             <div className="p-6">

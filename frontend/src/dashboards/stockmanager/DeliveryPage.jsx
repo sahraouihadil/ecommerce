@@ -6,7 +6,7 @@ import {
   Clock, CheckCircle2, Loader2, ChevronDown, ChevronUp, Users, Eye,
   RefreshCw, SendHorizonal, ChevronsUpDown, AlertTriangle, UserCheck,
   ArrowRight, Package, ChevronLeft, ChevronRight, Bot, Pencil, Save,
-  SplitSquareHorizontal, AlertCircle,TriangleAlert
+  SplitSquareHorizontal, AlertCircle, TriangleAlert, CalendarDays,
 } from "lucide-react";
 
 import Header from "../ui/Header";
@@ -33,9 +33,10 @@ const STATUSES = [
 const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.key.toLowerCase(), s]));
 
 const TYPE_COLORS = {
-  "Any Time":     "bg-pink-100 text-pink-700 border-pink-200",
-  "Day of Week":  "bg-violet-100 text-violet-700 border-violet-200",
-  "Certain Date": "bg-teal-100 text-teal-700 border-teal-200",
+  "Any Time":      "bg-pink-100 text-pink-700 border-pink-200",
+  "Day of Week":   "bg-violet-100 text-violet-700 border-violet-200",
+  "Certain Date":  "bg-teal-100 text-teal-700 border-teal-200",
+  "specific date": "bg-teal-100 text-teal-700 border-teal-200",
 };
 
 function getInitials(name = "") {
@@ -83,7 +84,6 @@ function fmtWeekday(s) {
   const [year, month, day] = s.slice(0,10).split("-").map(Number);
   return new Date(year, month - 1, day).toLocaleDateString("en-GB", { weekday:"long" });
 }
-
 function toYMD(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -91,13 +91,23 @@ function toYMD(date) {
   return `${y}-${m}-${d}`;
 }
 
+function parseDeliveryDates(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return typeof raw === "string" ? [raw] : [];
+  }
+}
+
 function AssignButton({ deliverymanName, onClick, disabled }) {
   if (disabled) {
-    // Static display only
     return deliverymanName ? (
       <div className="flex items-center gap-2">
         <Avatar name={deliverymanName} size="w-7 h-7"/>
-        <div className="min-w-0">
+        <div className="min-w-0 hidden sm:block">
           <p className="text-xs font-semibold text-gray-700 truncate max-w-[80px]">{deliverymanName}</p>
           <p className="text-[10px] text-gray-400">assigned</p>
         </div>
@@ -106,81 +116,208 @@ function AssignButton({ deliverymanName, onClick, disabled }) {
       <span className="text-xs text-gray-300 italic">—</span>
     );
   }
-
   if (deliverymanName) {
     return (
       <button onClick={onClick} className="group flex items-center gap-2 hover:opacity-80 transition cursor-pointer">
         <Avatar name={deliverymanName} size="w-7 h-7"/>
-        <div className="min-w-0">
+        <div className="min-w-0 hidden sm:block">
           <p className="text-xs font-semibold text-gray-700 truncate max-w-[80px]">{deliverymanName}</p>
           <p className="text-[10px] text-indigo-400 group-hover:text-indigo-600 transition">change</p>
         </div>
       </button>
     );
   }
-
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-sm shadow-indigo-200"
+      className="group flex items-center gap-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 px-2 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-sm shadow-indigo-200 whitespace-nowrap"
     >
       <UserCheck size={12} className="group-hover:scale-110 transition-transform"/>
-      Assign
+      <span className="hidden sm:inline">Assign</span>
     </button>
   );
 }
-// ─── DELIVERY DATE EDITOR ─────────────────────────────────────────────────────
-function DeliveryDateCell({ orderId, deliverydate, status, onSave, saving }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue]     = useState(deliverydate ? deliverydate.slice(0,10) : "");
-  const inputRef              = useRef(null);
 
-  const isEditable = status === "pending";
+// ─── DELIVERY DATE CELL ───────────────────────────────────────────────────────
+function DeliveryDateCell({ orderId, deliverydate, deliverydates, deliveryType, status, onSave, saving }) {
+  const [open,    setOpen]    = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [value,   setValue]   = useState(deliverydate ? deliverydate.slice(0, 10) : "");
+  const [pos,     setPos]     = useState({ top: 0, left: 0 });
+
+  const triggerRef = useRef(null);
+  const menuRef    = useRef(null);
+  const inputRef   = useRef(null);
+
+  const isSpecific = deliveryType?.toLowerCase() === "specific date" || deliveryType?.toLowerCase() === "certain date";
+  const isEditable = status?.toLowerCase() === "pending";
+  const dates      = parseDeliveryDates(deliverydates);
 
   useEffect(() => {
     if (editing && inputRef.current) inputRef.current.focus();
   }, [editing]);
 
-  const handleSave = async () => {
-    if (!isEditable) return;
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        menuRef.current    && !menuRef.current.contains(e.target)
+      ) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
 
-    if (value === (deliverydate ? deliverydate.slice(0,10) : "")) {
-      setEditing(false);
-      return;
-    }
+  const openDropdown = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const menuH = Math.min(dates.length * 52 + 16, 280);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setPos({
+      top:  spaceBelow < menuH + 8 ? rect.top - menuH - 4 : rect.bottom + 4,
+      left: Math.min(rect.left, window.innerWidth - 240),
+    });
+    setOpen(o => !o);
+  };
 
+  const handleSelectDate = async (ymd) => {
+    setOpen(false);
+    if (ymd === (deliverydate ? deliverydate.slice(0, 10) : "")) return;
+    await onSave(orderId, ymd);
+  };
+
+  const handleFreeSave = async () => {
+    if (value === (deliverydate ? deliverydate.slice(0, 10) : "")) { setEditing(false); return; }
     await onSave(orderId, value);
     setEditing(false);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleSave();
-    if (e.key === "Escape") {
-      setValue(deliverydate ? deliverydate.slice(0,10) : "");
-      setEditing(false);
-    }
+    if (e.key === "Enter")  handleFreeSave();
+    if (e.key === "Escape") { setValue(deliverydate ? deliverydate.slice(0, 10) : ""); setEditing(false); }
   };
 
-  // 🔴 not pending → read-only view
   if (!isEditable) {
     return (
       <div className="flex items-center gap-1 opacity-60 cursor-not-allowed">
-        <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center">
+        <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
           <Calendar size={11} className="text-gray-400"/>
         </div>
-        <div>
-          <p className="text-xs font-semibold text-gray-600">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-gray-600 truncate">
             {fmtDate(deliverydate) || <span className="text-gray-300 italic">—</span>}
           </p>
-          {deliverydate && (
-            <p className="text-xs text-gray-400">{fmtWeekday(deliverydate)}</p>
-          )}
+          {deliverydate && <p className="text-[10px] text-gray-400 hidden lg:block">{fmtWeekday(deliverydate)}</p>}
         </div>
       </div>
     );
   }
 
-  // editing mode
+  if (isSpecific) {
+    const hasSelection = !!deliverydate;
+    const currentYMD   = deliverydate ? deliverydate.slice(0, 10) : "";
+
+    return (
+      <>
+        <button
+          ref={triggerRef}
+          onClick={openDropdown}
+          disabled={saving}
+          className="group flex items-center gap-1.5 text-left hover:bg-teal-50 rounded-lg px-1 py-0.5 -mx-1 transition min-w-0 w-full"
+        >
+          <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
+            {saving
+              ? <Loader2 size={10} className="text-teal-500 animate-spin"/>
+              : <CalendarDays size={11} className="text-teal-500"/>
+            }
+          </div>
+          <div className="min-w-0 flex-1">
+            {hasSelection ? (
+              <>
+                <p className="text-xs font-semibold text-gray-700 group-hover:text-teal-700 transition leading-none truncate">
+                  {fmtDate(currentYMD)}
+                </p>
+                <p className="text-[10px] text-gray-400 leading-none mt-0.5 hidden lg:block">{fmtWeekday(currentYMD)}</p>
+              </>
+            ) : (
+              <p className="text-xs text-gray-400 italic group-hover:text-teal-600 transition truncate">
+                Pick a date
+              </p>
+            )}
+          </div>
+          {dates.length > 0 && (
+            <span className="shrink-0 text-[9px] font-bold text-teal-600 bg-teal-100 border border-teal-200 rounded-full px-1.5 py-0.5 leading-none">
+              {dates.length}
+            </span>
+          )}
+          <ChevronDown size={9} className="text-gray-300 group-hover:text-teal-400 transition shrink-0"/>
+        </button>
+
+        {open && createPortal(
+          <div
+            ref={menuRef}
+            style={{ position:"fixed", top: pos.top, left: pos.left, minWidth: 220, zIndex: 9999 }}
+            className="bg-white border border-gray-200 rounded-xl shadow-xl py-2 overflow-hidden"
+          >
+            <div className="flex items-center gap-2 px-3 pb-2 border-b border-gray-100">
+              <CalendarDays size={12} className="text-teal-500 shrink-0"/>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                Customer's preferred dates
+              </p>
+            </div>
+            {dates.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs text-gray-400">No dates provided</p>
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto">
+                {dates.map((ymd, idx) => {
+                  const isCurrent = ymd === currentYMD;
+                  const isPast    = new Date(ymd) < new Date(new Date().toDateString());
+                  return (
+                    <button
+                      key={ymd}
+                      onClick={() => handleSelectDate(ymd)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition text-left cursor-pointer
+                        ${isCurrent
+                          ? "bg-teal-50 text-teal-700"
+                          : isPast
+                          ? "opacity-50 hover:bg-gray-50 text-gray-500"
+                          : "hover:bg-gray-50 text-gray-700"
+                        }`}
+                    >
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0
+                        ${isCurrent ? "bg-teal-500 text-white" : "bg-gray-100 text-gray-500"}`}>
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold leading-none ${isCurrent ? "text-teal-700" : ""}`}>
+                          {fmtDateShort(ymd)}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5 leading-none">
+                          {fmtWeekday(ymd)}
+                          {isPast && <span className="ml-1 text-amber-500">(past)</span>}
+                        </p>
+                      </div>
+                      {isCurrent && <CheckCircle2 size={13} className="text-teal-500 shrink-0"/>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="px-3 pt-2 border-t border-gray-100">
+              <p className="text-[9px] text-gray-300 leading-relaxed">
+                Select the confirmed delivery date from the customer's preferences.
+              </p>
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+
   if (editing) {
     return (
       <div className="flex items-center gap-1">
@@ -190,21 +327,18 @@ function DeliveryDateCell({ orderId, deliverydate, status, onSave, saving }) {
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="text-xs border border-indigo-300 rounded-lg px-2 py-1 text-gray-700 bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-32"
+          className="text-xs border border-indigo-300 rounded-lg px-1.5 py-1 text-gray-700 bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 w-28 sm:w-32"
         />
         <button
-          onClick={handleSave}
+          onClick={handleFreeSave}
           disabled={saving}
-          className="w-6 h-6 flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer disabled:opacity-50"
+          className="w-6 h-6 flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer disabled:opacity-50 shrink-0"
         >
           {saving ? <Loader2 size={10} className="animate-spin"/> : <Save size={10}/>}
         </button>
         <button
-          onClick={() => {
-            setValue(deliverydate ? deliverydate.slice(0,10) : "");
-            setEditing(false);
-          }}
-          className="w-6 h-6 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 transition cursor-pointer"
+          onClick={() => { setValue(deliverydate ? deliverydate.slice(0, 10) : ""); setEditing(false); }}
+          className="w-6 h-6 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 transition cursor-pointer shrink-0"
         >
           <X size={10}/>
         </button>
@@ -212,39 +346,34 @@ function DeliveryDateCell({ orderId, deliverydate, status, onSave, saving }) {
     );
   }
 
-  // normal (clickable only if pending)
   return (
     <button
       onClick={() => setEditing(true)}
-      className="group flex items-center gap-1.5 text-left hover:bg-indigo-50 rounded-lg px-1 py-0.5 -mx-1 transition"
+      className="group flex items-center gap-1.5 text-left hover:bg-indigo-50 rounded-lg px-1 py-0.5 -mx-1 transition w-full"
     >
       <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
         <Calendar size={11} className="text-blue-500"/>
       </div>
-      <div>
-        <p className="text-xs font-semibold text-gray-700 group-hover:text-indigo-600 transition">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-gray-700 group-hover:text-indigo-600 transition truncate">
           {fmtDate(deliverydate) || <span className="text-gray-300 italic">—</span>}
         </p>
-        {deliverydate && (
-          <p className="text-xs text-gray-400">{fmtWeekday(deliverydate)}</p>
-        )}
+        {deliverydate && <p className="text-[10px] text-gray-400 hidden lg:block">{fmtWeekday(deliverydate)}</p>}
       </div>
-      <Pencil size={9} className="text-gray-300 group-hover:text-indigo-400 transition ml-0.5 shrink-0"/>
+      <Pencil size={9} className="text-gray-300 group-hover:text-indigo-400 transition shrink-0"/>
     </button>
   );
 }
 
-// ─── STATUS DROPDOWN — portal-based to escape overflow clipping ───────────────
-
-
+// ─── STATUS DROPDOWN ──────────────────────────────────────────────────────────
 function StatusDropdown({ orderId, currentStatus, onUpdate, updatingId }) {
-  const [open, setOpen]       = useState(false);
-  const [pos, setPos]         = useState({ top: 0, left: 0, width: 0 });
-  const triggerRef            = useRef(null);
-  const menuRef               = useRef(null);
-  const st     = STATUS_MAP[currentStatus?.toLowerCase()];
-  const StIcon = st?.icon || Clock;
-  const busy   = updatingId === orderId;
+  const [open, setOpen] = useState(false);
+  const [pos,  setPos]  = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef      = useRef(null);
+  const menuRef         = useRef(null);
+  const st              = STATUS_MAP[currentStatus?.toLowerCase()];
+  const StIcon          = st?.icon || Clock;
+  const busy            = updatingId === orderId;
 
   const openMenu = (e) => {
     e.stopPropagation();
@@ -253,11 +382,8 @@ function StatusDropdown({ orderId, currentStatus, onUpdate, updatingId }) {
     const menuH      = 280;
     const spaceBelow = window.innerHeight - rect.bottom;
     const up         = spaceBelow < menuH + 8;
-    setPos({
-      top:   up ? rect.top - menuH - 4 : rect.bottom + 4,
-      left:  rect.left,
-      width: rect.width,
-    });
+    const left       = Math.min(rect.left, window.innerWidth - 200);
+    setPos({ top: up ? rect.top - menuH - 4 : rect.bottom + 4, left, width: rect.width });
     setOpen(o => !o);
   };
 
@@ -297,7 +423,7 @@ function StatusDropdown({ orderId, currentStatus, onUpdate, updatingId }) {
               s.key === "Partial" ? "text-green-600 font-medium" :
               s.key === "Problem" ? "text-red-600 font-medium"   :
               isCurrent           ? "text-indigo-600 font-semibold" :
-              "text-gray-700"
+                                    "text-gray-700"
             }>
               {s.label}
             </span>
@@ -315,20 +441,20 @@ function StatusDropdown({ orderId, currentStatus, onUpdate, updatingId }) {
         ref={triggerRef}
         disabled={busy}
         onClick={openMenu}
-        className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 m-2 rounded-full font-medium border cursor-pointer hover:opacity-80 transition ${
+        className={`inline-flex items-center gap-1 sm:gap-1.5 text-xs px-2 sm:px-2.5 py-1 sm:py-1.5 m-1 sm:m-2 rounded-full font-medium border cursor-pointer hover:opacity-80 transition ${
           st?.color || "bg-gray-100 text-gray-600 border-gray-200"
         } ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         {busy ? <Loader2 size={11} className="animate-spin"/> : <StIcon size={11}/>}
-        {currentStatus}
-        {!busy && <ChevronDown size={10}/>}
+        <span className="truncate max-w-[60px] sm:max-w-none">{currentStatus}</span>
+        {!busy && <ChevronDown size={10} className="shrink-0"/>}
       </button>
       {menu}
     </>
   );
 }
 
-// ─── CALENDAR TAB ─────────────────────────────────────────────────────────────
+// ─── DELIVERY CALENDAR ────────────────────────────────────────────────────────
 function DeliveryCalendar({ dmOrders }) {
   const today    = new Date();
   const todayYMD = toYMD(today);
@@ -336,7 +462,6 @@ function DeliveryCalendar({ dmOrders }) {
   const [calMonth,    setCalMonth]    = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
 
-  // Map date → array of orders (multiple orders per day supported)
   const orderByDate = useMemo(() => {
     const m = {};
     dmOrders.forEach(o => {
@@ -349,8 +474,7 @@ function DeliveryCalendar({ dmOrders }) {
     return m;
   }, [dmOrders]);
 
-  const monthLabel = new Date(calYear, calMonth, 1)
-    .toLocaleDateString("en-GB", { month:"long", year:"numeric" });
+  const monthLabel     = new Date(calYear, calMonth, 1).toLocaleDateString("en-GB", { month:"long", year:"numeric" });
   const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth    = new Date(calYear, calMonth + 1, 0).getDate();
 
@@ -399,15 +523,13 @@ function DeliveryCalendar({ dmOrders }) {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"/>
-              Order
+              <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"/>Order
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-gray-200 inline-block"/>
-              Free
+              <span className="w-2 h-2 rounded-full bg-gray-200 inline-block"/>Free
             </span>
           </div>
           <div className="flex items-center gap-0.5">
@@ -422,21 +544,19 @@ function DeliveryCalendar({ dmOrders }) {
       </div>
 
       <div className="grid grid-cols-7 mb-1">
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+        {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
           <div key={d} className="text-center text-[10px] font-semibold text-gray-400 py-1">{d}</div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {cells.map((day, i) => {
           if (!day) return <div key={`e-${i}`} className="aspect-square"/>;
-          const ymd      = toYMD(new Date(calYear, calMonth, day));
+          const ymd       = toYMD(new Date(calYear, calMonth, day));
           const dayOrders = orderByDate[ymd] || [];
           const hasOrder  = dayOrders.length > 0;
           const isToday   = ymd === todayYMD;
           const isSel     = selectedDay === day;
-
-          // Use first order's status for dot color
           const firstOrder = dayOrders[0];
           const st         = firstOrder ? STATUS_MAP[firstOrder.status?.toLowerCase()] : null;
           const dotColor   =
@@ -451,7 +571,7 @@ function DeliveryCalendar({ dmOrders }) {
             <button
               key={day}
               onClick={() => setSelectedDay(isSel ? null : day)}
-              className={`relative aspect-square flex flex-col items-center justify-center rounded-xl text-xs font-medium transition-all cursor-pointer
+              className={`relative aspect-square flex flex-col items-center justify-center rounded-lg sm:rounded-xl text-xs font-medium transition-all cursor-pointer
                 ${isSel
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-[1.05]"
                   : isToday
@@ -463,14 +583,13 @@ function DeliveryCalendar({ dmOrders }) {
             >
               <span>{day}</span>
               {isToday && !isSel && (
-                <span className="text-[7px] font-bold text-indigo-500 leading-none tracking-tight">TODAY</span>
+                <span className="hidden sm:block text-[7px] font-bold text-indigo-500 leading-none tracking-tight">TODAY</span>
               )}
               {hasOrder && !isSel && (
-                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${dotColor}`}/>
+                <span className={`absolute bottom-0.5 sm:bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${dotColor}`}/>
               )}
-              {/* Show count badge if multiple orders on same day */}
               {hasOrder && dayOrders.length > 1 && !isSel && (
-                <span className="absolute top-0.5 right-0.5 text-[8px] font-bold text-blue-600 bg-blue-100 rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+                <span className="absolute top-0 right-0 sm:top-0.5 sm:right-0.5 text-[7px] sm:text-[8px] font-bold text-blue-600 bg-blue-100 rounded-full w-3 h-3 sm:w-3.5 sm:h-3.5 flex items-center justify-center leading-none">
                   {dayOrders.length}
                 </span>
               )}
@@ -479,20 +598,19 @@ function DeliveryCalendar({ dmOrders }) {
         })}
       </div>
 
-      {/* Selected day detail — shows ALL orders for that day */}
       {selectedDay && (
         <div className="mt-3 rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-white border-2 border-indigo-200 rounded-xl flex items-center justify-center text-sm font-bold text-indigo-700 shadow-sm">
+          <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 sm:w-9 h-8 sm:h-9 bg-white border-2 border-indigo-200 rounded-xl flex items-center justify-center text-sm font-bold text-indigo-700 shadow-sm shrink-0">
                 {selectedDay}
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-800">
-                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB", { weekday: "long" })}
+                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB", { weekday:"long" })}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                  {new Date(calYear, calMonth, selectedDay).toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" })}
                 </p>
               </div>
             </div>
@@ -502,10 +620,8 @@ function DeliveryCalendar({ dmOrders }) {
                   {selectedOrders.length} order{selectedOrders.length !== 1 ? "s" : ""}
                 </span>
               )}
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
-              >
+              <button onClick={() => setSelectedDay(null)}
+                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer">
                 <X size={13}/>
               </button>
             </div>
@@ -525,18 +641,18 @@ function DeliveryCalendar({ dmOrders }) {
                 const s     = STATUS_MAP[order.status?.toLowerCase()];
                 const SIcon = s?.icon || Clock;
                 return (
-                  <div key={order.order_id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition">
+                  <div key={order.order_id} className="px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3 hover:bg-gray-50 transition">
                     <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
                       {idx + 1}
                     </span>
-                    <Avatar name={order.customer_name} size="w-9 h-9"/>
+                    <Avatar name={order.customer_name} size="w-8 h-8 sm:w-9 sm:h-9"/>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-800 truncate">{order.customer_name}</p>
                       <p className="text-xs text-indigo-500 font-medium flex items-center gap-1 mt-0.5">
-                        {order.order_id}
-                        <span className="text-gray-300">·</span>
-                        <MapPin size={10} className="text-gray-400"/>
-                        <span className="text-gray-500">{order.wilaya}</span>
+                        <span className="truncate">{order.order_id}</span>
+                        <span className="text-gray-300 shrink-0">·</span>
+                        <MapPin size={10} className="text-gray-400 shrink-0"/>
+                        <span className="text-gray-500 truncate">{order.wilaya}</span>
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -561,7 +677,7 @@ function DeliveryCalendar({ dmOrders }) {
 // ─── DM MODAL ─────────────────────────────────────────────────────────────────
 function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
   const [tab, setTab] = useState("overview");
-  const todayYMD = toYMD(new Date());
+  const todayYMD    = toYMD(new Date());
   const dmOrders    = deliveries.filter(d => d.deliveryman === dm.username);
   const delivered   = dmOrders.filter(d => d.status?.toLowerCase() === "delivered").length;
   const canceled    = dmOrders.filter(d => d.status?.toLowerCase() === "canceled").length;
@@ -575,15 +691,15 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
   );
 
   return (
-    <div className="fixed inset-0 z-[1001] flex items-center justify-center">
+    <div className="fixed inset-0 z-[1001] flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}/>
-      <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="px-6 pt-6 pb-4 shrink-0">
+      <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
+        <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 shrink-0">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Avatar name={dm.username} size="w-14 h-14 text-base"/>
+              <Avatar name={dm.username} size="w-11 h-11 sm:w-14 sm:h-14 text-base"/>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">{dm.username}</h2>
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">{dm.username}</h2>
                 {dm.phone_num && (
                   <p className="text-sm text-gray-400 flex items-center gap-1 mt-0.5">📞 {dm.phone_num}</p>
                 )}
@@ -593,7 +709,7 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
               <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
                 <button
                   onClick={() => setTab("overview")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     tab==="overview" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -601,7 +717,7 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
                 </button>
                 <button
                   onClick={() => setTab("month")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     tab==="month" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -624,15 +740,15 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
               { label:"Delivered", value:delivered,       cls:"bg-emerald-50 text-emerald-700" },
               { label:"Canceled",  value:canceled,        cls:"bg-red-50 text-red-500"         },
             ].map(({ label, value, cls }) => (
-              <div key={label} className={`${cls} rounded-xl p-3 text-center`}>
-                <p className="text-xl font-bold">{value}</p>
-                <p className="text-xs mt-0.5 opacity-70">{label}</p>
+              <div key={label} className={`${cls} rounded-xl p-2 sm:p-3 text-center`}>
+                <p className="text-lg sm:text-xl font-bold">{value}</p>
+                <p className="text-[10px] sm:text-xs mt-0.5 opacity-70">{label}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
           {tab === "overview" && (
             <div className="space-y-4">
               <div>
@@ -649,14 +765,14 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
               </div>
 
               {canRequestNext && nextPendingOrder && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 sm:p-3.5">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
                       <Package size={14} className="text-indigo-600"/>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-indigo-700 mb-0.5">Next Order Available (FIFO)</p>
-                      <p className="text-xs text-indigo-500">
+                      <p className="text-xs text-indigo-500 truncate">
                         {nextPendingOrder.order_id} · {nextPendingOrder.customer_name} · {nextPendingOrder.wilaya}
                       </p>
                       <p className="text-xs text-indigo-400">
@@ -665,7 +781,7 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
                     </div>
                     <button
                       onClick={() => onRequestNext(dm)}
-                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition cursor-pointer shrink-0"
+                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-2.5 sm:px-3 py-2 rounded-lg transition cursor-pointer shrink-0"
                     >
                       Assign <ArrowRight size={12}/>
                     </button>
@@ -700,22 +816,26 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
                       const s     = STATUS_MAP[order.status?.toLowerCase()];
                       const OIcon = s?.icon || Clock;
                       return (
-                        <div key={order.order_id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
+                        <div key={order.order_id} className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
                           <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">{idx+1}</div>
                           <Avatar name={order.customer_name} size="w-8 h-8"/>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">{order.customer_name}</p>
                             <p className="text-xs text-indigo-500 font-medium flex items-center gap-1">
-                              {order.order_id}<span className="text-gray-300">·</span>
-                              <MapPin size={10} className="text-gray-400"/><span className="text-gray-500 font-normal">{order.wilaya}</span>
+                              <span className="truncate">{order.order_id}</span>
+                              <span className="text-gray-300 shrink-0">·</span>
+                              <MapPin size={10} className="text-gray-400 shrink-0"/>
+                              <span className="text-gray-500 font-normal truncate">{order.wilaya}</span>
                             </p>
                           </div>
-                          <p className="text-xs font-bold text-gray-700 whitespace-nowrap shrink-0">
-                            {Number(order.totalamount||0).toLocaleString("fr-DZ")} DA
-                          </p>
-                          <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium border ${s?.color||"bg-gray-100 text-gray-600 border-gray-200"}`}>
-                            <OIcon size={10}/> {order.status}
-                          </span>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-bold text-gray-700 whitespace-nowrap hidden sm:block">
+                              {Number(order.totalamount||0).toLocaleString("fr-DZ")} DA
+                            </p>
+                            <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium border ${s?.color||"bg-gray-100 text-gray-600 border-gray-200"}`}>
+                              <OIcon size={10}/> <span className="hidden sm:inline">{order.status}</span>
+                            </span>
+                          </div>
                         </div>
                       );
                     })}
@@ -731,7 +851,77 @@ function DmModal({ dm, deliveries, nextPendingOrder, onClose, onRequestNext }) {
   );
 }
 
-// ─── MAIN PAGE ─────────────────────────────────────────────────────────────────
+// ─── MOBILE ORDER CARD ────────────────────────────────────────────────────────
+function MobileOrderCard({ d, idx, activeStatus, updatingStatusId, updatingDateId, handleUpdateStatus, handleUpdateDeliveryDate, openAssignModal }) {
+  const allowed = isAllowedWilaya(d.wilaya);
+  return (
+    <div className={`rounded-2xl border p-4 space-y-3 ${!allowed ? "border-red-200 bg-red-50/40" : "border-gray-200 bg-white"}`}>
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg shrink-0">{d.order_id}</span>
+          {idx === 0 && activeStatus === "pending" && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md shrink-0">NEXT</span>
+          )}
+        </div>
+        <StatusDropdown
+          orderId={d.order_id}
+          currentStatus={d.status}
+          onUpdate={handleUpdateStatus}
+          updatingId={updatingStatusId}
+        />
+      </div>
+
+      {/* Customer + location */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-800 truncate">{d.customer_name}</p>
+          <p className="text-xs text-gray-400">{d.customer_phone}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <MapPin size={12} className={allowed ? "text-gray-400" : "text-red-400"}/>
+          <p className={`text-xs font-medium ${allowed ? "text-gray-600" : "text-red-600"}`}>{d.wilaya}</p>
+          {!allowed && <AlertTriangle size={11} className="text-red-400"/>}
+        </div>
+      </div>
+
+      {/* Dates row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <Package size={11} className="text-gray-400 shrink-0"/>
+          <span className="text-xs text-gray-500">{fmtDate(d.orderdate)||"—"}</span>
+        </div>
+        <span className="text-gray-200">·</span>
+        <DeliveryDateCell
+          orderId={d.order_id}
+          deliverydate={d.deliverydate}
+          deliverydates={d.deliverydates}
+          deliveryType={d.delivery_type}
+          status={d.status}
+          onSave={handleUpdateDeliveryDate}
+          saving={updatingDateId === d.order_id}
+        />
+      </div>
+
+      {/* Footer row */}
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium border ${TYPE_COLORS[d.delivery_type]||"bg-gray-100 text-gray-600 border-gray-200"}`}>
+            <Calendar size={10}/> {d.delivery_type}
+          </span>
+          <span className="text-sm font-bold text-gray-900">{Number(d.totalamount||0).toLocaleString("fr-DZ")} DA</span>
+        </div>
+        <AssignButton
+          deliverymanName={d.deliveryman}
+          onClick={() => openAssignModal(d)}
+          disabled={["delivered","partial","canceled"].includes(d.status?.toLowerCase())}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export function DeliveryPage() {
   const navigate = useNavigate();
   const [deliveries,          setDeliveries]          = useState([]);
@@ -892,7 +1082,6 @@ export function DeliveryPage() {
       await fetchAll();
       showFlash(`Status updated to ${status}`, "success");
     } catch (err) {
-      console.error("Status update error:", err);
       showFlash("Failed to update status. Please try again.", "error");
     } finally { setUpdatingStatusId(null); }
   };
@@ -903,23 +1092,22 @@ export function DeliveryPage() {
       await api.patch(`/api/deliveries/${orderId}`, { deliverydate: newDate || null });
       await fetchAll();
       showFlash(
-        newDate ? `Delivery date updated to ${fmtDate(newDate)}` : "Delivery date cleared",
+        newDate ? `Delivery date set to ${fmtDate(newDate)}` : "Delivery date cleared",
         "success"
       );
     } catch (err) {
-      console.error("Date update error:", err);
       showFlash("Failed to update delivery date. Please try again.", "error");
     } finally { setUpdatingDateId(null); }
   };
 
-const stockManagerLinks = [
-  { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
-  { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
-  { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
-  { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
-  { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />     },
-  { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
-]
+  const stockManagerLinks = [
+    { to: '/stock-manager-dash',              label: 'Dashboard',         icon: <LayoutDashboard />, end: true },
+    { to: '/stock-manager-dash/inventories',  label: "Product's Catalog", icon: <Boxes />            },
+    { to: '/stock-manager-dash/ar',           label: 'AR/3D Management',  icon: <Bot size={18} />    },
+    { to: '/stock-manager-dash/deliveries',   label: 'Delivery',          icon: <Truck />            },
+    { to: '/stock-manager-dash/problems',     label: 'Problems',          icon: <TriangleAlert />    },
+    { to: '/stock-manager-dash/returns',      label: 'Returns',           icon: <RotateCcw />        },
+  ];
 
   const TAB_STATUSES = STATUSES;
 
@@ -928,10 +1116,10 @@ const stockManagerLinks = [
       <Sidebar openBar={openBar} setOpenBar={setOpenBar} links={stockManagerLinks}
         title="StockManagerCore" subtitle="Enterprise Suite" role="Manager" profilePath="/stock-manager-dash/profile"/>
 
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 min-w-0 overflow-x-hidden">
         <Header concept="Delivery Dashboard"/>
 
-        <div className="p-6 space-y-5">
+        <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5">
           {message && (
             <div className={`p-3 rounded-lg border-l-4 text-sm font-medium flex items-center gap-2 ${
               messageType==="success" ? "bg-green-50 text-green-800 border-green-500" : "bg-red-50 text-red-800 border-red-500"
@@ -944,24 +1132,26 @@ const stockManagerLinks = [
           )}
 
           {/* Top card */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-start justify-between mb-5">
-              <div>
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6">
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div className="min-w-0">
                 <p className="text-sm text-gray-400">Manage orders and delivery assignments</p>
                 <p className="text-xs text-gray-300 mt-0.5 flex items-center gap-1">
-                  <MapPin size={10}/> Serving {ALLOWED_WILAYAS.length} wilayas · 1 order per deliveryman per day (8h shift)
+                  <MapPin size={10}/> <span className="hidden sm:inline">Serving {ALLOWED_WILAYAS.length} wilayas · </span>1 order/deliveryman/day
                 </p>
               </div>
-              <button className="flex items-center gap-2 border border-gray-200 bg-gray-50 px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition cursor-pointer">
-                <Users size={15} className="text-gray-400"/>Deliverymen
+              <button className="flex items-center gap-2 border border-gray-200 bg-gray-50 px-3 sm:px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition cursor-pointer shrink-0">
+                <Users size={15} className="text-gray-400"/>
+                <span className="hidden sm:inline">Deliverymen</span>
                 <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
                   {deliverymen.length}
                 </span>
               </button>
             </div>
 
+            {/* Deliverymen chips — horizontal scroll on mobile */}
             {deliverymen.length > 0 && (
-              <div className="flex items-center gap-2.5 flex-wrap mb-5">
+              <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-2 mb-4 -mx-1 px-1 scrollbar-none">
                 {deliverymen.map(dm => {
                   const todayStr = toYMD(new Date());
                   const isBusy   = deliveries.some(
@@ -973,31 +1163,30 @@ const stockManagerLinks = [
                     <div
                       key={dm.id}
                       onClick={() => { setSelectedDeliveryman(dm); setShowDmModal(true); }}
-                      className="flex items-center gap-2.5 border border-gray-200 rounded-full px-3 py-1.5 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40 transition cursor-pointer"
+                      className="flex items-center gap-2 border border-gray-200 rounded-full px-3 py-1.5 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40 transition cursor-pointer shrink-0"
                     >
                       <div className="relative">
                         <Avatar name={dm.username} size="w-7 h-7"/>
                         <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${isBusy?"bg-orange-400":"bg-emerald-400"}`}/>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-gray-800 leading-none">{dm.username}</p>
+                        <p className="text-xs font-semibold text-gray-800 leading-none whitespace-nowrap">{dm.username}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{deliverymenStats[dm.username]||0} orders</p>
                       </div>
-                      <Eye size={13} className="text-gray-300 ml-1"/>
+                      <Eye size={13} className="text-gray-300 ml-1 shrink-0"/>
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {/* Filter tabs */}
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter tabs — horizontal scroll on mobile */}
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
               {TAB_STATUSES.map(s => {
                 const Icon  = s.icon;
                 const key   = s.key.toLowerCase();
                 const isAct = activeStatus === key;
                 const count = statusCounts[key] || 0;
-
                 const activeBg =
                   s.key === "Pending"    ? "bg-amber-500 border-amber-500"    :
                   s.key === "Processing" ? "bg-blue-500 border-blue-500"      :
@@ -1006,15 +1195,15 @@ const stockManagerLinks = [
                   s.key === "Partial"    ? "bg-green-500 border-green-500"    :
                   s.key === "Problem"    ? "bg-red-500 border-red-500"        :
                                           "bg-gray-500 border-gray-500";
-
                 return (
                   <button key={s.key} onClick={() => setActiveStatus(key)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border transition cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium border transition cursor-pointer shrink-0 ${
                       isAct ? `${activeBg} text-white` : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                     }`}>
-                    <Icon size={13}/>{s.label}
+                    <Icon size={12}/>
+                    {s.label}
                     {count > 0 && (
-                      <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${isAct ? "bg-white/25 text-white" : "bg-gray-100 text-gray-600"}`}>
+                      <span className={`text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center ${isAct ? "bg-white/25 text-white" : "bg-gray-100 text-gray-600"}`}>
                         {count}
                       </span>
                     )}
@@ -1025,21 +1214,21 @@ const stockManagerLinks = [
           </div>
 
           {/* Search */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
-            <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-indigo-400 bg-gray-50">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 sm:px-5 py-3 sm:py-4">
+            <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 focus-within:ring-2 focus-within:ring-indigo-400 bg-gray-50">
               <Search size={16} className="text-gray-400 shrink-0"/>
               <input
-                className="flex-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
-                placeholder="Search by order ID, customer or wilaya…"
+                className="flex-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400 min-w-0"
+                placeholder="Search order ID, customer or wilaya…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
-              <span className="text-xs text-gray-400">{filtered.length} orders</span>
+              <span className="text-xs text-gray-400 shrink-0">{filtered.length}</span>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible">
+          {/* Table — hidden on mobile, shown on lg+ */}
+          <div className="hidden lg:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible">
             <div className="grid grid-cols-9 px-6 py-3.5 border-b border-gray-100 bg-gray-50/80 rounded-t-2xl">
               {[
                 {label:"Order",         field:"order_id"     },
@@ -1061,7 +1250,7 @@ const stockManagerLinks = [
               <div className="p-12 flex items-center justify-center gap-2 text-gray-400 text-sm">
                 <Loader2 size={16} className="animate-spin"/> Loading deliveries…
               </div>
-            ) : filtered.length===0 ? (
+            ) : filtered.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
                   <Truck size={20} className="text-gray-300"/>
@@ -1079,7 +1268,7 @@ const stockManagerLinks = [
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">{d.order_id}</span>
-                    {idx===0 && activeStatus==="pending" && (
+                    {idx === 0 && activeStatus === "pending" && (
                       <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">NEXT</span>
                     )}
                   </div>
@@ -1126,6 +1315,8 @@ const stockManagerLinks = [
                   <DeliveryDateCell
                     orderId={d.order_id}
                     deliverydate={d.deliverydate}
+                    deliverydates={d.deliverydates}
+                    deliveryType={d.delivery_type}
                     status={d.status}
                     onSave={handleUpdateDeliveryDate}
                     saving={updatingDateId === d.order_id}
@@ -1140,16 +1331,16 @@ const stockManagerLinks = [
 
                   <div className="flex items-center gap-2">
                     <AssignButton
-                       deliverymanName={d.deliveryman}
-                        onClick={() => openAssignModal(d)}
-                        disabled={["delivered","partial","canceled"].includes(d.status?.toLowerCase())}
-                         />
+                      deliverymanName={d.deliveryman}
+                      onClick={() => openAssignModal(d)}
+                      disabled={["delivered","partial","canceled"].includes(d.status?.toLowerCase())}
+                    />
                   </div>
                 </div>
               );
             })}
 
-            {!loading && filtered.length>0 && (
+            {!loading && filtered.length > 0 && (
               <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/60 rounded-b-2xl flex items-center justify-between">
                 <p className="text-xs text-gray-400">
                   Showing <span className="font-semibold text-gray-600">{filtered.length}</span> of{" "}
@@ -1163,34 +1354,76 @@ const stockManagerLinks = [
               </div>
             )}
           </div>
+
+          {/* Mobile card list — shown below lg */}
+          <div className="lg:hidden space-y-3">
+            {loading ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-10 flex items-center justify-center gap-2 text-gray-400 text-sm">
+                <Loader2 size={16} className="animate-spin"/> Loading deliveries…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                  <Truck size={20} className="text-gray-300"/>
+                </div>
+                <p className="text-sm text-gray-400 font-medium">No deliveries found</p>
+                <p className="text-xs text-gray-300 mt-1">Try adjusting your filters</p>
+              </div>
+            ) : filtered.map((d, idx) => (
+              <MobileOrderCard
+                key={d.order_id}
+                d={d}
+                idx={idx}
+                activeStatus={activeStatus}
+                updatingStatusId={updatingStatusId}
+                updatingDateId={updatingDateId}
+                handleUpdateStatus={handleUpdateStatus}
+                handleUpdateDeliveryDate={handleUpdateDeliveryDate}
+                openAssignModal={openAssignModal}
+              />
+            ))}
+
+            {!loading && filtered.length > 0 && (
+              <div className="flex items-center justify-between px-1">
+                <p className="text-xs text-gray-400">
+                  <span className="font-semibold text-gray-600">{filtered.length}</span> of{" "}
+                  <span className="font-semibold text-gray-600">{deliveries.length}</span> deliveries · FIFO
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-400"/>
+                  <span className="text-xs text-gray-400">Outside zone</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </main>
 
       {/* ASSIGN MODAL */}
       {showAssignModal && assignOrder && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !assigning && setShowAssignModal(false)}/>
-          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
-            <div className="px-6 pt-6 pb-4">
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 shrink-0">
               <div className="flex items-start justify-between mb-4">
-                <div>
+                <div className="min-w-0 pr-2">
                   <h2 className="text-base font-bold text-gray-900">Assign Deliveryman</h2>
-                  <p className="text-sm text-gray-400 mt-0.5">{assignOrder.order_id} — {assignOrder.customer_name}</p>
+                  <p className="text-sm text-gray-400 mt-0.5 truncate">{assignOrder.order_id} — {assignOrder.customer_name}</p>
                 </div>
                 <button onClick={() => !assigning && setShowAssignModal(false)} disabled={assigning}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer disabled:opacity-40">
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer disabled:opacity-40 shrink-0">
                   <X size={15}/>
                 </button>
               </div>
               <div className="flex items-center gap-2 flex-wrap mb-3">
-                <span className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium border ${TYPE_COLORS[assignOrder.delivery_type]||"bg-gray-100 text-gray-600 border-gray-200"}`}>
+                <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-full font-medium border ${TYPE_COLORS[assignOrder.delivery_type]||"bg-gray-100 text-gray-600 border-gray-200"}`}>
                   <Calendar size={11}/> {assignOrder.delivery_type}
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                <span className="inline-flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-full font-medium bg-gray-100 text-gray-600 border border-gray-200">
                   <MapPin size={11}/> {assignOrder.wilaya}
                 </span>
                 {assignOrder.deliverydate && (
-                  <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium bg-blue-50 text-blue-600 border border-blue-200">
+                  <span className="inline-flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-full font-medium bg-blue-50 text-blue-600 border border-blue-200">
                     <Calendar size={11}/> {fmtDate(assignOrder.deliverydate)}
                   </span>
                 )}
@@ -1198,17 +1431,16 @@ const stockManagerLinks = [
               {assignOrder.status?.toLowerCase() === "pending" && (
                 <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-xs text-blue-700 font-medium mb-3">
                   <RefreshCw size={12} className="shrink-0"/>
-                  Assigning a deliveryman will automatically set the status to <strong>Processing</strong>.
+                  Assigning will set status to <strong>Processing</strong>.
                 </div>
               )}
               <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-700 font-medium">
                 <Clock size={12} className="shrink-0"/>
-                Each deliveryman handles <strong>1 order per day</strong> (8h shift).
-                Deliverymen marked <span className="text-red-500 font-bold">Busy</span> already have an order on {fmtDateShort(assignOrder.deliverydate)||"this date"}.
+                <span>1 order per deliveryman per day. <span className="text-red-500 font-bold">Busy</span> = already has an order on {fmtDateShort(assignOrder.deliverydate)||"this date"}.</span>
               </div>
             </div>
 
-            <div className="px-6 pb-2 max-h-80 overflow-y-auto space-y-4">
+            <div className="px-4 sm:px-6 pb-2 overflow-y-auto space-y-4 flex-1">
               {assignOrder.deliveryman && (
                 <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
                   assignDeliveryman==="__unassign__" ? "border-red-300 bg-red-50" : "border-gray-200 hover:bg-gray-50"
@@ -1226,7 +1458,7 @@ const stockManagerLinks = [
                 </label>
               )}
 
-              {assignGroups.available.length>0 && (
+              {assignGroups.available.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"/>
@@ -1244,7 +1476,7 @@ const stockManagerLinks = [
                         <Avatar name={dm.username} size="w-9 h-9"/>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-800">{dm.username}</p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-gray-400 truncate">
                             {dm.phone_num && <span>{dm.phone_num} · </span>}
                             {dm.activeCount} active order{dm.activeCount!==1?"s":""}
                           </p>
@@ -1257,7 +1489,7 @@ const stockManagerLinks = [
                 </div>
               )}
 
-              {assignGroups.busy.length>0 && (
+              {assignGroups.busy.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="w-2 h-2 rounded-full bg-red-400 shrink-0"/>
@@ -1275,7 +1507,7 @@ const stockManagerLinks = [
                         <Avatar name={dm.username} size="w-9 h-9"/>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-600">{dm.username}</p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-gray-400 truncate">
                             {dm.phone_num && <span>{dm.phone_num} · </span>}
                             {dm.activeCount} active order{dm.activeCount!==1?"s":""}
                           </p>
@@ -1288,12 +1520,12 @@ const stockManagerLinks = [
                 </div>
               )}
 
-              {deliverymen.length===0 && (
+              {deliverymen.length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-6">No deliverymen available</p>
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 mt-2">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-100 flex gap-3">
               <button onClick={() => setShowAssignModal(false)} disabled={assigning}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium transition cursor-pointer disabled:opacity-40">
                 Cancel
@@ -1302,7 +1534,7 @@ const stockManagerLinks = [
                 className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 {assigning
                   ? <><Loader2 size={14} className="animate-spin"/> Assigning…</>
-                  : <><UserCheck size={14}/> Confirm Assignment</>}
+                  : <><UserCheck size={14}/> Confirm</>}
               </button>
             </div>
           </div>

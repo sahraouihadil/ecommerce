@@ -67,6 +67,15 @@ const parseTags = (raw) => {
   return []
 }
 
+// ─── Normalise a raw API item so status is always lowercase-trimmed ───────────
+// FIX: this is now applied on initial load too, not just after save.
+
+const normalizeItem = (item) => ({
+  ...item,
+  status: (item.status ?? '').toString().trim().toLowerCase(),
+  tags:   parseTags(item.tags),
+})
+
 // ─── Create Modal (name + email + status + tags) ──────────────────────────────
 
 function CreateModal({ onClose, onSaved }) {
@@ -457,23 +466,41 @@ export default function NewslettersPage() {
     let active = true
     setLoading(true)
     api.get('/api/newsletters/')
-      .then(r => { if (active) setItems(r.data) })
+      .then(r => {
+        if (active) {
+          // Normalize every item (lowercase status, parse tags),
+          // then deduplicate by email — email is the true unique key.
+          // This guards against duplicate Users rows or double-entries
+          // from the backend merge logic.
+          // id is now always non-null from backend (negative sentinel for unsubscribed)
+          // Still deduplicate by email as a safety net for duplicate Users rows
+          const seen = new Set()
+          const deduped = r.data
+            .map(normalizeItem)
+            .filter(item => {
+              const key = item.email?.toLowerCase()
+              if (!key || seen.has(key)) return false
+              seen.add(key)
+              return true
+            })
+          setItems(deduped)
+        }
+      })
       .catch(console.error)
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [])
 
-  const normalizeItem = (item) => ({
-    ...item,
-    status: (item.status ?? '').toString().trim().toLowerCase(),
-    tags:   parseTags(item.tags),
-  })
-
   const handleSaved = (saved, isEdit) => {
     const norm = normalizeItem(saved)
     setItems(prev => {
-      if (isEdit) return prev.map(i => i.id === norm.id ? norm : i)
-      if (prev.some(i => i.id === norm.id)) return prev
+      if (isEdit) {
+        // Match by email (stable unique key across id changes e.g. sentinel → real id)
+        return prev.map(i =>
+          i.email?.toLowerCase() === norm.email?.toLowerCase() ? norm : i
+        )
+      }
+      if (prev.some(i => i.email?.toLowerCase() === norm.email?.toLowerCase())) return prev
       return [norm, ...prev]
     })
   }
@@ -483,7 +510,8 @@ export default function NewslettersPage() {
     setDeleting(true)
     try {
       await api.delete(`/api/newsletters/${deleteTarget.id}`)
-      setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
+      // Remove by email so null-id rows are also correctly handled
+      setItems(prev => prev.filter(i => i.email?.toLowerCase() !== deleteTarget.email?.toLowerCase()))
       setDeleteTarget(null)
     } catch (err) { console.error(err) }
     finally { setDeleting(false) }
@@ -493,8 +521,15 @@ export default function NewslettersPage() {
   const subbed = items.filter(i => i.status === 'subscribed').length
   const unsub  = items.filter(i => i.status === 'unsubscribed').length
 
-  const handleCardClick = (filter) =>
-    setFilterStatus(prev => prev === filter ? 'all' : filter)
+  // FIX: "Total" card always sets filter to 'all' — no toggle.
+  // The other two cards toggle between their own filter and 'all'.
+  const handleCardClick = (filter) => {
+    if (filter === 'all') {
+      setFilterStatus('all')
+    } else {
+      setFilterStatus(prev => prev === filter ? 'all' : filter)
+    }
+  }
 
   const statusFiltered = filterStatus === 'all'
     ? items
@@ -739,7 +774,7 @@ export default function NewslettersPage() {
                     const isLast = idx === filteredItems.length - 1
                     return (
                       <tr
-                        key={item.id ?? item.user_id}
+                        key={item.id}
                         style={{
                           borderBottom: isLast ? 'none' : '1px solid #F9FAFB',
                           transition: 'background 0.15s',

@@ -106,6 +106,7 @@ class Orders(Base):
     user_id        = Column(Integer, ForeignKey("users.id"))
     orderdate      = Column(DateTime, default=datetime.utcnow)
     deliverydate   = Column(DateTime, nullable=True)
+    deliverydates = Column(Text, nullable=True)  # JSON array of ISO strings
     totalamount    = Column(Float)
     status         = Column(String, default="pending")
     delivery_type  = Column(String)

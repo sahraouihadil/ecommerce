@@ -3,7 +3,7 @@
  * Redesigned: centered list, modal detail, status filter, locked statuses.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Header from "../ui/Header";
 import Sidebar from "../ui/Sidebar";
 import api from "../../services/api";

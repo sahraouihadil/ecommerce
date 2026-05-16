@@ -16,7 +16,6 @@ router = APIRouter(prefix="/api/deliveries", tags=["deliveries"])
 @router.get("")
 def get_deliveries(db: Session = Depends(get_db)):
 
-    # Alias the Users table a second time for the deliveryman join
     DeliverymanUser = aliased(models.Users)
 
     deliveries = (
@@ -24,6 +23,7 @@ def get_deliveries(db: Session = Depends(get_db)):
             models.Orders.id.label("order_id"),
             models.Orders.orderdate,
             models.Orders.deliverydate,
+            models.Orders.deliverydates, 
             models.Orders.totalamount,
             models.Orders.status,
             models.Orders.delivery_type,
@@ -37,24 +37,42 @@ def get_deliveries(db: Session = Depends(get_db)):
             models.Users.phone_num.label("customer_phone"),
             models.Users.email.label("customer_email"),
 
-            # Deliveryman username (None when unassigned)
+            # Deliveryman username
             DeliverymanUser.username.label("deliveryman"),
 
             func.count(models.OrderItems.id).label("items_count"),
         )
-        # Customer join (inner — every order has a customer)
+
         .join(models.Users, models.Users.id == models.Orders.user_id)
-        # Deliveryman join (outer — deliveryman may not be assigned yet)
-        .outerjoin(DeliverymanUser, DeliverymanUser.id == models.Orders.deliveryman_id)
-        # Items join
-        .outerjoin(models.OrderItems, models.OrderItems.order_id == models.Orders.id)
+
+        .outerjoin(
+            DeliverymanUser,
+            DeliverymanUser.id == models.Orders.deliveryman_id
+        )
+
+        .outerjoin(
+            models.OrderItems,
+            models.OrderItems.order_id == models.Orders.id
+        )
+
         .group_by(
             models.Orders.id,
+            models.Orders.orderdate,
+            models.Orders.deliverydate,
+            models.Orders.deliverydates, 
+            models.Orders.totalamount,
+            models.Orders.status,
+            models.Orders.delivery_type,
+            models.Orders.wilaya,
+            models.Orders.city,
+            models.Orders.street_address,
+            models.Orders.deliveryman_id,
             models.Users.username,
             models.Users.phone_num,
             models.Users.email,
             DeliverymanUser.username,
         )
+
         .all()
     )
 
@@ -63,14 +81,15 @@ def get_deliveries(db: Session = Depends(get_db)):
             "order_id":       d.order_id,
             "orderdate":      d.orderdate,
             "deliverydate":   d.deliverydate,
+            "deliverydates":  d.deliverydates, 
             "totalamount":    d.totalamount,
             "status":         d.status,
             "delivery_type":  d.delivery_type,
             "wilaya":         d.wilaya,
-            "commune":           d.city,
+            "commune":        d.city,
             "street_address": d.street_address,
             "deliveryman_id": d.deliveryman_id,
-            "deliveryman":    d.deliveryman,     
+            "deliveryman":    d.deliveryman,
             "items_count":    d.items_count,
             "customer_name":  d.customer_name,
             "customer_phone": d.customer_phone,
@@ -78,7 +97,6 @@ def get_deliveries(db: Session = Depends(get_db)):
         }
         for d in deliveries
     ]
-
 
 # ─── GET /api/deliverymen ─────────────────────────────────────────────────────
 deliverymen_router = APIRouter(prefix="/api/deliverymen", tags=["deliverymen"])

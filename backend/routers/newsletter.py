@@ -29,6 +29,7 @@ def newsletter_dict(n: Newsletters) -> dict:
     """Serialise a Newsletters row."""
     return {
         "id":         n.id,
+        "user_id":    None,          # not relevant for a pure newsletter row
         "name":       n.name,
         "email":      n.email,
         "status":     n.status,
@@ -40,17 +41,26 @@ def newsletter_dict(n: Newsletters) -> dict:
 def customer_row(user: Users, newsletter: Optional[Newsletters]) -> dict:
     """
     Build the row the marketing dashboard table displays.
-    Every customer appears here; status defaults to 'unsubscribed'
-    until they actively subscribe.
+
+    KEY FIX:
+      - `id`      → always the newsletter row id when it exists, otherwise
+                    use a negative sentinel (-user.id) so the frontend always
+                    has a non-None, unique, stable value per row.
+      - `user_id` → always the Users.id so the frontend/backend can look up
+                    the user when no newsletter row exists yet.
+
+    Using -user.id as the sentinel keeps the value unique and lets the
+    backend distinguish "this is a user id, not a newsletter id" by sign.
     """
     return {
-        # Use the newsletter id when it exists so edit/delete still work
-        "id":         newsletter.id    if newsletter else None,
+        # FIXED: never None — real newsletter id when subscribed,
+        # negative user id as a stable sentinel when not.
+        "id":         newsletter.id if newsletter else -user.id,
         "user_id":    user.id,
         "name":       user.username,
         "email":      user.email,
-        "status":     newsletter.status     if newsletter else "unsubscribed",
-        "tags":       newsletter.tags  or "" if newsletter else "",
+        "status":     newsletter.status          if newsletter else "unsubscribed",
+        "tags":       (newsletter.tags or "")    if newsletter else "",
         "created_at": (
             newsletter.created_at.isoformat()
             if newsletter and newsletter.created_at
@@ -60,7 +70,6 @@ def customer_row(user: Users, newsletter: Optional[Newsletters]) -> dict:
 
 
 def _require_customer(payload: dict = Depends(verify_token)) -> dict:
-    """Dependency: JWT must belong to a customer."""
     if payload.get("role") != "customer":
         raise HTTPException(
             status_code=403,
@@ -70,7 +79,6 @@ def _require_customer(payload: dict = Depends(verify_token)) -> dict:
 
 
 def _require_marketing(payload: dict = Depends(verify_token)) -> dict:
-    """Dependency: JWT must belong to a marketing_manager or admin."""
     role = payload.get("role", "")
     if role not in ("marketing_manager", "admin"):
         raise HTTPException(status_code=403, detail="Not authorised.")
@@ -89,6 +97,7 @@ def list_newsletters(
     """
     Returns every customer account merged with their newsletter record.
     Customers who never subscribed still appear, with status='unsubscribed'.
+    Row ids are never None — unsubscribed users get id = -user.id.
     """
     customers = (
         db.query(Users)
@@ -97,9 +106,8 @@ def list_newsletters(
         .all()
     )
 
-    # Build a lookup: email → Newsletters row
-    emails = [u.email for u in customers]
-    subs   = db.query(Newsletters).filter(Newsletters.email.in_(emails)).all()
+    emails  = [u.email for u in customers]
+    subs    = db.query(Newsletters).filter(Newsletters.email.in_(emails)).all()
     sub_map = {s.email: s for s in subs}
 
     return [customer_row(u, sub_map.get(u.email)) for u in customers]
@@ -125,22 +133,17 @@ def create_newsletter(
 ):
     """
     A logged-in customer subscribes themselves.
-    - We use the email from the JWT (via the Users table) so they
-      cannot subscribe on behalf of someone else.
-    - If they are already subscribed, we re-activate them instead of
-      returning an error (better UX).
     """
-    user_name = payload.get("sub")          # "sub" holds the email in your JWT
+    user_name = payload.get("sub")
     if not user_name:
         raise HTTPException(status_code=401, detail="Invalid token payload.")
 
-    # Fetch the actual user record so we always use the DB email
     db_user = db.query(Users).filter(Users.username == user_name).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User account not found.")
 
     if body.email.strip().lower() != db_user.email.lower():
-        raise HTTPException(status_code=403,detail="Email does not match authenticated user.")
+        raise HTTPException(status_code=403, detail="Email does not match authenticated user.")
 
     existing = db.query(Newsletters).filter(
         Newsletters.email == db_user.email
@@ -152,16 +155,14 @@ def create_newsletter(
                 status_code=400,
                 detail=f"Email '{db_user.email}' is already subscribed.",
             )
-        # Was unsubscribed — re-activate
         existing.status = "subscribed"
-        # Optionally merge new tags without overwriting old ones
         if body.tags:
             old_tags = set(existing.tags.split(",")) if existing.tags else set()
             existing.tags = ",".join(old_tags | set(body.tags))
         db.commit()
         db.refresh(existing)
         return newsletter_dict(existing)
-        print("name : ",user_name)
+
     n = Newsletters(
         name   = user_name,
         email  = db_user.email,
@@ -174,19 +175,45 @@ def create_newsletter(
     return newsletter_dict(n)
 
 
-@router.put("/{newsletter_id}")
+@router.put("/{record_id}")
 def update_newsletter(
-    newsletter_id: int,
+    record_id: int,
     data: NewsletterUpdate,
     db:   Session = Depends(get_db),
     _: dict = Depends(_require_marketing),
 ):
-    n = db.query(Newsletters).filter(Newsletters.id == newsletter_id).first()
-    if not n:
-        raise HTTPException(status_code=404, detail="Subscriber not found")
+    """
+    Update a subscriber record.
+
+    FIXED: record_id may be either:
+      - A real newsletter id  (positive)  → look up Newsletters directly.
+      - A sentinel user id    (negative)  → the user has no newsletter row yet;
+        create one so the tags/status update can be persisted.
+    """
+    if record_id > 0:
+        # Normal case — real newsletter row
+        n = db.query(Newsletters).filter(Newsletters.id == record_id).first()
+        if not n:
+            raise HTTPException(status_code=404, detail="Subscriber not found")
+    else:
+        # Sentinel: -user.id means this user has no newsletter row yet
+        user_id = -record_id
+        user = db.query(Users).filter(Users.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Create the newsletter row on first edit
+        n = Newsletters(
+            name   = user.username,
+            email  = user.email,
+            status = "unsubscribed",
+            tags   = "",
+        )
+        db.add(n)
+        db.flush()   # assign n.id without committing yet
 
     updates = data.model_dump(exclude_unset=True)
-    
+
     if "tags" in updates:
         updates["tags"] = ",".join(updates["tags"])
 
@@ -198,15 +225,22 @@ def update_newsletter(
     return newsletter_dict(n)
 
 
-@router.delete("/{newsletter_id}")
+@router.delete("/{record_id}")
 def delete_newsletter(
-    newsletter_id: int,
+    record_id: int,
     db: Session = Depends(get_db),
     _: dict = Depends(_require_marketing),
 ):
-    n = db.query(Newsletters).filter(Newsletters.id == newsletter_id).first()
-    if not n:
-        raise HTTPException(status_code=404, detail="Subscriber not found")
-    db.delete(n)
-    db.commit()
+    """
+    FIXED: same sentinel logic as PUT.
+    Deleting an unsubscribed user (no newsletter row) is a no-op — nothing to delete.
+    """
+    if record_id > 0:
+        n = db.query(Newsletters).filter(Newsletters.id == record_id).first()
+        if not n:
+            raise HTTPException(status_code=404, detail="Subscriber not found")
+        db.delete(n)
+        db.commit()
+    # else: negative id = user has no newsletter row — nothing to delete, return success
+
     return {"msg": "Subscriber removed successfully"}
