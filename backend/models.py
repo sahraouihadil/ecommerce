@@ -33,6 +33,17 @@ class Users(Base):
     deliveries = relationship("Orders", foreign_keys="Orders.deliveryman_id")
 
 
+class PendingVerification(Base):
+    __tablename__ = "pending_verifications"
+
+    id                = Column(Integer, primary_key=True, index=True)
+    email             = Column(String, unique=True, index=True, nullable=False)
+    username          = Column(String, nullable=False)
+    phone_num         = Column(String, nullable=True)
+    password          = Column(String, nullable=False)   
+    verification_code = Column(String, nullable=False)
+    created_at        = Column(DateTime, default=datetime.utcnow)
+
 class Products(Base):
     __tablename__ = "products"
 

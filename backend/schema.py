@@ -396,7 +396,8 @@ class ChatResponse(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    username: str
+    email:    EmailStr
 
 
 class VerifyResetCodeRequest(BaseModel):
@@ -485,3 +486,16 @@ class ValidationStats(BaseModel):
     approved: int
     rejected: int
     total:    int
+
+# ── /add-user — creates the new account after OTP is confirmed ─────
+class NewUserRequest(BaseModel):
+    email: str
+    username: str
+    password: str # plain-text; hashed below before storing
+    phone_num: str
+# ____ / add user in the pending validation table _________________
+class CreateUserPending(BaseModel):
+    username:  str
+    email:     str
+    password:  str
+    phone_num: Optional[str] = None

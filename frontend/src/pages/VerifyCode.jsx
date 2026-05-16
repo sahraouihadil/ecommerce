@@ -15,18 +15,11 @@ const STYLES = `
   .digit-input::-webkit-outer-spin-button { -webkit-appearance: none; }
   .digit-input { -moz-appearance: textfield; }
 
-  /* ── entrance ── */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(28px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
   @keyframes digitDrop {
     0%   { opacity: 0; transform: translateY(-18px) scale(0.8); }
     60%  { transform: translateY(4px) scale(1.05); }
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
-
-  /* ── interaction ── */
   @keyframes digitPop {
     0%   { transform: scale(1); }
     40%  { transform: scale(1.22); }
@@ -41,8 +34,6 @@ const STYLES = `
     72%     { transform: translateX(5px); }
     90%     { transform: translateX(-2px); }
   }
-
-  /* ── success ── */
   @keyframes popIn {
     from { transform: scale(0.3) rotate(-15deg); opacity: 0; }
     60%  { transform: scale(1.15) rotate(3deg); opacity: 1; }
@@ -56,38 +47,34 @@ const STYLES = `
     0%   { transform: scale(0.7); opacity: 0.8; }
     100% { transform: scale(1.7); opacity: 0; }
   }
-
-  /* ── progress bar shimmer ── */
   @keyframes shimmer {
     0%   { background-position: -200% center; }
     100% { background-position:  200% center; }
   }
-
-  /* ── ornament float ── */
   @keyframes float {
     0%,100% { transform: translateY(0px); }
     50%     { transform: translateY(-6px); }
   }
-
-  /* ── logo reveal ── */
   @keyframes logoReveal {
     0%   { opacity: 0; letter-spacing: 0.25em; }
     100% { opacity: 1; letter-spacing: 0.08em; }
   }
-
-  /* ── gold line draw ── */
   @keyframes lineDraw {
     from { width: 0; opacity: 0; }
     to   { opacity: 1; }
   }
-
-  .verify-logo {
-    animation: logoReveal 1s cubic-bezier(0.16,1,0.3,1) both;
-  }
-  .verify-line {
-    animation: lineDraw 0.8s cubic-bezier(0.16,1,0.3,1) both;
-  }
+  .verify-logo { animation: logoReveal 1s cubic-bezier(0.16,1,0.3,1) both; }
+  .verify-line { animation: lineDraw 0.8s cubic-bezier(0.16,1,0.3,1) both; }
 `;
+
+function extractErrorMessage(err, fallback = "Server error") {
+  const detail = err?.response?.data?.detail;
+  if (!detail) return fallback;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map(d => d?.msg || JSON.stringify(d)).join(" · ");
+  if (typeof detail === "object") return detail.msg || detail.message || JSON.stringify(detail);
+  return String(detail);
+}
 
 function AnimatedItem({ children, delay = 0, style = {} }) {
   const [visible, setVisible] = useState(false);
@@ -108,20 +95,22 @@ function AnimatedItem({ children, delay = 0, style = {} }) {
 }
 
 export function VerifyCode() {
-  const [digits, setDigits] = useState(Array(DIGITS).fill(""));
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [digits, setDigits]           = useState(Array(DIGITS).fill(""));
+  const [message, setMessage]         = useState("");
+  const [isError, setIsError]         = useState(false);
+  const [loading, setLoading]         = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [shaking, setShaking] = useState(false);
+  const [success, setSuccess]         = useState(false);
+  const [resending, setResending]     = useState(false);
+  const [shaking, setShaking]         = useState(false);
   const [poppedIndex, setPoppedIndex] = useState(null);
   const inputRefs = useRef([]);
 
   const location = useLocation();
-  const navigate = useNavigate();
-  const email = location.state?.email;
+  const navigate  = useNavigate();
+
+  const email    = location.state?.email;
+  const username = location.state?.username;
 
   if (!email) return <Navigate to="/register" replace />;
 
@@ -168,19 +157,27 @@ export function VerifyCode() {
     setLoading(true);
     setMessage("");
     try {
-      const res = await api.get("/verify-code", { params: { email, code } });
+      const res = await api.post("/verify-code", { email, code });
+     console.log("user : ",res.data.is_new_user)
       if (res.data.msg) {
         setIsError(false);
         setSuccess(true);
-        setMessage(res.data.msg);
+        setMessage(typeof res.data.msg === "string" ? res.data.msg : "Verified!");
+
+        // Single timeout — user is always in DB now, always go to /login
         setTimeout(() => {
-          navigate("/set-password", { state: { userName: res.data.user_name } });
+          if (res.data.is_new_user === true) {
+            navigate("/login", { state: { justRegistered: true } });
+          } else {
+            // Fallback: existing user re-verify → set-password
+            navigate("/set-password", { state: { userName: res.data.user_name } });
+          }
         }, 1400);
       }
     } catch (err) {
       setIsError(true);
       triggerShake();
-      setMessage(err?.response?.data?.detail || "Server error");
+      setMessage(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -199,7 +196,7 @@ export function VerifyCode() {
       inputRefs.current[0]?.focus();
     } catch (err) {
       setIsError(true);
-      setMessage(err?.response?.data?.detail || "Failed to resend code. Please try again.");
+      setMessage(extractErrorMessage(err, "Failed to resend code. Please try again."));
     } finally {
       setResending(false);
     }
@@ -210,31 +207,20 @@ export function VerifyCode() {
   return (
     <div style={{
       fontFamily: "'Cormorant Garamond', Georgia, serif",
-      minHeight: "100vh",
-      background: CREAM,
-      color: CHARCOAL,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
+      minHeight: "100vh", background: CREAM, color: CHARCOAL,
+      display: "flex", alignItems: "center", justifyContent: "center",
       padding: "4rem 1.5rem",
     }}>
       <style>{STYLES}</style>
-
       <div style={{ width: "100%", maxWidth: "480px" }}>
 
         {/* Logo */}
         <AnimatedItem delay={0} style={{ textAlign: "center", marginBottom: "3.5rem" }}>
           <Link to="/" className="verify-logo" style={{
-            fontFamily: "'Cinzel Decorative', serif",
-            fontSize: "1.375rem",
-            fontWeight: 700,
-            color: CHARCOAL,
-            textDecoration: "none",
-            letterSpacing: "0.08em",
-            display: "inline-block",
-          }}>
-            ARoom
-          </Link>
+            fontFamily: "'Cinzel Decorative', serif", fontSize: "1.375rem",
+            fontWeight: 700, color: CHARCOAL, textDecoration: "none",
+            letterSpacing: "0.08em", display: "inline-block",
+          }}>ARoom</Link>
         </AnimatedItem>
 
         {/* Header */}
@@ -242,32 +228,20 @@ export function VerifyCode() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.875rem", marginBottom: "1.5rem" }}>
             <div className="verify-line" style={{ height: "1px", width: "2rem", background: GOLD, opacity: 0.55, animationDelay: "0.3s" }} />
             <span style={{ fontFamily: "sans-serif", fontSize: "0.5625rem", letterSpacing: "0.4em", textTransform: "uppercase", color: GOLD }}>
-              Verification
+              Registration
             </span>
             <div className="verify-line" style={{ height: "1px", width: "2rem", background: GOLD, opacity: 0.55, animationDelay: "0.5s" }} />
           </div>
-
           <h1 style={{
             fontFamily: "'Cinzel Decorative', serif",
-            fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
-            fontWeight: 700,
-            lineHeight: 1.1,
-            letterSpacing: "0.02em",
-            color: CHARCOAL,
-            marginBottom: "1.25rem",
-          }}>
-            Enter Code
-          </h1>
-
+            fontSize: "clamp(1.75rem, 5vw, 2.5rem)", fontWeight: 700,
+            lineHeight: 1.1, letterSpacing: "0.02em", color: CHARCOAL, marginBottom: "1.25rem",
+          }}>Confirm Email</h1>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.625rem", marginBottom: "1.25rem" }}>
             <div style={{ height: "1px", width: "1.75rem", background: GOLD, opacity: 0.35 }} />
-            <div style={{
-              width: "5px", height: "5px", background: GOLD, transform: "rotate(45deg)", opacity: 0.6,
-              animation: "float 3s ease-in-out infinite",
-            }} />
+            <div style={{ width: "5px", height: "5px", background: GOLD, transform: "rotate(45deg)", opacity: 0.6, animation: "float 3s ease-in-out infinite" }} />
             <div style={{ height: "1px", width: "1.75rem", background: GOLD, opacity: 0.35 }} />
           </div>
-
           <p style={{ color: MUTED, fontSize: "1rem", fontStyle: "italic", fontWeight: 300, lineHeight: 1.8 }}>
             A {DIGITS}-digit code was sent to
           </p>
@@ -285,41 +259,28 @@ export function VerifyCode() {
           }}
         >
           {digits.map((d, i) => (
-            <div key={i} style={{
-              opacity: 0,
-              animation: `digitDrop 0.55s cubic-bezier(0.16,1,0.3,1) ${120 + i * 60}ms both`,
-            }}>
+            <div key={i} style={{ opacity: 0, animation: `digitDrop 0.55s cubic-bezier(0.16,1,0.3,1) ${120 + i * 60}ms both` }}>
               <input
                 ref={el => inputRefs.current[i] = el}
                 className="digit-input"
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
+                type="text" inputMode="numeric" maxLength={1}
                 value={d}
                 onChange={e => handleChange(i, e.target.value)}
                 onKeyDown={e => handleKeyDown(i, e)}
                 onFocus={() => setFocusedIndex(i)}
                 onBlur={() => setFocusedIndex(null)}
                 style={{
-                  width: "52px",
-                  height: "64px",
-                  textAlign: "center",
-                  fontSize: "1.625rem",
-                  fontFamily: "'Cinzel Decorative', serif",
-                  fontWeight: 700,
+                  width: "52px", height: "64px", textAlign: "center",
+                  fontSize: "1.625rem", fontFamily: "'Cinzel Decorative', serif", fontWeight: 700,
                   color: success ? GOLD : CHARCOAL,
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: `2px solid ${success
-                      ? `rgba(200,169,106,0.8)`
-                      : isError && shaking
-                        ? `rgba(192,57,43,0.6)`
-                        : focusedIndex === i
-                          ? GOLD
-                          : d
-                            ? `rgba(200,169,106,0.7)`
-                            : `rgba(158,142,122,0.2)`
-                    }`,
+                  background: "transparent", border: "none",
+                  borderBottom: `2px solid ${
+                    success ? `rgba(200,169,106,0.8)`
+                    : isError && shaking ? `rgba(192,57,43,0.6)`
+                    : focusedIndex === i ? GOLD
+                    : d ? `rgba(200,169,106,0.7)`
+                    : `rgba(158,142,122,0.2)`
+                  }`,
                   outline: "none",
                   transition: "border-color 0.25s ease, color 0.3s ease",
                   caretColor: GOLD,
@@ -333,18 +294,11 @@ export function VerifyCode() {
         {/* Progress bar */}
         <AnimatedItem delay={260}>
           <div style={{ marginBottom: "2.5rem" }}>
-            <div style={{
-              height: "1px",
-              background: `rgba(200,169,106,0.15)`,
-              borderRadius: "1px",
-              overflow: "hidden",
-            }}>
+            <div style={{ height: "1px", background: `rgba(200,169,106,0.15)`, borderRadius: "1px", overflow: "hidden" }}>
               <div style={{
                 height: "100%",
                 width: `${(filledCount / DIGITS) * 100}%`,
-                background: filledCount === DIGITS
-                  ? `linear-gradient(90deg, ${GOLD}, #e8c97a, ${GOLD})`
-                  : GOLD,
+                background: filledCount === DIGITS ? `linear-gradient(90deg, ${GOLD}, #e8c97a, ${GOLD})` : GOLD,
                 backgroundSize: "200% auto",
                 animation: filledCount === DIGITS ? "shimmer 1.5s linear infinite" : "none",
                 transition: "width 0.3s cubic-bezier(0.16,1,0.3,1)",
@@ -354,7 +308,8 @@ export function VerifyCode() {
             <div style={{
               display: "flex", justifyContent: "flex-end", marginTop: "6px",
               fontFamily: "sans-serif", fontSize: "0.5rem", letterSpacing: "0.2em",
-              textTransform: "uppercase", color: `rgba(200,169,106,${filledCount > 0 ? 0.5 : 0.2})`,
+              textTransform: "uppercase",
+              color: `rgba(200,169,106,${filledCount > 0 ? 0.5 : 0.2})`,
               transition: "color 0.3s ease",
             }}>
               {filledCount}/{DIGITS}
@@ -364,11 +319,7 @@ export function VerifyCode() {
 
         {/* Verify Button */}
         <AnimatedItem delay={320}>
-          {success ? (
-            <SuccessState />
-          ) : (
-            <VerifyButton onClick={handleVerify} loading={loading} success={success} />
-          )}
+          {success ? <SuccessState /> : <VerifyButton onClick={handleVerify} loading={loading} success={success} />}
         </AnimatedItem>
 
         {/* Resend */}
@@ -382,8 +333,7 @@ export function VerifyCode() {
               fontFamily: "sans-serif", fontSize: "0.5625rem",
               letterSpacing: "0.3em", textTransform: "uppercase",
               color: resending ? `rgba(200,169,106,0.4)` : MUTED,
-              padding: "0.5rem 0",
-              transition: "color 0.25s ease",
+              padding: "0.5rem 0", transition: "color 0.25s ease",
             }}
             onMouseEnter={e => { if (!resending) e.target.style.color = GOLD; }}
             onMouseLeave={e => { if (!resending) e.target.style.color = MUTED; }}
@@ -398,8 +348,7 @@ export function VerifyCode() {
             <p style={{
               marginTop: "1.5rem", textAlign: "center",
               fontSize: "0.875rem", fontStyle: "italic",
-              color: isError ? "#c0392b" : "#5a8a6a",
-              fontWeight: 300,
+              color: isError ? "#c0392b" : "#5a8a6a", fontWeight: 300,
             }}>
               {message}
             </p>
@@ -409,15 +358,11 @@ export function VerifyCode() {
         {/* Bottom ornament */}
         <AnimatedItem delay={480} style={{ textAlign: "center", marginTop: "3rem" }}>
           <span style={{
-            fontFamily: "'Cinzel Decorative', serif",
-            fontSize: "0.5rem", letterSpacing: "0.5em",
-            textTransform: "uppercase",
+            fontFamily: "'Cinzel Decorative', serif", fontSize: "0.5rem",
+            letterSpacing: "0.5em", textTransform: "uppercase",
             color: `rgba(200,169,106,0.25)`,
-            animation: "float 4s ease-in-out infinite",
-            display: "inline-block",
-          }}>
-            Aroom
-          </span>
+            animation: "float 4s ease-in-out infinite", display: "inline-block",
+          }}>Aroom</span>
         </AnimatedItem>
       </div>
     </div>
@@ -427,7 +372,6 @@ export function VerifyCode() {
 function SuccessState() {
   return (
     <div style={{ textAlign: "center", padding: "1rem 0 2rem" }}>
-      {/* Rings */}
       <div style={{ position: "relative", width: "80px", height: "80px", margin: "0 auto 1.5rem" }}>
         {[0, 1].map(i => (
           <div key={i} style={{
@@ -437,8 +381,8 @@ function SuccessState() {
           }} />
         ))}
         <div style={{
-          position: "absolute", inset: 0,
-          borderRadius: "50%", border: `1px solid rgba(200,169,106,0.5)`,
+          position: "absolute", inset: 0, borderRadius: "50%",
+          border: `1px solid rgba(200,169,106,0.5)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           animation: "popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both",
         }}>
@@ -453,14 +397,10 @@ function SuccessState() {
           </svg>
         </div>
       </div>
-      <h2 style={{
-        fontFamily: "'Cinzel Decorative', serif",
-        fontSize: "1.25rem", fontWeight: 700,
-        color: CHARCOAL, marginBottom: "0.5rem",
-      }}>Verified</h2>
-      <p style={{ color: MUTED, fontSize: "0.9rem", fontStyle: "italic", fontWeight: 300 }}>
-        Redirecting…
-      </p>
+      <h2 style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: "1.25rem", fontWeight: 700, color: CHARCOAL, marginBottom: "0.5rem" }}>
+        Verified
+      </h2>
+      <p style={{ color: MUTED, fontSize: "0.9rem", fontStyle: "italic", fontWeight: 300 }}>Redirecting…</p>
     </div>
   );
 }
@@ -488,12 +428,10 @@ function VerifyButton({ onClick, loading, success }) {
     >
       {loading ? "Verifying…" : (
         <>
-          Verify Code
+          Confirm Email
           <span style={{
-            display: "inline-block",
-            transition: "transform 0.3s ease",
-            transform: hovered ? "translateX(5px)" : "none",
-            fontSize: "0.875rem",
+            display: "inline-block", transition: "transform 0.3s ease",
+            transform: hovered ? "translateX(5px)" : "none", fontSize: "0.875rem",
           }}>→</span>
         </>
       )}
