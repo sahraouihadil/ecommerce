@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutDashboard, Boxes, Truck, RotateCcw, Search, Plus, Pencil,
   Trash2, X, Package, Tag, Palette, DollarSign, Layers, Hash,
@@ -28,63 +28,64 @@ function Field({ label, icon: Icon, error, children }) {
 }
 
 function getInputCls(errors, field) {
-  return `w-full h-10 px-3 rounded-lg bg-gray-50 text-sm border outline-none focus:ring-2 focus:border-transparent transition ${errors[field]
+  return `w-full h-10 px-3 rounded-lg bg-gray-50 text-sm border outline-none focus:ring-2 focus:border-transparent transition ${
+    errors[field]
       ? "border-red-300 focus:ring-red-400 bg-red-50/40"
       : "border-gray-200 focus:ring-indigo-500"
-    }`;
+  }`;
 }
 
 // ─── PREDEFINED COLORS ────────────────────────────────────────────────────────
 export const PRESET_COLORS = [
-  { name: "Black", hex: "#111827" },
-  { name: "White", hex: "#F9FAFB", border: true },
-  { name: "Gray", hex: "#6B7280" },
-  { name: "Charcoal", hex: "#374151" },
-  { name: "Beige", hex: "#D4B896" },
-  { name: "Ivory", hex: "#FFFFF0", border: true },
-  { name: "Brown", hex: "#92400E" },
-  { name: "Red", hex: "#EF4444" },
-  { name: "Orange", hex: "#F97316" },
-  { name: "Yellow", hex: "#EAB308" },
-  { name: "Green", hex: "#22C55E" },
-  { name: "Teal", hex: "#14B8A6" },
-  { name: "Blue", hex: "#3B82F6" },
-  { name: "Navy", hex: "#1E3A5F" },
-  { name: "Purple", hex: "#A855F7" },
-  { name: "Pink", hex: "#EC4899" },
-  { name: "Cream", hex: "#FFF5E1", border: true },
-  { name: "Sand", hex: "#EADBC8" },
-  { name: "Taupe", hex: "#8B7D7B" },
-  { name: "Mocha", hex: "#7B4B3A" },
-  { name: "Chocolate", hex: "#5C3317" },
-  { name: "Coffee", hex: "#6F4E37" },
-  { name: "Camel", hex: "#C19A6B" },
-  { name: "Olive", hex: "#6B8E23" },
-  { name: "Mint", hex: "#98FF98" },
+  { name: "Black",        hex: "#111827" },
+  { name: "White",        hex: "#F9FAFB", border: true },
+  { name: "Gray",         hex: "#6B7280" },
+  { name: "Charcoal",     hex: "#374151" },
+  { name: "Beige",        hex: "#D4B896" },
+  { name: "Ivory",        hex: "#FFFFF0", border: true },
+  { name: "Brown",        hex: "#92400E" },
+  { name: "Red",          hex: "#EF4444" },
+  { name: "Orange",       hex: "#F97316" },
+  { name: "Yellow",       hex: "#EAB308" },
+  { name: "Green",        hex: "#22C55E" },
+  { name: "Teal",         hex: "#14B8A6" },
+  { name: "Blue",         hex: "#3B82F6" },
+  { name: "Navy",         hex: "#1E3A5F" },
+  { name: "Purple",       hex: "#A855F7" },
+  { name: "Pink",         hex: "#EC4899" },
+  { name: "Cream",        hex: "#FFF5E1", border: true },
+  { name: "Sand",         hex: "#EADBC8" },
+  { name: "Taupe",        hex: "#8B7D7B" },
+  { name: "Mocha",        hex: "#7B4B3A" },
+  { name: "Chocolate",    hex: "#5C3317" },
+  { name: "Coffee",       hex: "#6F4E37" },
+  { name: "Camel",        hex: "#C19A6B" },
+  { name: "Olive",        hex: "#6B8E23" },
+  { name: "Mint",         hex: "#98FF98" },
   { name: "Forest Green", hex: "#14532D" },
-  { name: "Sage", hex: "#9CAF88" },
-  { name: "Emerald", hex: "#10B981" },
-  { name: "Sky Blue", hex: "#38BDF8" },
-  { name: "Royal Blue", hex: "#1D4ED8" },
-  { name: "Steel Blue", hex: "#4682B4" },
-  { name: "Baby Blue", hex: "#BFDBFE" },
-  { name: "Cyan", hex: "#06B6D4" },
-  { name: "Lavender", hex: "#C4B5FD" },
-  { name: "Plum", hex: "#7E22CE" },
-  { name: "Violet", hex: "#8B5CF6" },
-  { name: "Indigo", hex: "#4F46E5" },
-  { name: "Rose", hex: "#F43F5E" },
-  { name: "Coral", hex: "#FF7F50" },
-  { name: "Salmon", hex: "#FA8072" },
-  { name: "Burgundy", hex: "#7F1D1D" },
-  { name: "Amber", hex: "#F59E0B" },
-  { name: "Mustard", hex: "#D97706" },
-  { name: "Peach", hex: "#FFDAB9" },
-  { name: "Gold", hex: "#D4AF37" },
-  { name: "Bronze", hex: "#CD7F32" },
-  { name: "Copper", hex: "#B87333" },
-  { name: "Silver", hex: "#C0C0C0" },
-  { name: "Transparent", hex: "transparent", border: true },
+  { name: "Sage",         hex: "#9CAF88" },
+  { name: "Emerald",      hex: "#10B981" },
+  { name: "Sky Blue",     hex: "#38BDF8" },
+  { name: "Royal Blue",   hex: "#1D4ED8" },
+  { name: "Steel Blue",   hex: "#4682B4" },
+  { name: "Baby Blue",    hex: "#BFDBFE" },
+  { name: "Cyan",         hex: "#06B6D4" },
+  { name: "Lavender",     hex: "#C4B5FD" },
+  { name: "Plum",         hex: "#7E22CE" },
+  { name: "Violet",       hex: "#8B5CF6" },
+  { name: "Indigo",       hex: "#4F46E5" },
+  { name: "Rose",         hex: "#F43F5E" },
+  { name: "Coral",        hex: "#FF7F50" },
+  { name: "Salmon",       hex: "#FA8072" },
+  { name: "Burgundy",     hex: "#7F1D1D" },
+  { name: "Amber",        hex: "#F59E0B" },
+  { name: "Mustard",      hex: "#D97706" },
+  { name: "Peach",        hex: "#FFDAB9" },
+  { name: "Gold",         hex: "#D4AF37" },
+  { name: "Bronze",       hex: "#CD7F32" },
+  { name: "Copper",       hex: "#B87333" },
+  { name: "Silver",       hex: "#C0C0C0" },
+  { name: "Transparent",  hex: "transparent", border: true },
 ];
 
 // ─── COLOR DOT ────────────────────────────────────────────────────────────────
@@ -118,8 +119,9 @@ function ColorPicker({ selected, onChange }) {
               type="button"
               title={name}
               onClick={() => toggle(name)}
-              className={`relative w-7 h-7 rounded-full transition-transform hover:scale-110 cursor-pointer focus:outline-none ${border ? "border border-gray-300" : ""
-                } ${active ? "ring-2 ring-offset-2 ring-indigo-500 scale-110" : ""}`}
+              className={`relative w-7 h-7 rounded-full transition-transform hover:scale-110 cursor-pointer focus:outline-none ${
+                border ? "border border-gray-300" : ""
+              } ${active ? "ring-2 ring-offset-2 ring-indigo-500 scale-110" : ""}`}
               style={{ background: hex }}
             >
               {active && (
@@ -223,7 +225,7 @@ const BLANK_PRODUCT = {
   able_3d: false, able_ar: false,
 };
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 const getStockStatus = (qty) => {
   if (qty === 0) return "Out of Stock";
   if (qty < 10)  return "Low Stock";
@@ -239,22 +241,27 @@ const stockStatusStyle = (s) => {
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export function ProductCatalogPage() {
 
-  const [products,           setProducts]           = useState([]);
-  const [loading,            setLoading]            = useState(true);
-  const [showModal,          setShowModal]          = useState(false);
-  const [editMode,           setEditMode]           = useState(false);
-  const [selectedProductId,  setSelectedProductId]  = useState(null);
+  const [products,          setProducts]          = useState([]);
+  const [loading,           setLoading]           = useState(true);
+  const [showModal,         setShowModal]         = useState(false);
+  const [editMode,          setEditMode]          = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(null);
 
   const [imageFiles,    setImageFiles]    = useState([...EMPTY_FILES]);
   const [imagePreviews, setImagePreviews] = useState([...EMPTY_PREVIEWS]);
   const [colorTags,     setColorTags]     = useState([]);
 
-  const [newProduct, setNewProduct] = useState({ ...BLANK_PRODUCT });
-
+  const [newProduct,  setNewProduct]  = useState({ ...BLANK_PRODUCT });
   const [message,     setMessage]     = useState("");
   const [messageType, setMessageType] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [errors,      setErrors]      = useState({});
+
+  // ── SKU duplicate check state ─────────────────────────────────────────────
+  // skuChecking: true while the debounce timer is running or the check is in flight
+  // skuTaken: true when the current SKU belongs to another product
+  const [skuChecking, setSkuChecking] = useState(false);
+  const skuDebounceRef = useRef(null);
 
   // ── Delete-request modal ──────────────────────────────────────────────────
   const [showDeleteRequestModal, setShowDeleteRequestModal] = useState(false);
@@ -262,15 +269,11 @@ export function ProductCatalogPage() {
   const [deleteRequestLoading,   setDeleteRequestLoading]   = useState(false);
   const [deleteRequestError,     setDeleteRequestError]     = useState("");
 
-  // ─── FIX 1: priceMax defaults to Infinity so no product is ever
-  //     hidden by the price ceiling before the user sets one explicitly.
   const [filters, setFilters] = useState({
     search: "", category: "all", color: "all", status: "all", approval: "all",
     priceMin: 0, priceMax: Infinity,
   });
 
-  // Controlled input values for the price fields (separate from filter state
-  // so empty strings don't coerce to 0 / NaN while the user is typing).
   const [priceMinInput, setPriceMinInput] = useState("");
   const [priceMaxInput, setPriceMaxInput] = useState("");
 
@@ -362,8 +365,6 @@ export function ProductCatalogPage() {
     return ["all", ...set];
   }, [products]);
 
-  // ─── FIX 2: price filter uses Infinity as the ceiling sentinel so that
-  //     products with any price are included when the user hasn't typed a max.
   const filteredProducts = useMemo(() => products.filter((p) => {
     const stockStatus    = getStockStatus(p.quantity);
     const approvalStatus = getApprovalStatus(p);
@@ -384,7 +385,7 @@ export function ProductCatalogPage() {
       approvalMatch &&
       (filters.status === "all" || stockStatus === filters.status) &&
       price >= filters.priceMin &&
-      price <= filters.priceMax   // Infinity means "no upper bound"
+      price <= filters.priceMax
     );
   }), [products, filters, getApprovalStatus]);
 
@@ -402,16 +403,62 @@ export function ProductCatalogPage() {
     setTimeout(() => { setMessage(""); setMessageType(""); }, 4000);
   };
 
+  // ─── SKU DUPLICATE CHECK ──────────────────────────────────────────────────
+  // Checks the current products list (already loaded) to see if any OTHER
+  // product uses this SKU. Falls back gracefully if the list is empty.
+  //
+  // Called with a debounce of 400ms every time the SKU field changes.
+  // In edit mode we skip the product being edited (selectedProductId).
+  const checkSkuDuplicate = useCallback((skuValue, currentProductId) => {
+    // Clear any pending debounce
+    if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current);
+
+    const trimmed = skuValue.trim();
+    if (!trimmed) {
+      // Empty SKU — the required-field validator handles this, no duplicate error
+      setSkuChecking(false);
+      setErrors((prev) => { const n = { ...prev }; delete n.sku; return n; });
+      return;
+    }
+
+    setSkuChecking(true);
+
+    skuDebounceRef.current = setTimeout(() => {
+      // Check against already-loaded products (no extra network call needed)
+      const duplicate = products.find(
+        (p) =>
+          p.sku?.trim().toLowerCase() === trimmed.toLowerCase() &&
+          p.id !== currentProductId   // allow keeping the same SKU when editing
+      );
+
+      setSkuChecking(false);
+
+      if (duplicate) {
+        setErrors((prev) => ({
+          ...prev,
+          sku: `SKU "${trimmed}" is already used by "${duplicate.name}".`,
+        }));
+      } else {
+        // Clear only the SKU error so other field errors are preserved
+        setErrors((prev) => { const n = { ...prev }; delete n.sku; return n; });
+      }
+    }, 400);
+  }, [products]);
+
   // ── Form validation ───────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
-    if (!newProduct.name?.trim()) e.name = "Product name is required";
-    if (!newProduct.category)     e.category = "Please select a category";
-    if (!newProduct.sku?.trim())  e.sku = "SKU is required";
+    if (!newProduct.name?.trim())    e.name     = "Product name is required";
+    if (!newProduct.category)        e.category = "Please select a category";
+    if (!newProduct.sku?.trim())     e.sku      = "SKU is required";
     if (!newProduct.price || Number(newProduct.price) <= 0)
-      e.price = "Price must be greater than 0";
+      e.price    = "Price must be greater than 0";
     if (newProduct.quantity === "" || Number(newProduct.quantity) < 0)
       e.quantity = "Stock cannot be negative";
+
+    // Preserve a pre-existing SKU duplicate error found by the live check
+    if (!e.sku && errors.sku) e.sku = errors.sku;
+
     return e;
   };
 
@@ -432,11 +479,13 @@ export function ProductCatalogPage() {
 
   // ── Reset modal ───────────────────────────────────────────────────────────
   const resetModal = () => {
+    if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current);
     setShowModal(false); setEditMode(false); setSelectedProductId(null);
     setImageFiles([...EMPTY_FILES]); setImagePreviews([...EMPTY_PREVIEWS]);
     setColorTags([]); setErrors({});
     setNewProduct({ ...BLANK_PRODUCT });
     setEditingProduct(null);
+    setSkuChecking(false);
   };
 
   // ── Edit ──────────────────────────────────────────────────────────────────
@@ -457,6 +506,7 @@ export function ProductCatalogPage() {
     setColorTags(p.colors || []);
     setSelectedProductId(p.id);
     setErrors({});
+    setSkuChecking(false);
     setEditMode(true);
     setEditingProduct(p);
     setShowModal(true);
@@ -498,6 +548,9 @@ export function ProductCatalogPage() {
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
+    // If a SKU check is still in flight, wait — don't save yet
+    if (skuChecking) return;
+
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
@@ -549,8 +602,14 @@ export function ProductCatalogPage() {
         setShowValidationModal(true);
       }
     } catch (err) {
-      console.error(err.response?.data || err);
-      showFlash("Something went wrong. Please try again.", "error");
+      // Surface backend SKU-unique constraint errors directly under the field
+      const detail = err.response?.data?.detail || "";
+      if (typeof detail === "string" && detail.toLowerCase().includes("sku")) {
+        setErrors((prev) => ({ ...prev, sku: detail }));
+      } else {
+        console.error(err.response?.data || err);
+        showFlash("Something went wrong. Please try again.", "error");
+      }
     } finally {
       setSaveLoading(false);
     }
@@ -595,12 +654,12 @@ export function ProductCatalogPage() {
 
   // ── Nav ───────────────────────────────────────────────────────────────────
   const stockManagerLinks = [
-    { to: "/stock-manager-dash",              label: "Dashboard",         icon: <LayoutDashboard />, end: true },
-    { to: "/stock-manager-dash/inventories",  label: "Product's Catalog", icon: <Boxes />            },
-    { to: "/stock-manager-dash/ar",           label: "AR/3D Management",  icon: <Bot size={18} />    },
-    { to: "/stock-manager-dash/deliveries",   label: "Delivery",          icon: <Truck />            },
-    { to: "/stock-manager-dash/problems",     label: "Problems",          icon: <TriangleAlert />    },
-    { to: "/stock-manager-dash/returns",      label: "Returns",           icon: <RotateCcw />        },
+    { to: "/stock-manager-dash",             label: "Dashboard",         icon: <LayoutDashboard />, end: true },
+    { to: "/stock-manager-dash/inventories", label: "Product's Catalog", icon: <Boxes />            },
+    { to: "/stock-manager-dash/ar",          label: "AR/3D Management",  icon: <Bot size={18} />    },
+    { to: "/stock-manager-dash/deliveries",  label: "Delivery",          icon: <Truck />            },
+    { to: "/stock-manager-dash/problems",    label: "Problems",          icon: <TriangleAlert />    },
+    { to: "/stock-manager-dash/returns",     label: "Returns",           icon: <RotateCcw />        },
   ];
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -670,16 +729,17 @@ export function ProductCatalogPage() {
 
           {/* FLASH */}
           {message && (
-            <div className={`p-3 rounded-lg border-l-4 text-sm font-medium transition-all ${messageType === "success"
+            <div className={`p-3 rounded-lg border-l-4 text-sm font-medium transition-all ${
+              messageType === "success"
                 ? "bg-green-50 text-green-800 border-green-500"
-                : "bg-red-50 text-red-800 border-red-500"}`}>
+                : "bg-red-50 text-red-800 border-red-500"
+            }`}>
               {message}
             </div>
           )}
 
           {/* FILTERS */}
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-3">
-            {/* Search */}
             <div className="flex items-center gap-2 h-10 border border-gray-200 bg-gray-50 px-3 rounded-xl w-full focus-within:ring-2 focus-within:ring-indigo-500">
               <Search size={15} className="text-gray-400 shrink-0" />
               <input
@@ -691,7 +751,6 @@ export function ProductCatalogPage() {
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
-              {/* Category */}
               <select
                 className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none capitalize"
                 value={filters.category}
@@ -699,7 +758,6 @@ export function ProductCatalogPage() {
                 {categories.map((o, i) => <option key={i} value={o}>{o}</option>)}
               </select>
 
-              {/* Color */}
               <select
                 className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none capitalize"
                 value={filters.color}
@@ -707,7 +765,6 @@ export function ProductCatalogPage() {
                 {allColors.map((o, i) => <option key={i} value={o}>{o}</option>)}
               </select>
 
-              {/* Approval */}
               <select
                 className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 value={filters.approval}
@@ -718,7 +775,6 @@ export function ProductCatalogPage() {
                 <option value="rejected">Rejected</option>
               </select>
 
-              {/* Stock status */}
               <select
                 className="h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 value={filters.status}
@@ -729,8 +785,6 @@ export function ProductCatalogPage() {
                 <option value="Out of Stock">Out of Stock</option>
               </select>
 
-              {/* ─── FIX 3: price inputs are controlled separately so an empty
-                  field means "no bound" rather than 0 or NaN.                */}
               <div className="flex items-center gap-1.5 h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm">
                 <DollarSign size={12} className="text-gray-400 shrink-0" />
                 <input
@@ -756,7 +810,6 @@ export function ProductCatalogPage() {
                 />
               </div>
 
-              {/* Active filter indicator */}
               {filteredProducts.length !== products.length && (
                 <span className="text-xs text-indigo-600 font-medium bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full">
                   {filteredProducts.length} of {products.length} shown
@@ -765,10 +818,8 @@ export function ProductCatalogPage() {
             </div>
           </div>
 
-          {/* TABLE — horizontal scroll wrapper so it never clips on smaller screens */}
+          {/* TABLE */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-            {/* ─── FIX 4: header uses 8 evenly-sized columns (no col-span tricks)
-                so every data row aligns correctly.                            */}
             <div className="min-w-[860px]">
               <div className="grid grid-cols-[2fr_1fr_1fr_0.7fr_0.7fr_1fr_1fr_0.8fr] bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-400 tracking-widest uppercase border-b border-gray-100">
                 <span>Product</span>
@@ -801,7 +852,7 @@ export function ProductCatalogPage() {
                   const approvalStatus  = getApprovalStatus(p);
                   const deleteReqStatus = getDeleteRequestStatus(p);
                   const isRejected      = approvalStatus === "rejected";
-                  const hasPendingDelete= deleteReqStatus === "pending";
+                  const hasPendingDelete = deleteReqStatus === "pending";
 
                   return (
                     <div
@@ -812,7 +863,6 @@ export function ProductCatalogPage() {
                         !p.is_active     ? "bg-amber-50/20" : ""
                       }`}
                     >
-                      {/* Product */}
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative shrink-0">
                           <img
@@ -857,9 +907,7 @@ export function ProductCatalogPage() {
                         {stockStatus}
                       </span>
 
-                      <div>
-                        <ApprovalBadge status={approvalStatus} />
-                      </div>
+                      <div><ApprovalBadge status={approvalStatus} /></div>
 
                       <div className="flex gap-3 text-gray-300">
                         <button onClick={() => handleEdit(p)} title="Edit"
@@ -880,7 +928,6 @@ export function ProductCatalogPage() {
               )}
             </div>
 
-            {/* Footer count */}
             {!loading && products.length > 0 && (
               <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/60 rounded-b-xl">
                 <p className="text-xs text-gray-400">
@@ -1072,13 +1119,33 @@ export function ProductCatalogPage() {
                   </select>
                 </Field>
 
+                {/* ── SKU field with live duplicate detection ── */}
                 <Field label="SKU *" icon={Hash} error={errors.sku}>
-                  <input
-                    placeholder="SKU-000"
-                    value={newProduct.sku || ""}
-                    className={getInputCls(errors, "sku")}
-                    onChange={(e) => { setNewProduct({ ...newProduct, sku: e.target.value }); clearError("sku"); }}
-                  />
+                  <div className="relative">
+                    <input
+                      placeholder="SKU-000"
+                      value={newProduct.sku || ""}
+                      className={getInputCls(errors, "sku")}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewProduct((prev) => ({ ...prev, sku: val }));
+                        // Clear any existing SKU error immediately so the
+                        // user sees feedback reset while they type
+                        setErrors((prev) => { const n = { ...prev }; delete n.sku; return n; });
+                        // Kick off debounced duplicate check
+                        checkSkuDuplicate(val, selectedProductId);
+                      }}
+                    />
+                    {/* Subtle "checking…" spinner inside the field */}
+                    {skuChecking && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <svg className="animate-spin w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
                 </Field>
               </div>
 
@@ -1115,8 +1182,11 @@ export function ProductCatalogPage() {
                 className="px-4 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-sm text-gray-600 transition cursor-pointer">
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saveLoading}
-                className="px-5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-medium transition cursor-pointer flex items-center gap-2 disabled:opacity-60">
+              <button
+                onClick={handleSave}
+                disabled={saveLoading || skuChecking || !!errors.sku}
+                className="px-5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-medium transition cursor-pointer flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
                 {saveLoading ? (
                   <>
                     <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
@@ -1124,6 +1194,14 @@ export function ProductCatalogPage() {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                     </svg>
                     {editMode ? "Updating…" : "Creating…"}
+                  </>
+                ) : skuChecking ? (
+                  <>
+                    <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Checking SKU…
                   </>
                 ) : editMode
                   ? <><Pencil size={14} /> Save & Request Re-approval</>
