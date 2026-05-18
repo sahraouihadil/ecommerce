@@ -61,6 +61,27 @@ const GLOBAL_STYLES = `
     from { opacity: 0; transform: translateX(10px); }
     to   { opacity: 1; transform: translateX(0); }
   }
+
+  .bell-silent-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bell-silent-wrap::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 130%;
+    height: 1.5px;
+    background: currentColor;
+    opacity: 0.7;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
   .nav-link-animated { position: relative; text-decoration: none; }
   .nav-link-animated::after {
     content: ''; position: absolute; bottom: -2px; left: 0;
@@ -102,10 +123,10 @@ function Badge({ count, small }) {
   );
 }
 
-const TYPE_ICON = { order: '📦', promotion: '🎁', newsletter: '📰', delivery: '🛵', complaint: '💬' };
-const TYPE_COLOR = { order: '#e8f4fd', promotion: '#fdf3e8', newsletter: '#f0fdf4', delivery: '#fdf0f8', complaint: '#fdf5e8' };
+const TYPE_ICON = { order: '📦', promotion: '🎁', newsletter: '📰', delivery: '🛵', complaint: '💬', campaign: '🎁' };
+const TYPE_COLOR = { order: '#e8f4fd', promotion: '#fdf3e8', newsletter: '#f0fdf4', delivery: '#fdf0f8', complaint: '#fdf5e8', campaign: '#fdf3e8' };
 
-function NotificationDropdown({ notifications, unreadCount, markRead, markAllRead, onClose }) {
+function NotificationDropdown({ notifications, unreadCount, markRead, markAllRead, onClose, isSilent }) {
   return (
     <div style={{
       position: 'absolute', top: 'calc(100% + 14px)', right: '-8px', width: '340px',
@@ -129,6 +150,15 @@ function NotificationDropdown({ notifications, unreadCount, markRead, markAllRea
           {unreadCount > 0 && (
             <span style={{ background: '#b07d62', color: '#fff', borderRadius: '999px', fontSize: '10px', fontWeight: '700', padding: '1px 7px', lineHeight: '16px' }}>{unreadCount}</span>
           )}
+          {isSilent && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '3px',
+              background: 'rgba(0,0,0,0.05)', borderRadius: '999px',
+              padding: '1px 7px', fontSize: '10px', color: '#aaa', fontWeight: '500',
+            }}>
+              silent
+            </span>
+          )}
         </div>
         {unreadCount > 0 && (
           <button onClick={markAllRead} style={{ fontSize: '11px', color: '#b07d62', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600', fontFamily: "'Georgia', serif", padding: '4px 8px', borderRadius: '8px', transition: 'background 0.2s' }}
@@ -140,8 +170,10 @@ function NotificationDropdown({ notifications, unreadCount, markRead, markAllRea
       <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
         {notifications.length === 0 ? (
           <div style={{ padding: '40px 0', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔔</div>
-            <p style={{ color: '#bbb', fontSize: '13px', margin: 0 }}>No notifications yet.</p>
+            <div style={{ fontSize: '28px', marginBottom: '8px' }}>{isSilent ? '🔕' : '🔔'}</div>
+            <p style={{ color: '#bbb', fontSize: '13px', margin: 0 }}>
+              {isSilent ? 'Notifications are silenced.' : 'No notifications yet.'}
+            </p>
           </div>
         ) : notifications.map((n, i) => (
           <div key={n.id} onClick={() => markRead(n.id)} style={{
@@ -153,7 +185,9 @@ function NotificationDropdown({ notifications, unreadCount, markRead, markAllRea
             onMouseEnter={e => e.currentTarget.style.background = '#f5ede6'}
             onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#faf6f1'}
           >
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: TYPE_COLOR[n.type] ?? '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>{TYPE_ICON[n.type] ?? '🔔'}</div>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: TYPE_COLOR[n.type] ?? '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
+              {TYPE_ICON[n.type] ?? '🔔'}
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: '12.5px', fontWeight: n.is_read ? '400' : '700', margin: 0, color: '#1a1a1a', lineHeight: 1.3 }}>{n.title}</p>
               <p style={{ fontSize: '11.5px', color: '#999', margin: '3px 0 0', lineHeight: 1.4 }}>{n.body}</p>
@@ -177,33 +211,64 @@ function NotificationDropdown({ notifications, unreadCount, markRead, markAllRea
   );
 }
 
-function NotificationBell({ notifications, unreadCount, markRead, markAllRead }) {
+function NotificationBell({ notifications, unreadCount, markRead, markAllRead, isSilent }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler); // ✅ FIX: added touchstart for mobile
+    document.addEventListener('touchstart', handler);
     return () => {
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
     };
   }, []);
+
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-      <button onClick={() => setOpen(v => !v)} title="Notifications" className="bell-btn icon-btn"
-        style={{ background: open ? 'rgba(176,125,98,.1)' : 'none', border: 'none', cursor: 'pointer', position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '8px', color: 'inherit', transition: 'background 0.2s' }}
+      <button
+        onClick={() => setOpen(v => !v)}
+        title={isSilent ? 'Notifications (silenced)' : 'Notifications'}
+        className="bell-btn icon-btn"
+        style={{
+          background: open ? 'rgba(176,125,98,.1)' : 'none',
+          border: 'none', cursor: 'pointer', position: 'relative',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          padding: '4px', borderRadius: '8px',
+          color: isSilent ? 'rgba(150,130,120,0.55)' : 'inherit',
+          transition: 'background 0.2s, color 0.3s',
+        }}
       >
-        <span className="material-symbols-outlined bell-icon text-[22px]">{unreadCount > 0 ? 'notifications_active' : 'notifications'}</span>
+        {isSilent ? (
+          <span className="bell-silent-wrap">
+            <span className="material-symbols-outlined bell-icon text-[22px]" style={{ opacity: 0.55 }}>
+              notifications
+            </span>
+          </span>
+        ) : (
+          <span className="material-symbols-outlined bell-icon text-[22px]">
+            {unreadCount > 0 ? 'notifications_active' : 'notifications'}
+          </span>
+        )}
         {unreadCount > 0 && <Badge count={unreadCount} />}
       </button>
-      {open && <NotificationDropdown notifications={notifications} unreadCount={unreadCount} markRead={markRead} markAllRead={markAllRead} onClose={() => setOpen(false)} />}
+
+      {open && (
+        <NotificationDropdown
+          notifications={notifications}
+          unreadCount={unreadCount}
+          markRead={markRead}
+          markAllRead={markAllRead}
+          onClose={() => setOpen(false)}
+          isSilent={isSilent}
+        />
+      )}
     </div>
   );
 }
 
-// ── Mobile drawer notification sub-panel ──────────────────────────────────────
-function DrawerNotifPanel({ notifications, unreadCount, markRead, markAllRead, onClose }) {
+function DrawerNotifPanel({ notifications, unreadCount, markRead, markAllRead, onClose, isSilent }) {
   return (
     <div style={{
       position: 'absolute', inset: 0, zIndex: 20, background: '#faf7f4',
@@ -221,20 +286,38 @@ function DrawerNotifPanel({ notifications, unreadCount, markRead, markAllRead, o
         >
           <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>arrow_back</span>
         </button>
-        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '0.03em', flex: 1 }}>Notifications</span>
-        {unreadCount > 0 && (
+        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '17px', fontWeight: '600', color: '#1a1a1a', letterSpacing: '0.03em', flex: 1 }}>
+          Notifications
+        </span>
+        {isSilent ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.05)', borderRadius: '999px', padding: '2px 8px', fontSize: '10px', color: '#aaa', fontWeight: '500' }}>
+            silent
+          </span>
+        ) : unreadCount > 0 ? (
           <span style={{ background: '#b07d62', color: '#fff', borderRadius: '999px', fontSize: '10px', fontWeight: '700', padding: '2px 8px', lineHeight: '16px' }}>{unreadCount}</span>
-        )}
+        ) : null}
       </div>
 
-      {unreadCount > 0 && (
+      {!isSilent && unreadCount > 0 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 24px', borderBottom: '1px solid rgba(176,125,98,.07)', background: 'rgba(176,125,98,.02)' }}>
-          <button onClick={markAllRead} style={{ fontSize: '11px', color: '#b07d62', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600', fontFamily: "'Georgia', serif" }}>Mark all as read</button>
+          <button onClick={markAllRead} style={{ fontSize: '11px', color: '#b07d62', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600', fontFamily: "'Georgia', serif" }}>
+            Mark all as read
+          </button>
         </div>
       )}
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {notifications.length === 0 ? (
+        {isSilent && notifications.length === 0 ? (
+          <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '36px', marginBottom: '12px', opacity: 0.3 }}>🔕</div>
+            <p style={{ color: '#bbb', fontSize: '13px', margin: 0, fontFamily: "'Cormorant Garamond', serif", letterSpacing: '0.04em' }}>
+              Order notifications are silenced.
+            </p>
+            <p style={{ color: '#ccc', fontSize: '11px', margin: '6px 0 0', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>
+              Turn them on in Profile → Notifications.
+            </p>
+          </div>
+        ) : notifications.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: '36px', marginBottom: '12px', opacity: 0.3 }}>🔔</div>
             <p style={{ color: '#bbb', fontSize: '13px', margin: 0, fontFamily: "'Cormorant Garamond', serif", letterSpacing: '0.04em' }}>You're all caught up.</p>
@@ -249,11 +332,15 @@ function DrawerNotifPanel({ notifications, unreadCount, markRead, markAllRead, o
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(176,125,98,.09)'}
             onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(176,125,98,.04)'}
           >
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0, background: TYPE_COLOR[n.type] ?? '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', marginTop: '1px' }}>{TYPE_ICON[n.type] ?? '🔔'}</div>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0, background: TYPE_COLOR[n.type] ?? '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', marginTop: '1px' }}>
+              {TYPE_ICON[n.type] ?? '🔔'}
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: '12.5px', fontWeight: n.is_read ? '400' : '700', margin: 0, color: '#1a1a1a', fontFamily: "'Georgia', serif", lineHeight: 1.35 }}>{n.title}</p>
               <p style={{ fontSize: '11.5px', color: '#999', margin: '3px 0 0', fontFamily: "'Georgia', serif", lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{n.body}</p>
-              <p style={{ fontSize: '10px', color: '#c0b4aa', margin: '5px 0 0', fontFamily: "'Georgia', serif" }}>{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+              <p style={{ fontSize: '10px', color: '#c0b4aa', margin: '5px 0 0', fontFamily: "'Georgia', serif" }}>
+                {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
             </div>
             {!n.is_read && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#b07d62', flexShrink: 0, marginTop: '7px' }} />}
           </div>
@@ -263,7 +350,6 @@ function DrawerNotifPanel({ notifications, unreadCount, markRead, markAllRead, o
   );
 }
 
-// ── Main Header ────────────────────────────────────────────────────────────────
 export function Header() {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -286,17 +372,11 @@ export function Header() {
     } else { setUser(null); }
   }, [location.pathname]);
 
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications(!!user);
+  const { notifications, unreadCount, markRead, markAllRead, isSilent } =
+    useNotifications(!!user);
 
-  // ✅ FIX 1: Close drawer + notif panel on every route change
-  useEffect(() => {
-    setMenuOpen(false);
-    setNotifOpen(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (!menuOpen) setNotifOpen(false);
-  }, [menuOpen]);
+  useEffect(() => { setMenuOpen(false); setNotifOpen(false); }, [location.pathname]);
+  useEffect(() => { if (!menuOpen) setNotifOpen(false); }, [menuOpen]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -317,7 +397,6 @@ export function Header() {
     return () => window.removeEventListener('aroom:counts', handler);
   }, []);
 
-  // ✅ FIX 2: iOS Safari scroll lock — saves scroll position before locking so page doesn't jump
   useEffect(() => {
     const chatbot = document.getElementById('roomie-widget') || document.querySelector('[class*="roomie"], [id*="roomie"]');
     if (menuOpen) {
@@ -333,7 +412,7 @@ export function Header() {
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
-      window.scrollTo(0, scrollY);   // restore exact scroll position
+      window.scrollTo(0, scrollY);
       if (chatbot) chatbot.style.visibility = '';
     }
     return () => {
@@ -378,15 +457,8 @@ export function Header() {
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="flex items-center justify-between">
 
-              <Link
-                to="/"
-                style={{
-                  fontFamily: "'Cinzel Decorative', cursive",
-                  transition: 'letter-spacing 0.3s, color 0.3s',
-                  pointerEvents: 'auto',
-                  position: 'relative',
-                  zIndex: 10,
-                }}
+              <Link to="/"
+                style={{ fontFamily: "'Cinzel Decorative', cursive", transition: 'letter-spacing 0.3s, color 0.3s', pointerEvents: 'auto', position: 'relative', zIndex: 10 }}
                 className="text-2xl font-bold text-primary hover:text-accent2 transition-colors duration-300 select-none"
                 onMouseEnter={e => e.currentTarget.style.letterSpacing = '0.04em'}
                 onMouseLeave={e => e.currentTarget.style.letterSpacing = ''}
@@ -413,7 +485,17 @@ export function Header() {
                   <span className="material-symbols-outlined text-[22px]">shopping_bag</span>
                   <Badge count={cartCount} />
                 </Link>
-                {user && <NotificationBell notifications={notifications} unreadCount={unreadCount} markRead={markRead} markAllRead={markAllRead} />}
+
+                {user && (
+                  <NotificationBell
+                    notifications={notifications}
+                    unreadCount={unreadCount}
+                    markRead={markRead}
+                    markAllRead={markAllRead}
+                    isSilent={isSilent}
+                  />
+                )}
+
                 {user ? (
                   <div className="flex items-center gap-4 ml-4 pl-4 border-l border-blush/60">
                     <Link to="/profile" className="text-[0.8125rem] font-medium text-primary hover:text-accent2 transition-colors duration-300"
@@ -431,15 +513,24 @@ export function Header() {
               </div>
 
               <div className="flex lg:hidden items-center gap-3">
-                {/* notification badge shortcut — taps open the drawer directly on the notif panel */}
                 {user && (
                   <button
                     onClick={() => { setMenuOpen(true); setTimeout(() => setNotifOpen(true), 50); }}
-                    title="Notifications"
-                    style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '8px', color: 'inherit' }}
+                    title={isSilent ? 'Notifications (silenced)' : 'Notifications'}
+                    style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '8px', color: isSilent ? 'rgba(150,130,120,0.55)' : 'inherit', transition: 'color 0.3s' }}
                     className="icon-btn text-muted hover:text-primary transition-colors duration-300"
                   >
-                    <span className="material-symbols-outlined text-[20px]">{unreadCount > 0 ? 'notifications_active' : 'notifications'}</span>
+                    {isSilent ? (
+                      <span className="bell-silent-wrap">
+                        <span className="material-symbols-outlined text-[20px]" style={{ opacity: 0.55 }}>
+                          notifications
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="material-symbols-outlined text-[20px]">
+                        {unreadCount > 0 ? 'notifications_active' : 'notifications'}
+                      </span>
+                    )}
                     <Badge count={unreadCount} small />
                   </button>
                 )}
@@ -460,7 +551,6 @@ export function Header() {
         </div>
       </header>
 
-      {/* Overlay */}
       <div onClick={() => setMenuOpen(false)} style={{
         position: 'fixed', inset: 0, zIndex: 199,
         background: 'rgba(30,22,18,.5)', backdropFilter: 'blur(4px)',
@@ -468,47 +558,30 @@ export function Header() {
         pointerEvents: menuOpen ? 'auto' : 'none',
       }} />
 
-      {/* ✅ FIX 3: Drawer — responsive width + overflow hidden (required for DrawerNotifPanel absolute positioning) */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: 'min(310px, 88vw)',   // ← responsive: never wider than 88% of the viewport
-        zIndex: 200,
+        width: 'min(310px, 88vw)', zIndex: 200,
         transform: menuOpen ? 'translateX(0)' : 'translateX(105%)',
         transition: 'transform .42s cubic-bezier(.16,1,.3,1)',
         display: 'flex', flexDirection: 'column', background: '#faf7f4',
         boxShadow: menuOpen ? '-12px 0 60px rgba(0,0,0,.14)' : 'none',
-        overflow: 'hidden',   // ← clips DrawerNotifPanel correctly
-        // ✅ FIX 4: position is already 'fixed' so inset: 0 on child panel works automatically
+        overflow: 'hidden',
       }} className="lg:hidden">
 
-        {/* Top bar */}
         <div className="flex items-center justify-between px-6 py-5">
-          <Link
-            to="/"
-            onClick={() => setMenuOpen(false)}
+          <Link to="/" onClick={() => setMenuOpen(false)}
             style={{ fontFamily: "'Cinzel Decorative', cursive", textDecoration: 'none' }}
             className="text-sm font-bold text-primary"
           >ARoom</Link>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {/* close handled by header hamburger toggle */}
-          </div>
         </div>
-
         <div className="h-px bg-blush/40 mx-6" />
 
-        {/* Quick icons */}
         <div className="flex items-center justify-around px-6 py-4">
-          {drawerIconLinks.map(({ to, label, icon, count }, i) => (
+          {drawerIconLinks.map(({ to, label, icon, count }) => (
             <Link key={to} to={to} onClick={() => setMenuOpen(false)}
               className={`flex flex-col items-center gap-1 transition-colors duration-200 ${location.pathname === to ? 'text-accent2' : 'text-muted hover:text-primary'}`}
             >
-              <span style={{
-                position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: 40, height: 40, borderRadius: '50%',
-                background: location.pathname === to ? 'rgba(176,125,98,.12)' : 'rgba(0,0,0,.04)',
-                transition: 'background 0.2s, transform 0.2s',
-              }}
+              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: location.pathname === to ? 'rgba(176,125,98,.12)' : 'rgba(0,0,0,.04)', transition: 'background 0.2s, transform 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                 onMouseLeave={e => e.currentTarget.style.transform = ''}
               >
@@ -522,7 +595,6 @@ export function Header() {
 
         <div className="h-px bg-blush/40 mx-6" />
 
-        {/* Nav links */}
         <nav className="flex flex-col px-6 pt-2 flex-1 overflow-y-auto">
           {navLinks.map((link, i) => (
             <Link key={link.to} to={link.to} onClick={() => setMenuOpen(false)}
@@ -550,7 +622,6 @@ export function Header() {
           </div>
         </nav>
 
-        {/* Socials */}
         <div className="px-6 py-5 border-t border-blush/30">
           <p className="text-[0.6rem] uppercase tracking-[0.15em] text-muted mb-3">Follow us</p>
           <div className="flex items-center gap-4">
@@ -570,7 +641,6 @@ export function Header() {
           </div>
         </div>
 
-        {/* Notification sub-panel — slides over the whole drawer */}
         {user && notifOpen && (
           <DrawerNotifPanel
             notifications={notifications}
@@ -578,6 +648,7 @@ export function Header() {
             markRead={markRead}
             markAllRead={markAllRead}
             onClose={() => setNotifOpen(false)}
+            isSilent={isSilent}
           />
         )}
       </div>

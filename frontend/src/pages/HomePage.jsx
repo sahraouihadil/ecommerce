@@ -287,6 +287,30 @@ function getImageUrl(product) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CAMPAIGNS SECTION
 // ─────────────────────────────────────────────────────────────────────────────
+// ✅ FIX BUG 3: CampaignsSection — tkhouba ki campaigns pref = false
+// Bdel el section kolha, ghi bdel el partie CampaignsSection
+// (el baki HomePage mhich tbeddel)
+
+// FIND this block in your HomePage.jsx and REPLACE it:
+//
+// OLD:
+//   if (campaigns.length === 0) return (
+//     <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
+//       <p className="font-cormorant italic text-muted">No active campaigns at the moment.</p>
+//     </div>
+//   );
+//
+// NEW (add the guard BEFORE the empty check):
+//   if (!campaignsNotifOn) return null;
+//
+//   if (campaigns.length === 0) return (
+//     <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
+//       <p className="font-cormorant italic text-muted">No active campaigns at the moment.</p>
+//     </div>
+//   );
+
+// ── FULL CORRECTED CampaignsSection (copy-paste ready) ──────────────────────
+
 function CampaignsSection() {
   const navigate = useNavigate();
   const ref = useRef(null);
@@ -294,23 +318,44 @@ function CampaignsSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [campaignsNotifOn, setCampaignsNotifOn] = useState(() => {
+    try {
+      const raw = localStorage.getItem("notif_prefs");
+      return raw ? (JSON.parse(raw).campaigns ?? false) : false;
+    } catch { return false; }
+  });
+
   useEffect(() => {
-  api.get('/api/campaigns/active')
-    .then(res => {
-      const data = res.data;
-      console.log(res.data)
-      setCampaigns(Array.isArray(data) ? data : data.items ?? []);
-    })
-    .catch(err => { setError(err.message); setCampaigns([]); })
-    .finally(() => setLoading(false));
-}, []);
+    const sync = () => {
+      try {
+        const raw = localStorage.getItem("notif_prefs");
+        setCampaignsNotifOn(raw ? (JSON.parse(raw).campaigns ?? false) : false);
+      } catch { }
+    };
+    window.addEventListener("notifPrefsUpdated", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("notifPrefsUpdated", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    api.get("/api/campaigns/active")
+      .then(res => {
+        const data = res.data;
+        setCampaigns(Array.isArray(data) ? data : data.items ?? []);
+      })
+      .catch(err => { setError(err.message); setCampaigns([]); })
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     if (campaigns.length === 0) return;
     const container = ref.current;
     if (!container) return;
     setTimeout(() => {
-      container.querySelectorAll('.sr').forEach(t => t.classList.add('visible'));
+      container.querySelectorAll(".sr").forEach(t => t.classList.add("visible"));
     }, 50);
   }, [campaigns]);
 
@@ -319,12 +364,14 @@ function CampaignsSection() {
       <p className="font-cormorant italic text-muted">Loading campaigns...</p>
     </div>
   );
-
   if (error) return (
     <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
-      <p className="font-cormorant italic" style={{ color: '#b95c3a' }}>Failed to load campaigns: {error}</p>
+      <p className="font-cormorant italic" style={{ color: "#b95c3a" }}>Failed to load campaigns: {error}</p>
     </div>
   );
+
+  // ✅ FIX: khoubi el section ki l'utilisateur désactivé campaigns notifications
+  if (!campaignsNotifOn) return null;
 
   if (campaigns.length === 0) return (
     <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
@@ -333,27 +380,36 @@ function CampaignsSection() {
   );
 
   const handleCampaignClick = (camp) => {
-    navigate(camp.campaign_type ? `/furniture?campaign=${camp.campaign_type}` : '/furniture');
+    navigate(camp.campaign_type ? `/furniture?campaign=${camp.campaign_type}` : "/furniture");
   };
 
   const discountLabel = (camp) => {
     if (!camp.discount) return null;
-    return camp.discount_type === 'percentage'
+    return camp.discount_type === "percentage"
       ? `${camp.discount}% OFF selected items`
       : `${camp.discount} DA off selected items`;
   };
 
   const ctaLabel = (camp) => {
-    if (camp.campaign_type === 'sale') return 'SHOP THE SALE';
-    if (camp.campaign_type === 'new') return 'DISCOVER NOW';
-    return 'SHOP NOW';
+    if (camp.campaign_type === "sale") return "SHOP THE SALE";
+    if (camp.campaign_type === "new") return "DISCOVER NOW";
+    return "SHOP NOW";
   };
+
+  const BASE = "http://127.0.0.1:8000";
 
   return (
     <div ref={ref} className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
       <div className="sr sr-left text-center mb-8">
         <p className="font-cinzel text-sm uppercase tracking-[0.2em] text-blush">🔥 Limited Time Offers</p>
         <h2 className="font-cinzel text-3xl md:text-4xl font-bold mt-2">CURRENT CAMPAIGNS</h2>
+
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginTop: "10px", padding: "4px 12px", borderRadius: "999px", background: campaignsNotifOn ? "rgba(200,169,106,0.1)" : "rgba(0,0,0,0.04)", border: `1px solid ${campaignsNotifOn ? "rgba(200,169,106,0.35)" : "rgba(0,0,0,0.08)"}`, transition: "all 0.3s ease" }}>
+          <span style={{ fontSize: "11px" }}>{campaignsNotifOn ? "🔔" : "🔕"}</span>
+          <span style={{ fontFamily: "sans-serif", fontSize: "0.55rem", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: "600", color: campaignsNotifOn ? "#C8A96A" : "#aaa", transition: "color 0.3s" }}>
+            {campaignsNotifOn ? "Campaign notifications on" : "Campaign notifications off"}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -362,20 +418,33 @@ function CampaignsSection() {
             key={camp.id}
             className={`sr sr-scale sr-d${Math.min(idx + 1, 6)}`}
             style={{
-              background: 'rgba(200,169,106,0.06)',
-              border: '1px solid rgba(200,169,106,0.25)',
-              borderRadius: '1.5rem',
-              padding: '2rem',
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
+              background: "rgba(200,169,106,0.06)",
+              border: "1px solid rgba(200,169,106,0.25)",
+              borderRadius: "1.5rem",
+              padding: "2rem",
+              textAlign: "center",
+              transition: "all 0.3s ease",
+              position: "relative",
+              overflow: "hidden",
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.1)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
           >
-            <p style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#C8A96A', marginBottom: '0.5rem' }}>
+            {campaignsNotifOn && (
+              <div style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0, bottom: 0,
+                borderRadius: "1.5rem",
+                border: "1.5px solid rgba(200,169,106,0.4)",
+                pointerEvents: "none",
+                animation: "campRing 2.5s ease-in-out infinite",
+              }} />
+            )}
+
+            <p style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "0.7rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "#C8A96A", marginBottom: "0.5rem" }}>
               ✨ Campaign
             </p>
-            <h3 style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 'clamp(1.25rem, 3vw, 1.75rem)', fontWeight: 700, color: '#1C1916', marginBottom: '0.5rem' }}>
+            <h3 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: "clamp(1.25rem,3vw,1.75rem)", fontWeight: 700, color: "#1C1916", marginBottom: "0.5rem" }}>
               {camp.title || camp.name}
             </h3>
 
@@ -383,53 +452,53 @@ function CampaignsSection() {
               <img
                 src={`${BASE}${camp.image_url}`}
                 alt={camp.title}
-                style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '1rem', margin: '1rem 0' }}
-                onError={e => { e.target.style.display = 'none'; }}
+                style={{ width: "100%", maxHeight: "160px", objectFit: "cover", borderRadius: "1rem", margin: "1rem 0" }}
+                onError={e => { e.target.style.display = "none"; }}
               />
             )}
 
             {discountLabel(camp) && (
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: '1.1rem', color: '#6B5F52', marginTop: '0.5rem' }}>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontStyle: "italic", fontSize: "1.1rem", color: "#6B5F52", marginTop: "0.5rem" }}>
                 {discountLabel(camp)}
               </p>
             )}
 
             {camp.code && (
-              <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1rem', marginTop: '0.75rem', color: '#1C1916' }}>
-                Use code:{' '}
-                <span style={{ fontWeight: 700, background: 'rgba(255,255,255,0.6)', padding: '2px 10px', borderRadius: '6px', letterSpacing: '0.08em' }}>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "1rem", marginTop: "0.75rem", color: "#1C1916" }}>
+                Use code:{" "}
+                <span style={{ fontWeight: 700, background: "rgba(255,255,255,0.6)", padding: "2px 10px", borderRadius: "6px", letterSpacing: "0.08em" }}>
                   {camp.code}
                 </span>
               </p>
             )}
 
             {camp.usage_max > 0 && (
-              <p style={{ fontFamily: 'sans-serif', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#B0A090', marginTop: '0.5rem' }}>
+              <p style={{ fontFamily: "sans-serif", fontSize: "0.6rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#B0A090", marginTop: "0.5rem" }}>
                 {camp.usage_max - camp.usage_current} uses remaining
               </p>
             )}
 
             <button
               onClick={() => handleCampaignClick(camp)}
-              style={{
-                marginTop: '1.5rem', background: '#1C1916', color: '#FAF8F4',
-                border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem',
-                fontFamily: "'Cormorant Garamond', serif", fontSize: '0.875rem',
-                fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase',
-                cursor: 'pointer', transition: 'background 0.25s ease',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#C8A96A'; e.currentTarget.style.color = '#1C1916'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#1C1916'; e.currentTarget.style.color = '#FAF8F4'; }}
+              style={{ marginTop: "1.5rem", background: "#1C1916", color: "#FAF8F4", border: "none", padding: "0.75rem 2rem", borderRadius: "2rem", fontFamily: "'Cormorant Garamond',serif", fontSize: "0.875rem", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", cursor: "pointer", transition: "background 0.25s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#C8A96A"; e.currentTarget.style.color = "#1C1916"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#1C1916"; e.currentTarget.style.color = "#FAF8F4"; }}
             >
               {ctaLabel(camp)}
             </button>
           </div>
         ))}
       </div>
+
+      <style>{`
+        @keyframes campRing {
+          0%,100% { opacity: 0.4; transform: scale(1);    }
+          50%      { opacity: 0.9; transform: scale(1.01); }
+        }
+      `}</style>
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HOME PAGE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -448,11 +517,11 @@ export function HomePage() {
   const newsletterRef = useScrollReveal([products]);
 
   useEffect(() => {
-  api.get("/api/products").then(res => {
-    const data = res.data;
-    setProducts(Array.isArray(data) ? data : data.items ?? data.products ?? []);
-  }).catch(console.error);
-}, []);
+    api.get("/api/products").then(res => {
+      const data = res.data;
+      setProducts(Array.isArray(data) ? data : data.items ?? data.products ?? []);
+    }).catch(console.error);
+  }, []);
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
   const filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
