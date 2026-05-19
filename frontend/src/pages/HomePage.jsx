@@ -228,7 +228,7 @@ function ExitPopup() {
     setLoading(true);
     try {
       await api.post('/api/newsletters', { email, tags: [] });
-      setStatus("✅ You're subscribed! Check your inbox for your discount code.");
+      setStatus(" You're subscribed! Check your inbox for your discount code.");
       setTimeout(() => setIsOpen(false), 2500);
     } catch (err) {
       if (err.response?.status === 400) {
@@ -287,29 +287,6 @@ function getImageUrl(product) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CAMPAIGNS SECTION
 // ─────────────────────────────────────────────────────────────────────────────
-// ✅ FIX BUG 3: CampaignsSection — tkhouba ki campaigns pref = false
-// Bdel el section kolha, ghi bdel el partie CampaignsSection
-// (el baki HomePage mhich tbeddel)
-
-// FIND this block in your HomePage.jsx and REPLACE it:
-//
-// OLD:
-//   if (campaigns.length === 0) return (
-//     <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
-//       <p className="font-cormorant italic text-muted">No active campaigns at the moment.</p>
-//     </div>
-//   );
-//
-// NEW (add the guard BEFORE the empty check):
-//   if (!campaignsNotifOn) return null;
-//
-//   if (campaigns.length === 0) return (
-//     <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12 text-center">
-//       <p className="font-cormorant italic text-muted">No active campaigns at the moment.</p>
-//     </div>
-//   );
-
-// ── FULL CORRECTED CampaignsSection (copy-paste ready) ──────────────────────
 
 function CampaignsSection() {
   const navigate = useNavigate();
@@ -370,7 +347,7 @@ function CampaignsSection() {
     </div>
   );
 
-  // ✅ FIX: khoubi el section ki l'utilisateur désactivé campaigns notifications
+  //  when the user deactivate it from his profile
   if (!campaignsNotifOn) return null;
 
   if (campaigns.length === 0) return (

@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import api from "../services/api";
 import { logout } from "../services/auth";
 import { useNavigate } from "react-router-dom";
-// ✅ FIX BUG 1 & 2: istikhdam useNotifications bdel api.get manuel
 import { useNotifications } from "../hooks/useNotifications";
 
 const KEYFRAMES = `
@@ -92,7 +91,7 @@ export function ProfilePage() {
   const [showNotif, setShowNotif] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
 
-  // ✅ FIX: istikhdam useNotifications — filtered + isSilent sah
+  //  FIX:useNotifications — filtered + isSilent true
   const {
     notifications,
     unreadCount,
@@ -121,14 +120,14 @@ export function ProfilePage() {
     } catch (err) { console.error(err); }
   }, []);
 
-  // ✅ FIX: fetchProfile only — notifications handled by useNotifications
+  // FIX: fetchProfile only — notifications handled by useNotifications
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const animOrders = useCountUp(profileInfo?.orders.length ?? 0, 900);
   const animFavorites = useCountUp(profileInfo?.favorites.length ?? 0, 900);
   const animPoints = useCountUp(profileInfo?.stats.points ?? 0, 1200);
 
-  // ✅ FIX: dispatch event so Header + CampaignsSection react instantly
+  // FIX: dispatch event so Header + CampaignsSection react instantly
   const handleSaveNotif = () => {
     localStorage.setItem("notif_prefs", JSON.stringify(notif));
     window.dispatchEvent(new CustomEvent("notifPrefsUpdated", { detail: notif }));
@@ -410,7 +409,7 @@ export function ProfilePage() {
                   style={{ animation: "fadeUp 0.4s ease 460ms both" }}>
                   <span className="flex items-center gap-2">
                     Notifications
-                    {/* ✅ FIX: isSilent jaya men useNotifications — réactif b prefs réels */}
+                    {/* FIX: isSilent jaya men useNotifications — réactif b prefs réels */}
                     {isSilent ? (
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", background: "rgba(0,0,0,0.06)", borderRadius: "999px", padding: "1px 7px", fontSize: "9px", color: "#aaa", fontWeight: "600" }}>
                         🔕 silent
@@ -434,7 +433,7 @@ export function ProfilePage() {
                     </div>
 
                     <div className="max-h-48 overflow-y-auto divide-y divide-[#f5f0ea]">
-                      {/* ✅ FIX: mhich kayna notifLoading — hook handles loading internally */}
+                      {/* FIX: — hook handles loading internally */}
                       {notifications.length === 0 && (
                         <p className="text-center text-xs text-[#bbb] py-5">
                           {isSilent ? "🔕 Order notifications off" : "No notifications yet"}
