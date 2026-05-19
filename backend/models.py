@@ -209,7 +209,7 @@ class Newsletters(Base):
     id         = Column(Integer, primary_key=True, index=True)
     name       = Column(String)
     email      = Column(String, unique=True, index=True)
-    status     = Column(String, default="subscribed")
+    status     = Column(String)
     tags       = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -227,7 +227,7 @@ class Blogs(Base):
     author     = Column(String)
     views      = Column(Integer, default=0)
     status     = Column(String, default="draft")
-    is_active     = Column(Boolean)
+    is_active  = Column(Boolean)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

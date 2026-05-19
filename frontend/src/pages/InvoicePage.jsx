@@ -120,7 +120,7 @@ export function InvoicePage() {
                     const res = await api.get("/api/orders");
                     const found = res.data.find(o => o.id === orderId || String(o.id) === String(orderId));
                     setOrder(found);
-                } catch (err) {
+                } catch{
                     console.warn("Could not fetch order status");
                 }
             };

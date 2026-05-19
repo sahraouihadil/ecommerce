@@ -277,7 +277,7 @@ export function FurniturePage() {
     link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap';
     document.head.appendChild(link);
-    return () => { try { document.head.removeChild(link); } catch { } };
+    return () => { try { document.head.removeChild(link); } catch {""} };
   }, []);
 
   useEffect(() => {
@@ -288,7 +288,7 @@ export function FurniturePage() {
   }, []);
 
   useEffect(() => {
-    if (!campaignParam) { setCampaign(null); return; }
+    if (!campaignParam) { return; }
     api.get('/api/campaigns/active')
       .then(r => {
         const match = r.data.find(c => c.campaign_type === campaignParam);

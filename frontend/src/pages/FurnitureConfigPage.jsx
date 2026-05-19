@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState,useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import { useFurnitureConfig } from '../hooks/useFurnitureConfig'
@@ -40,13 +40,13 @@ export default function FurnitureConfigPage() {
   const { config, update, reset } = useFurnitureConfig()
   const [isOpen, setIsOpen] = useState(false)
   const [toast, setToast] = useState({ visible: false, message: '' })
-  let toastTimer = null
+  const toastTimer =  useRef(null)
 
-  const showToast = (message) => {
-    clearTimeout(toastTimer)
-    setToast({ visible: true, message })
-    toastTimer = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2800)
-  }
+const showToast = (message) => {
+  clearTimeout(toastTimer.current)
+  setToast({ visible: true, message })
+  toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2800)
+}
 
   const handleAddToCart = async () => {
     try {

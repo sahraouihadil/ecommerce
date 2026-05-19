@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import date, datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -42,6 +43,30 @@ def campaign_dict(c: Campaigns) -> dict:
     }
 
 
+def _auto_complete_if_expired(campaign: Campaigns) -> bool:
+    """
+    end_date is a DateTime column, so SQLAlchemy always gives us a datetime.
+    A campaign becomes 'completed' starting the day AFTER its end_date:
+        e.g. end_date = 2025-07-10  →  completed from 2025-07-11 onward.
+    Returns True when the record was modified so the caller knows to commit.
+    """
+    if campaign.status == "completed":
+        return False
+    if not campaign.end_date:
+        return False
+
+    # end_date is DateTime → .date() gives us a plain date for comparison
+    end_date = campaign.end_date.date() if isinstance(campaign.end_date, datetime) else campaign.end_date
+    today    = date.today()
+
+    if today >= end_date + timedelta(days=1):
+        campaign.status    = "completed"
+        campaign.is_active = False
+        return True
+
+    return False
+
+
 @router.get("/")
 def list_campaigns(db: Session = Depends(get_db)):
     campaigns = (
@@ -49,6 +74,17 @@ def list_campaigns(db: Session = Depends(get_db)):
         .order_by(Campaigns.created_at.desc())
         .all()
     )
+
+    dirty = False
+    for c in campaigns:
+        if _auto_complete_if_expired(c):
+            dirty = True
+
+    if dirty:
+        db.commit()
+        for c in campaigns:
+            db.refresh(c)
+
     return [campaign_dict(c) for c in campaigns]
 
 
@@ -83,6 +119,11 @@ def get_campaign(campaign_id: int, db: Session = Depends(get_db)):
     c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if _auto_complete_if_expired(c):
+        db.commit()
+        db.refresh(c)
+
     return campaign_dict(c)
 
 
@@ -112,15 +153,16 @@ def create_campaign(
         start_date    = data["start_date"],
         end_date      = data["end_date"],
         image_url     = None,
-        # Always starts hidden — admin approval (via validation) makes it visible
         is_active     = False,
     )
     db.add(c)
     db.commit()
     db.refresh(c)
 
-    # Only submit a validation request when the manager explicitly sets status="active".
-    # Draft / paused / completed campaigns do not need admin review.
+    if _auto_complete_if_expired(c):
+        db.commit()
+        db.refresh(c)
+
     if c.status == "active":
         import validation_crud as vcrud
         try:
@@ -134,7 +176,6 @@ def create_campaign(
                 submitted_by = current_user["id"],
             )
         except ValueError:
-            # Shouldn't happen on a brand-new campaign, but guard anyway.
             pass
 
     return campaign_dict(c)
@@ -167,11 +208,16 @@ def update_campaign(
     for k, v in updates.items():
         setattr(c, k, v)
 
+    # Check expiry AFTER applying the new end_date so back-dating
+    # closes the campaign immediately without going through approval.
+    if _auto_complete_if_expired(c):
+        db.commit()
+        db.refresh(c)
+        return campaign_dict(c)
+
     new_status = updates.get("status", c.status)
 
     if new_status == "active":
-        # Manager wants this live → needs admin re-approval.
-        # Pull it off the storefront until the admin signs off.
         c.is_active = False
         db.commit()
         db.refresh(c)
@@ -190,7 +236,6 @@ def update_campaign(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
     else:
-        # Status is draft / paused / completed — not visible on storefront.
         c.is_active = False
         db.commit()
         db.refresh(c)
@@ -210,6 +255,11 @@ def redeem_campaign_code(
     c = db.query(Campaigns).filter(Campaigns.id == campaign_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if _auto_complete_if_expired(c):
+        db.commit()
+        db.refresh(c)
+
     if c.status != "active":
         raise HTTPException(status_code=400, detail="Campaign is not active")
     if not c.is_active:

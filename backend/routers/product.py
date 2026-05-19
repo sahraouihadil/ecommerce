@@ -23,9 +23,7 @@ import os, uuid, shutil
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
-BASE_URL = "http://127.0.0.1:8000"
 STATIC   = "static"
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 

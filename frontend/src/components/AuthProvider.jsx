@@ -1,13 +1,11 @@
 // components/AuthProvider.jsx
 
-import { useEffect, useState, createContext, useContext } from "react";
+import { useEffect, useState, createContext} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../services/api";
 
 // ───────────────── CONTEXT ─────────────────
 const AuthContext = createContext(null);
-
-export const useAuth = () => useContext(AuthContext);
 
 // ───────────────── PUBLIC ROUTES ─────────────────
 const PUBLIC_PATHS = [
@@ -18,7 +16,6 @@ const PUBLIC_PATHS = [
   "/",
   "/furniture",
   "/journal",
-  "/contactus",
   "/aboutus",
   "/product",
   "/search",
@@ -43,6 +40,7 @@ const ROLE_ROUTES = {
     "/profile",
     "/favorite",
     "/order",
+    "/contactus"
   ],
 };
 

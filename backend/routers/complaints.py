@@ -28,7 +28,7 @@ def get_complaints(db: Session = Depends(get_db)):
             "id":          c.id,
             "title":       c.title,
             "description": c.description,
-            "date":        c.date,
+            "date":        c.created_at,
             "type":        c.type_c,
             "priority":    c.priority,
             "status":      c.status,

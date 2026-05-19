@@ -56,7 +56,7 @@ const handleSubmit = async () => {
   try {
     await api.post("/api/complaints/", { name, email, subject, message });
     setSent(true);
-  } catch (e) {
+  } catch{
     setError("Something went wrong. Please try again.");
   } finally {
     setLoading(false);

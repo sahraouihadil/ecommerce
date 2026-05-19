@@ -12,7 +12,7 @@ export function HistoryPage() {
       try {
         const response = await api.get("/profile/history");
         setHistoryOrders(response.data);
-      } catch (error) {
+      } catch {
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
       } finally {
