@@ -110,7 +110,6 @@ export function VerifyCode() {
   const navigate  = useNavigate();
 
   const email    = location.state?.email;
-  const username = location.state?.username;
 
   if (!email) return <Navigate to="/register" replace />;
 

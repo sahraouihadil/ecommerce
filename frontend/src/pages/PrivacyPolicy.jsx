@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const LAST_UPDATED = "May 2, 2026";
 const COMPANY = "ARoom";

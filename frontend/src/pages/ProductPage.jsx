@@ -33,7 +33,7 @@ const IS_MOBILE = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.tes
   typeof navigator !== "undefined" ? navigator.userAgent : ""
 );
 
-export const COLOR_HEX = Object.fromEntries(
+const COLOR_HEX = Object.fromEntries(
   PRESET_COLORS.map(c => [c.name, c.hex])
 );
 const LIGHT_COLORS = new Set(["White", "Ivory", "Beige", "Yellow"]);
@@ -251,7 +251,6 @@ export function ProductPage() {
   const [activeColor, setActiveColor] = useState(null);
   const [activeImg, setActiveImg] = useState(null);
   const [viewerMode, setViewerMode] = useState(null);
-  const [mounted, setMounted] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -297,7 +296,6 @@ export function ProductPage() {
         setProduct(p);
         if (p.colors?.length) setActiveColor(p.colors[0]);
         setActiveImg(p.images?.[0] ?? p.image_url ?? null);
-        setTimeout(() => setMounted(true), 80);
       })
       .catch(() => navigate("/furniture"));
   }, [productId, navigate]);

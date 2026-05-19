@@ -209,6 +209,7 @@ export function CartPage() {
       });
     }
   };
+//function that calculates the total price//
 
   const subtotal = items.reduce((sum, i) => sum + (i.product?.price || 0) * i.quantity, 0);
 
