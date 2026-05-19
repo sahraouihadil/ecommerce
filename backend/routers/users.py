@@ -142,6 +142,25 @@ async def login_for_access_token(db: db_dependency, form_data: OAuth2PasswordReq
         "role": user.role       # Frontend uses this to redirect to the right dashboard
     }
 
+# ======================================================================
+# USER PROFILE
+# ======================================================================
+
+@router.get("/profile")
+async def user(user: user_dependency, db: db_dependency):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication Failed")
+    db_user = db.query(models.Users).filter(models.Users.id == user["id"]).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id":        db_user.id,
+        "username":  db_user.username,
+        "email":     db_user.email,
+        "phone_num": db_user.phone_num,
+        "role":      db_user.role,
+        "active":    db_user.active,
+    }
 
 # ======================================================================
 # ROLE VERIFICATION ENDPOINTS
@@ -188,6 +207,68 @@ async def get_deliveryman(payload: dict = Depends(deliveryman_required)):
     """Verifies the user has the 'deliveryman' role."""
     return {"sub": payload.get("sub")}
 
+# ======================================================================
+# USER MANAGEMENT
+# ======================================================================
+
+@router.get("/api/users")
+def get_users(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(admin_required),
+):
+    return db.query(models.Users).all()
+
+
+@router.get("/api/users/{user_id}")
+def get_users_by_id(
+    user_id: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(admin_required),
+):
+    return db.query(models.Users).filter(models.Users.id == user_id).first()
+
+
+@router.post("/api/users")
+def create_user(
+    user: CreateUser,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(admin_required),
+):
+    new_user = create_user_by_admin(db, user)
+    db.commit()
+    return user
+
+
+@router.put("/api/users/{user_id}")
+def update_user(
+    user_id: int,
+    user: UpdateUser,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(admin_required),
+):
+    db_user = db.query(models.Users).filter(models.Users.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_user.username = user.username
+    db_user.email    = user.email
+    db_user.role     = user.role
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+@router.delete("/api/users/{user_id}")
+def delete_users_by_id(
+    user_id: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(admin_required),
+):
+    db_user = db.query(models.Users).filter(models.Users.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(db_user)
+    db.commit()
+    return {"message": "User deleted successfully"}
 
 # ======================================================================
 # ADMIN: CHANGE USER ROLE

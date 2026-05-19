@@ -35,14 +35,13 @@ TOKEN_BLACKLIST = set()
 
 
 def create_access_token(username: str, user_id: int, expires_delta: timedelta, role: str) -> str:
-    # FIX: removed the stray `"sub": str(user.id)` that was on this line causing issues
     """
     Creates a JWT access token.
     Payload contains: sub (username), id (user_id), role, exp (expiry)
     """
     payload = {
-        "sub":  username,   # username string
-        "id":   user_id,    # integer user ID — used by all endpoints
+        "sub":  username,
+        "id":   user_id, 
         "role": role,
     }
     expires = datetime.utcnow() + expires_delta

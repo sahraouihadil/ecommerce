@@ -70,7 +70,7 @@ class CampaignCreate(BaseModel):
     channel:       Optional[str]   = None
     status:        str             = "active"  
     is_active:     bool            = True          
-    campaign_type: Optional[str]   = None           # FIX: added ("sale" | "new")
+    campaign_type: Optional[str]   = None           #("sale" | "new")
     budget:        float           = 0
     spent:         float           = 0
     impressions:   int             = 0

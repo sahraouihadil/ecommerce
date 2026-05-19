@@ -23,13 +23,13 @@ from dotenv import load_dotenv
 from typing import Annotated
 from fastapi import Depends
 
-# Step 1: Load environment variables from the .env file
+# Load environment variables from the .env file
 load_dotenv()
 
-# Step 2: Get the database URL from the environment
+# Get the database URL from the environment
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Step 3: Safety check — if the URL is missing, fall back to SQLite
+# Safety check — if the URL is missing, fall back to SQLite
 # SQLite is a simple file-based database that doesn't need a server.
 # Good for testing, but not for production.
 if SQLALCHEMY_DATABASE_URL is None:
@@ -37,16 +37,16 @@ if SQLALCHEMY_DATABASE_URL is None:
     print("Falling back to SQLite (./test.db) for testing...")
     SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
-# Step 4: Create the database engine (connection)
+# Create the database engine (connection)
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-# Step 5: Create a session factory
+# Create a session factory
 # Each call to SessionLocal() creates a new database session.
 # autocommit=False means we must explicitly call db.commit() to save changes.
 # autoflush=False means changes aren't sent to the DB until we commit.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Step 6: Create the Base class for our models
+# Create the Base class for our models
 # All database models (Users, Products, etc.) will inherit from this.
 Base = declarative_base()
 

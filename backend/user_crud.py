@@ -38,8 +38,8 @@ def create_user(db: Session, create_user_request: CreateUserRequest):
         email=create_user_request.email,
         phone_num=create_user_request.phone_num,
     )
-    db.add(create_user_model)     # Stage the new row
-    db.commit()                    # Save to database
+    db.add(create_user_model)
+    db.commit()                 
     return create_user_model
 
 
